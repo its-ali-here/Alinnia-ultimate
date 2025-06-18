@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { getEnvironmentStatus } from "./env-check"
+import { getClientSidePublicEnvStatus } from "./env-check"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -44,4 +44,4 @@ export const isSupabaseConfigured = () => {
 }
 
 // Export environment status for debugging
-export const envStatus = getEnvironmentStatus()
+export const envStatus = getClientSidePublicEnvStatus()
