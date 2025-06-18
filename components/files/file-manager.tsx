@@ -1,49 +1,46 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
-import { useDropzone } from "react-dropzone"
+import { useState, useCallback, useEffect, type ChangeEvent } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import {
   createUploadedFileRecord,
-  updateUploadedFileStatus,
   getUploadedFilesForOrganization,
-  deleteUploadedFileRecord, // Added
-  type UploadedFile as DbUploadedFile, // Renamed to avoid conflict
+  updateUploadedFileStatus,
+  deleteUploadedFileRecord,
+  type UploadedFile as DbUploadedFile,
 } from "@/lib/database"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { parseCsv } from "@/lib/csv-parser"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
-import { toast } from "sonner" // Assuming sonner is available via shadcn/ui
-import { Upload, FileText, Download, Trash2, Eye, BarChart3, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-// Keep local interface for UI state, DbUploadedFile for database interactions
-interface UploadedFileUI extends DbUploadedFile {
-  progress?: number // UI-only progress for uploads
-  fileObject?: File // Store the actual file object for upload
-}
+import { toast } from "sonner"
+import { UploadCloud, Trash2, FileText, RefreshCw, Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { format } from "date-fns"
 
 export function FileManager() {
-  const { user, organizationId } = useAuth() // Assuming organizationId is available from AuthContext
-  const [files, setFiles] = useState<UploadedFileUI[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { user, organizationId } = useAuth()
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<DbUploadedFile[]>([])
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true)
 
   const fetchFiles = useCallback(async () => {
     if (!organizationId || !isSupabaseConfigured()) {
-      setIsLoading(false)
-      if (isSupabaseConfigured()) toast.error("Organization ID not found.")
+      setIsLoadingFiles(false)
       return
     }
     try {
-      setIsLoading(true)
-      const orgFiles = await getUploadedFilesForOrganization(organizationId)
-      setFiles(orgFiles.map((f) => ({ ...f, progress: f.status === "uploading" ? 0 : 100 })))
+      setIsLoadingFiles(true)
+      const files = await getUploadedFilesForOrganization(organizationId)
+      setUploadedFiles(files)
     } catch (error) {
       toast.error("Failed to fetch files: " + (error as Error).message)
     } finally {
-      setIsLoading(false)
+      setIsLoadingFiles(false)
     }
   }, [organizationId])
 
@@ -51,179 +48,138 @@ export function FileManager() {
     fetchFiles()
   }, [fetchFiles])
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      if (!user || !organizationId || !isSupabaseConfigured()) {
-        toast.error("Cannot upload file: User or organization not identified, or Supabase not configured.")
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0]
+      if (file.type !== "text/csv") {
+        toast.error("Invalid file type. Please upload a CSV file.")
+        setSelectedFile(null)
+        event.target.value = "" // Reset input
         return
       }
-
-      for (const file of acceptedFiles) {
-        const fileId = crypto.randomUUID() // Use crypto.randomUUID for unique ID
-        const newFileUI: UploadedFileUI = {
-          // Initialize with placeholder values, will be replaced by DB record
-          id: fileId, // Temporary UI ID
-          organization_id: organizationId,
-          uploaded_by_user_id: user.id,
-          file_name: file.name,
-          storage_path: "", // Will be set after upload
-          file_size_bytes: file.size,
-          file_type: file.type,
-          status: "uploading",
-          uploaded_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          progress: 0,
-          fileObject: file, // Keep file object for upload
-        }
-        setFiles((prev) => [newFileUI, ...prev])
-
-        // Upload to Supabase Storage
-        const filePath = `${organizationId}/${user.id}/${fileId}-${file.name}`
-
-        try {
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from("organization_files") // Ensure this bucket exists and has RLS
-            .upload(filePath, file, {
-              cacheControl: "3600",
-              upsert: false, // true if you want to allow overwriting
-              contentType: file.type,
-            })
-
-          if (uploadError) throw uploadError
-
-          const storagePath = uploadData.path
-
-          // Create metadata record in database
-          const dbRecord = await createUploadedFileRecord(organizationId, user.id, {
-            fileName: file.name,
-            storagePath: storagePath,
-            fileSizeBytes: file.size,
-            fileType: file.type,
-          })
-
-          if (!dbRecord) throw new Error("Failed to create file record in database.")
-
-          // Update UI with actual DB record and simulate processing
-          setFiles((prev) =>
-            prev.map((f) => (f.id === fileId ? { ...dbRecord, progress: 100, status: "processing" } : f)),
-          )
-
-          toast.success(`File "${file.name}" uploaded successfully. Processing...`)
-
-          // Simulate processing (e.g., reading headers, row count)
-          // In a real app, this would be a server-side task (e.g., Edge Function)
-          setTimeout(async () => {
-            try {
-              // Example: "Process" the file (e.g. get row count, column headers)
-              // This is a placeholder. Actual CSV parsing is complex.
-              const updatedRecord = await updateUploadedFileStatus(dbRecord.id, "ready", {
-                rowCount: Math.floor(Math.random() * 1000) + 50, // Dummy data
-                columnHeaders: ["Col A", "Col B", "Col C"], // Dummy data
-              })
-              if (updatedRecord) {
-                setFiles((prev) =>
-                  prev.map((f) => (f.id === updatedRecord.id ? { ...updatedRecord, progress: 100 } : f)),
-                )
-                toast.success(`File "${updatedRecord.file_name}" is ready.`)
-              }
-            } catch (processingError) {
-              if (dbRecord) {
-                await updateUploadedFileStatus(dbRecord.id, "error", {
-                  processingError: (processingError as Error).message,
-                })
-                setFiles((prev) =>
-                  prev.map((f) =>
-                    f.id === dbRecord.id
-                      ? { ...f, status: "error", processingError: (processingError as Error).message }
-                      : f,
-                  ),
-                )
-              }
-              toast.error(`Error processing file "${file.name}": ${(processingError as Error).message}`)
-            }
-          }, 2000)
-        } catch (error) {
-          console.error("Upload or DB record error:", error)
-          toast.error(`Failed to upload ${file.name}: ${(error as Error).message}`)
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === fileId ? { ...f, status: "error", processingError: (error as Error).message } : f,
-            ),
-          )
-        }
-      }
-    },
-    [user, organizationId],
-  )
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "text/csv": [".csv"],
-      "application/vnd.ms-excel": [".xls"], // Note: parsing .xls is harder than .xlsx or .csv
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-    },
-    multiple: true,
-    disabled: !isSupabaseConfigured() || !organizationId,
-  })
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+      setSelectedFile(file)
+    }
   }
 
-  const getStatusIcon = (status: UploadedFileUI["status"]) => {
+  const handleFileUpload = async () => {
+    if (!selectedFile || !user || !organizationId || !isSupabaseConfigured()) {
+      toast.error("User, organization, or file not available, or Supabase not configured.")
+      return
+    }
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
+    const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`
+    const storagePath = `organization_files/${organizationId}/${fileName}`
+
+    // 1. Create initial record in DB
+    let dbRecord: DbUploadedFile | null = null
+    try {
+      dbRecord = await createUploadedFileRecord(organizationId, user.id, {
+        fileName: selectedFile.name,
+        storagePath: storagePath,
+        fileSizeBytes: selectedFile.size,
+        fileType: selectedFile.type,
+      })
+      if (!dbRecord) throw new Error("Failed to create file record in database.")
+      // Add to local state immediately with 'uploading' status
+      setUploadedFiles((prev) => [dbRecord!, ...prev])
+    } catch (error) {
+      toast.error("Database error: " + (error as Error).message)
+      setIsUploading(false)
+      return
+    }
+
+    // 2. Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage.from("organization_files").upload(storagePath, selectedFile, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: selectedFile.type,
+      // @ts-ignore Duplex is available in Node.js ReadableStream, but browser fetch API might not expose it directly.
+      // Supabase JS client handles this internally.
+      duplex: "half",
+      onUploadProgress: (progress) => {
+        setUploadProgress((progress.loaded / progress.total) * 100)
+      },
+    })
+
+    if (uploadError) {
+      toast.error("Upload failed: " + uploadError.message)
+      await updateUploadedFileStatus(dbRecord.id, "error", { processingError: "Upload to storage failed." })
+      fetchFiles() // Refresh to show error status
+      setIsUploading(false)
+      return
+    }
+
+    toast.success(`"${selectedFile.name}" uploaded. Now processing...`)
+    await updateUploadedFileStatus(dbRecord.id, "processing")
+    fetchFiles() // Refresh to show processing status
+
+    // 3. Fetch, Parse, and Update DB Record
+    try {
+      const { data: downloadData, error: downloadError } = await supabase.storage
+        .from("organization_files")
+        .download(storagePath)
+
+      if (downloadError) throw new Error("Failed to download file for parsing: " + downloadError.message)
+
+      const csvText = await downloadData.text()
+      const parsedResult = parseCsv(csvText)
+
+      if (parsedResult.error) throw new Error("CSV Parsing error: " + parsedResult.error)
+
+      await updateUploadedFileStatus(dbRecord.id, "ready", {
+        columnHeaders: parsedResult.headers,
+        rowCount: parsedResult.rowCount,
+      })
+      toast.success(`"${selectedFile.name}" processed and ready.`)
+    } catch (processingError) {
+      toast.error("Processing failed: " + (processingError as Error).message)
+      await updateUploadedFileStatus(dbRecord.id, "error", { processingError: (processingError as Error).message })
+    } finally {
+      fetchFiles() // Refresh list
+      setIsUploading(false)
+      setSelectedFile(null)
+      // Reset file input
+      const fileInput = document.getElementById("file-upload-input") as HTMLInputElement
+      if (fileInput) fileInput.value = ""
+    }
+  }
+
+  const handleDeleteFile = async (file: DbUploadedFile) => {
+    if (!isSupabaseConfigured()) return
+    if (!confirm(`Are you sure you want to delete "${file.file_name}"? This action cannot be undone.`)) {
+      return
+    }
+    try {
+      // Delete from Supabase Storage
+      const { error: storageError } = await supabase.storage.from("organization_files").remove([file.storage_path])
+      if (storageError) {
+        // Log error but proceed to delete DB record if user confirms, or handle more gracefully
+        toast.error(`Storage deletion error: ${storageError.message}. Record might still be deleted.`)
+      }
+
+      // Delete record from database
+      await deleteUploadedFileRecord(file.id)
+      toast.success(`"${file.file_name}" deleted successfully.`)
+      fetchFiles()
+    } catch (error) {
+      toast.error("Failed to delete file: " + (error as Error).message)
+    }
+  }
+
+  const getStatusIcon = (status: DbUploadedFile["status"]) => {
     switch (status) {
       case "uploading":
       case "processing":
-        return <Loader2 className="h-4 w-4 animate-spin" />
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
       case "ready":
         return <CheckCircle2 className="h-4 w-4 text-green-500" />
       case "error":
-        return <AlertCircle className="h-4 w-4 text-red-500" />
-    }
-  }
-
-  const getStatusColor = (status: UploadedFileUI["status"]) => {
-    switch (status) {
-      case "uploading":
-        return "bg-blue-100 text-blue-800"
-      case "processing":
-        return "bg-yellow-100 text-yellow-800"
-      case "ready":
-        return "bg-green-100 text-green-800"
-      case "error":
-        return "bg-red-100 text-red-800"
-    }
-  }
-
-  const handleDeleteFile = async (file: UploadedFileUI) => {
-    if (!isSupabaseConfigured()) {
-      toast.error("Supabase not configured.")
-      return
-    }
-    if (confirm(`Are you sure you want to delete "${file.file_name}"? This action cannot be undone.`)) {
-      try {
-        // Delete from Supabase Storage
-        const { error: storageError } = await supabase.storage.from("organization_files").remove([file.storage_path])
-
-        if (storageError && storageError.message !== "The resource was not found") {
-          // Allow deletion of DB record even if file not found in storage (e.g. inconsistent state)
-          throw storageError
-        }
-
-        // Delete metadata record from database
-        await deleteUploadedFileRecord(file.id)
-
-        setFiles((prevFiles) => prevFiles.filter((f) => f.id !== file.id))
-        toast.success(`File "${file.file_name}" deleted successfully.`)
-      } catch (error) {
-        console.error("Error deleting file:", error)
-        toast.error(`Failed to delete file "${file.file_name}": ${(error as Error).message}`)
-      }
+        return <XCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <FileText className="h-4 w-4 text-gray-500" />
     }
   }
 
@@ -240,160 +196,92 @@ export function FileManager() {
     )
   }
 
-  if (isLoading && files.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" /> Loading files...
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Upload Files
-          </CardTitle>
+          <CardTitle>Upload New CSV File</CardTitle>
+          <CardDescription>Upload CSV files to be used for analytics and reports.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div
-            {...getRootProps()}
-            className={cn(
-              "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
-              isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
-              (!organizationId || !isSupabaseConfigured()) && "cursor-not-allowed opacity-50",
-            )}
-          >
-            <input {...getInputProps()} />
-            <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            {isDragActive ? (
-              <p className="text-lg font-medium">Drop the files here...</p>
-            ) : (
-              <div>
-                <p className="text-lg font-medium mb-2">Drag & drop CSV/XLS/XLSX files here, or click to select</p>
-                <p className="text-sm text-muted-foreground">
-                  Max file size 10MB. Ensure your Supabase bucket 'organization_files' is created.
-                </p>
-              </div>
-            )}
-          </div>
+        <CardContent className="space-y-4">
+          <Input id="file-upload-input" type="file" accept=".csv" onChange={handleFileChange} disabled={isUploading} />
+          {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
+          {isUploading && <Progress value={uploadProgress} className="w-full" />}
+          <Button onClick={handleFileUpload} disabled={!selectedFile || isUploading}>
+            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+            {isUploading ? `Uploading... ${Math.round(uploadProgress)}%` : "Upload File"}
+          </Button>
         </CardContent>
       </Card>
 
-      {files.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Uploaded Files ({files.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {files.map((file) => (
-                <div key={file.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-medium">{file.file_name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {formatFileSize(file.file_size_bytes)} • {new Date(file.uploaded_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={cn(getStatusColor(file.status), "capitalize")}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(file.status)}
-                          {file.status}
-                        </div>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {(file.status === "uploading" || file.status === "processing") &&
-                    typeof file.progress === "number" && <Progress value={file.progress} className="mb-2 h-2" />}
-
-                  {file.status === "ready" && file.row_count && (
-                    <div className="text-sm text-muted-foreground mb-3">
-                      {file.row_count.toLocaleString()} rows • {file.column_headers?.length || "N/A"} columns
-                      {file.column_headers && (
-                        <p className="text-xs truncate">Cols: {file.column_headers.join(", ")}</p>
-                      )}
-                    </div>
-                  )}
-                  {file.status === "error" && file.processing_error && (
-                    <p className="text-sm text-red-500 mb-3">Error: {file.processing_error}</p>
-                  )}
-
-                  <div className="flex gap-2 flex-wrap">
-                    {file.status === "ready" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toast.info("Preview functionality to be implemented.")}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Preview
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toast.info("Analyze functionality to be implemented.")}
-                        >
-                          <BarChart3 className="h-4 w-4 mr-1" />
-                          Analyze
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            if (!isSupabaseConfigured()) return
-                            try {
-                              const { data, error } = await supabase.storage
-                                .from("organization_files")
-                                .createSignedUrl(file.storage_path, 60) // 60 seconds expiry
-                              if (error) throw error
-                              window.open(data.signedUrl, "_blank")
-                            } catch (e) {
-                              toast.error("Could not get download link: " + (e as Error).message)
-                            }
-                          }}
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          Download
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDeleteFile(file)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              ))}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Uploaded Files</CardTitle>
+            <Button variant="outline" size="icon" onClick={fetchFiles} disabled={isLoadingFiles}>
+              <RefreshCw className={`h-4 w-4 ${isLoadingFiles ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+          <CardDescription>Manage your uploaded CSV files.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingFiles && !uploadedFiles.length ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Loading files...
             </div>
-          </CardContent>
-        </Card>
-      )}
-      {files.length === 0 && !isLoading && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No files uploaded yet</h3>
-            <p className="text-muted-foreground">Upload your first CSV, XLS, or XLSX file to get started.</p>
-          </CardContent>
-        </Card>
-      )}
+          ) : !uploadedFiles.length ? (
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No files uploaded</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by uploading a CSV file.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Rows</TableHead>
+                  <TableHead>Columns</TableHead>
+                  <TableHead>Uploaded At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {uploadedFiles.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="font-medium">{file.file_name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(file.status)}
+                        <span className="capitalize">{file.status}</span>
+                      </div>
+                      {file.status === "error" && file.processing_error && (
+                        <p className="text-xs text-red-500 mt-1" title={file.processing_error}>
+                          Error: {file.processing_error.substring(0, 50)}...
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell>{file.row_count ?? "N/A"}</TableCell>
+                    <TableCell>{file.column_headers?.length ?? "N/A"}</TableCell>
+                    <TableCell>{format(new Date(file.uploaded_at), "PPp")}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteFile(file)}
+                        disabled={file.status === "uploading" || file.status === "processing"}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -919,7 +919,7 @@ export async function updateUploadedFileStatus(
   try {
     const { data, error } = await supabase
       .from("uploaded_files")
-      .update({ status, ...updates })
+      .update({ status, ...updates, updated_at: new Date().toISOString() }) // Ensure updated_at is set
       .eq("id", fileId)
       .select()
       .single()
