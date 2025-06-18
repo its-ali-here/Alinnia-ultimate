@@ -27,6 +27,7 @@ import {
   getUserOrganizations,
 } from "@/lib/database"
 import { Users2 } from "lucide-react" // Import Users2 component
+import { toast } from "sonner"
 
 interface Member {
   id: string
@@ -82,9 +83,9 @@ export default function MembersPage() {
       setInviteRole("member")
       setIsInviteOpen(false)
       loadMembers()
-      alert("Member invited successfully!")
+      toast.success("Member invited successfully!")
     } catch (error) {
-      alert("Error inviting member: " + error.message)
+      toast.error("Error inviting member: " + (error as Error).message)
     }
   }
 
@@ -92,9 +93,9 @@ export default function MembersPage() {
     try {
       await updateMemberRole(memberId, newRole)
       loadMembers()
-      alert("Role updated successfully!")
+      toast.success("Role updated successfully!")
     } catch (error) {
-      alert("Error updating role: " + error.message)
+      toast.error("Error updating role: " + (error as Error).message)
     }
   }
 
@@ -103,9 +104,9 @@ export default function MembersPage() {
       try {
         await removeMember(memberId)
         loadMembers()
-        alert("Member removed successfully!")
+        toast.success("Member removed successfully!")
       } catch (error) {
-        alert("Error removing member: " + error.message)
+        toast.error("Error removing member: " + (error as Error).message)
       }
     }
   }

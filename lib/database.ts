@@ -90,6 +90,29 @@ export interface Bill {
   updated_at: string
 }
 
+export interface UploadedFile {
+  id: string
+  organization_id: string
+  uploaded_by_user_id: string
+  file_name: string
+  storage_path: string
+  file_size_bytes: number
+  file_type: string
+  status: "uploading" | "processing" | "ready" | "error"
+  row_count?: number
+  column_headers?: string[]
+  processing_error?: string
+  uploaded_at: string
+  updated_at: string
+}
+
+export interface UserPermissionItem {
+  permission_type: string
+  can_read: boolean
+  can_write: boolean
+  can_delete: boolean
+}
+
 // Profile functions
 export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
   if (!isSupabaseConfigured()) {
@@ -644,8 +667,8 @@ export async function getOrganizationMembers(organizationId: string) {
     const { data, error } = await supabase
       .from("organization_members")
       .select(`
-        *,
-        users(id, full_name, email, avatar_url, role)
+        id, role, joined_at, invited_by,
+        profiles:users (id, full_name, email, avatar_url)
       `)
       .eq("organization_id", organizationId)
       .order("joined_at")
@@ -739,53 +762,68 @@ export async function removeMember(memberId: string) {
   }
 }
 
-// Permissions functions
-export async function getUserPermissions(organizationId: string, userId: string) {
+// Permissions functions (Refactored to align with PermissionsPage.tsx)
+export async function getUserPermissions(organizationId: string, userId: string): Promise<UserPermissionItem[]> {
   if (!isSupabaseConfigured()) {
-    return []
+    // For UI consistency, provide all permission types with default false values
+    const defaultPermissionTypes = ["accounts", "transactions", "budgets", "reports", "settings"]
+    return defaultPermissionTypes.map((pt) => ({
+      permission_type: pt,
+      can_read: false,
+      can_write: false,
+      can_delete: false,
+    }))
   }
 
   try {
     const { data, error } = await supabase
-      .from("role_permissions")
-      .select(`
-        *,
-        permissions(name, description, category)
-      `)
+      .from("user_permissions")
+      .select("permission_type, can_read, can_write, can_delete")
       .eq("organization_id", organizationId)
       .eq("user_id", userId)
 
     if (error) {
       console.error("Error getting user permissions:", error)
-      return []
+      throw error // Re-throw to be caught by calling component
     }
     return data || []
   } catch (error) {
     console.error("Database error in getUserPermissions:", error)
-    return []
+    throw error
   }
 }
 
 export async function updatePermission(
   organizationId: string,
-  userId: string,
-  permissionId: string,
-  granted: boolean,
-  grantedBy: string,
-) {
+  targetUserId: string,
+  permissionType: string,
+  newPermissions: { can_read: boolean; can_write: boolean; can_delete: boolean },
+  actingUserId: string, // User performing the action
+): Promise<UserPermissionItem | null> {
   if (!isSupabaseConfigured()) {
     throw new Error("Database not available: Supabase is not configured")
   }
 
   try {
-    const { data, error } = await supabase.from("role_permissions").upsert({
-      organization_id: organizationId,
-      user_id: userId,
-      permission_id: permissionId,
-      granted: granted,
-      granted_by: grantedBy,
-      updated_at: new Date().toISOString(),
-    })
+    const { data, error } = await supabase
+      .from("user_permissions")
+      .upsert(
+        {
+          organization_id: organizationId,
+          user_id: targetUserId,
+          permission_type: permissionType,
+          can_read: newPermissions.can_read,
+          can_write: newPermissions.can_write,
+          can_delete: newPermissions.can_delete,
+          granted_by_user_id: actingUserId,
+          // updated_at is handled by trigger or default
+        },
+        {
+          onConflict: "organization_id,user_id,permission_type",
+        },
+      )
+      .select("permission_type, can_read, can_write, can_delete")
+      .single()
 
     if (error) {
       console.error("Error updating permission:", error)
@@ -828,4 +866,105 @@ function generateOrganizationCode(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return result
+}
+
+// Uploaded Files functions
+export async function createUploadedFileRecord(
+  organizationId: string,
+  uploaderUserId: string,
+  fileDetails: {
+    fileName: string
+    storagePath: string
+    fileSizeBytes: number
+    fileType: string
+  },
+): Promise<UploadedFile | null> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Database not available: Supabase is not configured")
+  }
+  try {
+    const { data, error } = await supabase
+      .from("uploaded_files")
+      .insert({
+        organization_id: organizationId,
+        uploaded_by_user_id: uploaderUserId,
+        file_name: fileDetails.fileName,
+        storage_path: fileDetails.storagePath,
+        file_size_bytes: fileDetails.fileSizeBytes,
+        file_type: fileDetails.fileType,
+        status: "uploading", // Initial status
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error creating uploaded file record:", error)
+      throw error
+    }
+    return data
+  } catch (error) {
+    console.error("Database error in createUploadedFileRecord:", error)
+    throw error
+  }
+}
+
+export async function updateUploadedFileStatus(
+  fileId: string,
+  status: UploadedFile["status"],
+  updates?: Partial<Pick<UploadedFile, "rowCount" | "columnHeaders" | "processingError">>,
+): Promise<UploadedFile | null> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Database not available: Supabase is not configured")
+  }
+  try {
+    const { data, error } = await supabase
+      .from("uploaded_files")
+      .update({ status, ...updates })
+      .eq("id", fileId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating file status:", error)
+      throw error
+    }
+    return data
+  } catch (error) {
+    console.error("Database error in updateUploadedFileStatus:", error)
+    throw error
+  }
+}
+
+export async function getUploadedFilesForOrganization(organizationId: string): Promise<UploadedFile[]> {
+  if (!isSupabaseConfigured()) {
+    return []
+  }
+  try {
+    const { data, error } = await supabase
+      .from("uploaded_files")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("uploaded_at", { ascending: false })
+
+    if (error) {
+      console.error("Error getting uploaded files for organization:", error)
+      return []
+    }
+    return data || []
+  } catch (error) {
+    console.error("Database error in getUploadedFilesForOrganization:", error)
+    return []
+  }
+}
+
+export async function deleteUploadedFileRecord(fileId: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Database not available: Supabase is not configured")
+  }
+  // Note: This only deletes the metadata record. Actual file in storage needs separate handling.
+  const { error } = await supabase.from("uploaded_files").delete().eq("id", fileId)
+  if (error) {
+    console.error("Error deleting uploaded file record:", error)
+    throw error
+  }
 }

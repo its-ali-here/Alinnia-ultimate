@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Shield, Eye, Edit, Trash2 } from "lucide-react"
 import { getOrganizationMembers, getUserPermissions, updatePermission, getUserOrganizations } from "@/lib/database"
+import { toast } from "sonner"
 
 interface Member {
   id: string
@@ -102,24 +103,39 @@ export default function PermissionsPage() {
         user.id,
       )
 
-      // Update local state
-      setPermissions((prev) => ({
-        ...prev,
-        [memberId]: prev[memberId]?.map((p) =>
-          p.permission_type === permissionType ? { ...p, [field]: value } : p,
-        ) || [
-          { permission_type: permissionType, can_read: false, can_write: false, can_delete: false, [field]: value },
-        ],
-      }))
+      // Update local state more robustly
+      setPermissions((prevPermissions) => {
+        const memberPerms = prevPermissions[memberId] ? [...prevPermissions[memberId]] : []
+        const permIndex = memberPerms.findIndex((p) => p.permission_type === permissionType)
+        const updatedPerm = {
+          permission_type: permissionType,
+          can_read: field === "can_read" ? value : currentPermission?.can_read || false,
+          can_write: field === "can_write" ? value : currentPermission?.can_write || false,
+          can_delete: field === "can_delete" ? value : currentPermission?.can_delete || false,
+        }
 
-      alert("Permission updated successfully!")
+        if (permIndex > -1) {
+          memberPerms[permIndex] = updatedPerm
+        } else {
+          // If permission_type didn't exist, add it. This case should ideally be handled by
+          // ensuring all permission_types are present for a user upon creation or first load.
+          // The refactored getUserPermissions in database.ts aims to provide defaults.
+          memberPerms.push(updatedPerm)
+        }
+        return { ...prevPermissions, [memberId]: memberPerms }
+      })
+
+      toast.success("Permission updated successfully!")
     } catch (error) {
-      alert("Error updating permission: " + error.message)
+      toast.error("Error updating permission: " + (error as Error).message)
     }
   }
 
   const getPermission = (memberId: string, permissionType: string, field: "can_read" | "can_write" | "can_delete") => {
-    return permissions[memberId]?.find((p) => p.permission_type === permissionType)?.[field] || false
+    const permSet = permissions[memberId] // This is an array of UserPermissionItem
+    if (!permSet) return false
+    const specificPerm = permSet.find((p) => p.permission_type === permissionType)
+    return specificPerm ? specificPerm[field] : false
   }
 
   const canManagePermissions = userRole === "administrator" || userRole === "team_leader"
