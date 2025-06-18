@@ -159,7 +159,7 @@ export function SignupForm() {
   }
 
   const handleSignup = async () => {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured) {
       // isSupabaseConfigured is from useAuth context
       setErrors({ general: "Authentication is not configured. Please check environment variables." })
       console.error("Signup attempt failed: Supabase client (from context) is not configured.")
