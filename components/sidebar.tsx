@@ -27,7 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Analytics", href: "/analytics", icon: BarChart2 },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart2 }, // Updated href
   { name: "Organization", href: "/dashboard/organization", icon: Building2 },
   { name: "Files", href: "/dashboard/files", icon: FileText },
   { name: "Transactions", href: "/dashboard/transactions", icon: Wallet },
