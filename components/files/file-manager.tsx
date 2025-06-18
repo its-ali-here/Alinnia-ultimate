@@ -62,88 +62,138 @@ export function FileManager() {
   }
 
   const handleFileUpload = async () => {
-    if (!selectedFile || !user || !organizationId || !isSupabaseConfigured()) {
-      toast.error("User, organization, or file not available, or Supabase not configured.")
+    console.log("handleFileUpload called.")
+    if (!selectedFile) {
+      toast.error("No file selected. Please select a CSV file to upload.")
+      console.log("Upload attempt failed: No file selected.")
+      return
+    }
+    if (!user) {
+      toast.error("User not authenticated. Please log in.")
+      console.log("Upload attempt failed: User not authenticated.")
+      return
+    }
+    if (!organizationId) {
+      toast.error("Organization context not found. Cannot upload file.")
+      console.log("Upload attempt failed: Organization ID not found.")
+      return
+    }
+    if (!isSupabaseConfigured()) {
+      toast.error("Supabase is not configured. Cannot upload file.")
+      console.log("Upload attempt failed: Supabase not configured.")
       return
     }
 
+    console.log(`Starting upload for file: ${selectedFile.name}, User: ${user.id}, Org: ${organizationId}`)
     setIsUploading(true)
     setUploadProgress(0)
 
-    const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`
-    const storagePath = `organization_files/${organizationId}/${fileName}`
+    // Use a unique file name including a timestamp or UUID to prevent overwrites
+    const uniqueFileName = `${Date.now()}-${selectedFile.name.replace(/\s+/g, "_")}`
+    const storagePath = `organization_files/${organizationId}/${user.id}/${uniqueFileName}`
+    console.log("Storage path:", storagePath)
 
-    // 1. Create initial record in DB
     let dbRecord: DbUploadedFile | null = null
     try {
+      console.log("Creating initial file record in database...")
       dbRecord = await createUploadedFileRecord(organizationId, user.id, {
-        fileName: selectedFile.name,
+        fileName: selectedFile.name, // Store original file name
         storagePath: storagePath,
         fileSizeBytes: selectedFile.size,
         fileType: selectedFile.type,
       })
-      if (!dbRecord) throw new Error("Failed to create file record in database.")
-      // Add to local state immediately with 'uploading' status
-      setUploadedFiles((prev) => [dbRecord!, ...prev])
-    } catch (error) {
-      toast.error("Database error: " + (error as Error).message)
-      setIsUploading(false)
-      return
-    }
 
-    // 2. Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage.from("organization_files").upload(storagePath, selectedFile, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: selectedFile.type,
-      // @ts-ignore Duplex is available in Node.js ReadableStream, but browser fetch API might not expose it directly.
-      // Supabase JS client handles this internally.
-      duplex: "half",
-      onUploadProgress: (progress) => {
-        setUploadProgress((progress.loaded / progress.total) * 100)
-      },
-    })
+      if (!dbRecord) {
+        throw new Error("Failed to create file metadata record in database.")
+      }
+      console.log("File record created in DB, ID:", dbRecord.id)
+      // Optimistically add to UI or wait for fetchFiles to update
+      setUploadedFiles((prev) => [dbRecord!, ...prev.filter((f) => f.id !== dbRecord!.id)])
 
-    if (uploadError) {
-      toast.error("Upload failed: " + uploadError.message)
-      await updateUploadedFileStatus(dbRecord.id, "error", { processingError: "Upload to storage failed." })
-      fetchFiles() // Refresh to show error status
-      setIsUploading(false)
-      return
-    }
+      console.log("Uploading file to Supabase Storage...")
+      const { error: uploadError } = await supabase.storage
+        .from("organization_files") // Make sure this bucket name is correct
+        .upload(storagePath, selectedFile, {
+          cacheControl: "3600",
+          upsert: false, // Set to true if you want to allow overwriting, but unique names are better
+          contentType: selectedFile.type,
+          // onUploadProgress is not a standard option for supabase.storage.upload directly.
+          // For progress, you might need a more complex setup or rely on overall time.
+          // We'll simulate progress based on steps for now or remove if not feasible.
+        })
+      // Simulate progress for storage upload part
+      setUploadProgress(50)
 
-    toast.success(`"${selectedFile.name}" uploaded. Now processing...`)
-    await updateUploadedFileStatus(dbRecord.id, "processing")
-    fetchFiles() // Refresh to show processing status
+      if (uploadError) {
+        console.error("Supabase storage upload error:", JSON.stringify(uploadError, null, 2))
+        await updateUploadedFileStatus(dbRecord.id, "error", {
+          processingError: `Storage upload failed: ${uploadError.message}`,
+        })
+        throw new Error(`Storage upload failed: ${uploadError.message}`)
+      }
+      console.log("File uploaded to storage successfully.")
+      setUploadProgress(75)
 
-    // 3. Fetch, Parse, and Update DB Record
-    try {
+      console.log("Updating file record status to 'processing'...")
+      await updateUploadedFileStatus(dbRecord.id, "processing")
+      // Refresh local state for this file
+      setUploadedFiles((prev) => prev.map((f) => (f.id === dbRecord!.id ? { ...f, status: "processing" } : f)))
+
+      toast.info(`"${selectedFile.name}" uploaded. Now processing content...`)
+      console.log("Fetching file content for parsing...")
       const { data: downloadData, error: downloadError } = await supabase.storage
         .from("organization_files")
         .download(storagePath)
 
-      if (downloadError) throw new Error("Failed to download file for parsing: " + downloadError.message)
+      if (downloadError) {
+        console.error("Error downloading file for parsing:", JSON.stringify(downloadError, null, 2))
+        await updateUploadedFileStatus(dbRecord.id, "error", {
+          processingError: `Failed to download for parsing: ${downloadError.message}`,
+        })
+        throw new Error(`Failed to download for parsing: ${downloadError.message}`)
+      }
 
       const csvText = await downloadData.text()
+      console.log("File content downloaded, parsing CSV...")
       const parsedResult = parseCsv(csvText)
 
-      if (parsedResult.error) throw new Error("CSV Parsing error: " + parsedResult.error)
+      if (parsedResult.error) {
+        console.error("CSV Parsing error:", parsedResult.error)
+        await updateUploadedFileStatus(dbRecord.id, "error", {
+          processingError: `CSV Parsing error: ${parsedResult.error}`,
+        })
+        throw new Error(`CSV Parsing error: ${parsedResult.error}`)
+      }
+      console.log("CSV parsed successfully. Headers:", parsedResult.headers, "Row count:", parsedResult.rowCount)
 
       await updateUploadedFileStatus(dbRecord.id, "ready", {
         columnHeaders: parsedResult.headers,
         rowCount: parsedResult.rowCount,
       })
+      setUploadProgress(100)
       toast.success(`"${selectedFile.name}" processed and ready.`)
-    } catch (processingError) {
-      toast.error("Processing failed: " + (processingError as Error).message)
-      await updateUploadedFileStatus(dbRecord.id, "error", { processingError: (processingError as Error).message })
+      console.log("File processing complete, status set to 'ready'.")
+    } catch (error) {
+      console.error("Error during file upload and processing:", error)
+      toast.error(`Operation failed: ${(error as Error).message}`)
+      if (dbRecord && dbRecord.id && dbRecord.status !== "ready") {
+        // Check if dbRecord and id exist
+        try {
+          await updateUploadedFileStatus(dbRecord.id, "error", { processingError: (error as Error).message })
+          console.log(`File record ${dbRecord.id} status updated to 'error' after catching exception.`)
+        } catch (updateError) {
+          console.error(`Failed to update file ${dbRecord.id} status to error:`, updateError)
+        }
+      }
     } finally {
-      fetchFiles() // Refresh list
+      console.log("Upload process finished (either success or failure).")
       setIsUploading(false)
       setSelectedFile(null)
-      // Reset file input
+      // Reset file input visually
       const fileInput = document.getElementById("file-upload-input") as HTMLInputElement
       if (fileInput) fileInput.value = ""
+      console.log("Fetching updated list of files...")
+      fetchFiles() // Refresh the list of files from the database
     }
   }
 

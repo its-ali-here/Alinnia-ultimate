@@ -130,9 +130,12 @@ export async function createProfile(userId: string, fullName: string, email: str
     .single()
 
   if (error) {
-    // Check for unique constraint violation
+    console.error("Supabase error creating profile in database.ts:", JSON.stringify(error, null, 2)) // Enhanced log
     if (error.code === "23505") {
-      console.warn(`Profile for user ${userId} already exists.`)
+      // Unique constraint (e.g., email or id already exists)
+      console.warn(
+        `Profile for user ${userId} (or email ${email}) likely already exists due to unique constraint violation (Code: 23505). Attempting to fetch existing.`,
+      )
       const { data: existingProfile, error: fetchError } = await supabase
         .from("users")
         .select("*")
@@ -146,7 +149,7 @@ export async function createProfile(userId: string, fullName: string, email: str
       return existingProfile
     }
     console.error("Error creating profile:", error)
-    throw new Error(`Failed to create profile: ${error.message}`)
+    throw new Error(`Failed to create profile (DB): ${error.message} (Code: ${error.code})`)
   }
 
   return data
@@ -245,10 +248,27 @@ export async function createOrganization(
     throw new Error(`Failed to create organization: ${error.message}`)
   }
 
-  // Add the owner as a member of the organization
-  await addUserToOrganization(ownerId, data.id, "owner")
+  const newOrg = data // data is the newly created organization
 
-  return data
+  try {
+    console.log(`Adding owner ${ownerId} to new organization ${newOrg.id}`)
+    await addUserToOrganization(ownerId, newOrg.id, "owner")
+    console.log(`Owner ${ownerId} successfully added to organization ${newOrg.id}`)
+  } catch (addUserError) {
+    console.error(
+      `Failed to add owner ${ownerId} to organization ${newOrg.id} after creating organization record:`,
+      addUserError,
+    )
+    // Optional: Decide if you want to attempt to delete the created organization record if adding owner fails.
+    // This can be complex due to potential race conditions or further errors.
+    // For now, we'll let the organization exist without the owner properly linked if this specific step fails,
+    // and rely on the error message to indicate the problem.
+    throw new Error(
+      `Organization record created (ID: ${newOrg.id}), but failed to add owner: ${(addUserError as Error).message}`,
+    )
+  }
+
+  return newOrg // newOrg was 'data'
 }
 
 export async function getOrganizationByCode(code: string): Promise<Organization> {
@@ -850,8 +870,11 @@ async function addUserToOrganization(userId: string, organizationId: string, rol
     })
 
     if (error) {
-      console.error("Organization member creation error:", error)
-      throw new Error(`Failed to add user to organization: ${error.message}`)
+      console.error(
+        `Supabase error adding user ${userId} to organization ${organizationId} (role: ${role}):`,
+        JSON.stringify(error, null, 2),
+      )
+      throw new Error(`Failed to add user to organization (DB): ${error.message} (Code: ${error.code})`)
     }
   } catch (error) {
     console.error("Database error:", error)

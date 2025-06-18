@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, ArrowRight, Building2, Users, AlertCircle } from "lucide-react"
+import { ArrowLeft, Building2, Users, AlertCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { getOrganizationByCode } from "@/lib/database"
 import { useAuth } from "@/contexts/auth-context"
@@ -147,60 +147,84 @@ export function SignupForm() {
   }
 
   const handleSignup = async () => {
-    if (!isSupabaseConfigured) {
-      setErrors({ general: "Authentication is not configured." })
+    if (!isSupabaseConfigured()) {
+      setErrors({ general: "Authentication is not configured. Please check environment variables." })
+      console.error("Signup attempt failed: Supabase client is not configured.")
       return
     }
 
     setLoading(true)
     setErrors({})
+    console.log("Attempting Supabase user signup with email:", userData.email)
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
+      options: {
+        data: {
+          full_name: userData.fullName, // Optionally pass full_name here if your RLS/triggers use it
+        },
+      },
     })
 
     if (signUpError) {
-      setErrors({ general: signUpError.message })
+      console.error("Supabase auth.signUp error:", JSON.stringify(signUpError, null, 2))
+      setErrors({ general: `Auth error: ${signUpError.message} (Code: ${signUpError.code || "N/A"})` })
       setLoading(false)
       return
     }
 
     if (!signUpData.user) {
-        setErrors({ general: "Failed to create user. Please try again." });
-        setLoading(false);
-        return;
+      console.error("Supabase auth.signUp did not return a user, but no error was thrown.")
+      setErrors({ general: "User creation failed for an unknown reason. Please try again." })
+      setLoading(false)
+      return
     }
 
-    // Offload the rest of the work to a separate API route
-    const response = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    console.log("Supabase user created successfully. User ID:", signUpData.user.id)
+    console.log("Calling /api/signup to create profile and organization...")
+
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            userId: signUpData.user.id,
-            fullName: userData.fullName,
-            organizationType,
-            organizationCode,
-            organizationData,
+          userId: signUpData.user.id,
+          fullName: userData.fullName,
+          email: userData.email, // Pass email for profile creation
+          organizationType,
+          organizationCode,
+          organizationData, // This is OrganizationData for 'new' type
+          // userData is not needed here as profile info is passed directly
         }),
-    });
+      })
 
-    const result = await response.json();
+      const result = await response.json()
 
-    if (!response.ok) {
-        setErrors({ general: result.error || "An unexpected error occurred after signup." });
+      if (!response.ok) {
+        console.error("/api/signup error response:", JSON.stringify(result, null, 2))
+        // Use result.error (from API) or result.message, or a default
+        const apiErrorMessage = result.error || result.message || "An unexpected error occurred after signup."
+        setErrors({ general: `API Error: ${apiErrorMessage} (Status: ${response.status})` })
         setLoading(false)
         return
-    }
+      }
 
-    if (organizationType === 'new') {
-        setGeneratedCode(result.organizationCode);
-        setStep(4);
-    } else {
-        router.push("/auth/login?message=Account created! Please check your email to verify your account.");
-    }
+      console.log("/api/signup successful:", JSON.stringify(result, null, 2))
 
-    setLoading(false)
+      if (organizationType === "new" && result.organizationCode) {
+        setGeneratedCode(result.organizationCode)
+        setStep(4) // Move to success/code display step
+      } else {
+        // For existing org or if no code generated (should not happen for 'new')
+        router.push("/auth/login?message=Account created! Please check your email to verify your account.")
+      }
+    } catch (apiCallError) {
+      console.error("Error calling /api/signup:", apiCallError)
+      setErrors({ general: `Network or unexpected error during API call: ${(apiCallError as Error).message}` })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getProgress = () => {
@@ -224,149 +248,258 @@ export function SignupForm() {
         )}
 
         {step === 1 && (
-            // Step 1 content remains the same
-            <div className="space-y-6">
+          // Step 1 content remains the same
+          <div className="space-y-6">
             <div className="text-center">
-                <h2 className="text-2xl font-bold">Welcome to Alinnia</h2>
-                <p className="text-muted-foreground mt-2">Let's get you set up with your organization</p>
+              <h2 className="text-2xl font-bold">Welcome to Alinnia</h2>
+              <p className="text-muted-foreground mt-2">Let's get you set up with your organization</p>
             </div>
             <div className="space-y-4">
-                <Label>Choose an option:</Label>
-                <RadioGroup value={organizationType} onValueChange={(value) => { setOrganizationType(value as "new" | "existing"); clearError("organizationType"); }}>
+              <Label>Choose an option:</Label>
+              <RadioGroup
+                value={organizationType}
+                onValueChange={(value) => {
+                  setOrganizationType(value as "new" | "existing")
+                  clearError("organizationType")
+                }}
+              >
                 <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent">
-                    <RadioGroupItem value="new" id="new" />
-                    <Label htmlFor="new" className="flex items-center cursor-pointer flex-1">
+                  <RadioGroupItem value="new" id="new" />
+                  <Label htmlFor="new" className="flex items-center cursor-pointer flex-1">
                     <Building2 className="mr-3 h-5 w-5" />
                     <div>
-                        <div className="font-medium">Create a new organization</div>
-                        <div className="text-sm text-muted-foreground">Start fresh with your own organization</div>
+                      <div className="font-medium">Create a new organization</div>
+                      <div className="text-sm text-muted-foreground">Start fresh with your own organization</div>
                     </div>
-                    </Label>
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent">
-                    <RadioGroupItem value="existing" id="existing" />
-                    <Label htmlFor="existing" className="flex items-center cursor-pointer flex-1">
+                  <RadioGroupItem value="existing" id="existing" />
+                  <Label htmlFor="existing" className="flex items-center cursor-pointer flex-1">
                     <Users className="mr-3 h-5 w-5" />
                     <div>
-                        <div className="font-medium">Join an existing organization</div>
-                        <div className="text-sm text-muted-foreground">Use an organization code to join</div>
+                      <div className="font-medium">Join an existing organization</div>
+                      <div className="text-sm text-muted-foreground">Use an organization code to join</div>
                     </div>
-                    </Label>
+                  </Label>
                 </div>
-                </RadioGroup>
-                {errors.organizationType && <p className="text-sm text-red-600">{errors.organizationType}</p>}
+              </RadioGroup>
+              {errors.organizationType && <p className="text-sm text-red-600">{errors.organizationType}</p>}
             </div>
             {organizationType === "existing" && (
-                <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="orgCode">Organization Code</Label>
-                <Input id="orgCode" placeholder="Enter 6-character code" value={organizationCode} onChange={(e) => { setOrganizationCode(e.target.value.toUpperCase()); clearError("organizationCode"); }} maxLength={6} />
+                <Input
+                  id="orgCode"
+                  placeholder="Enter 6-character code"
+                  value={organizationCode}
+                  onChange={(e) => {
+                    setOrganizationCode(e.target.value.toUpperCase())
+                    clearError("organizationCode")
+                  }}
+                  maxLength={6}
+                />
                 {errors.organizationCode && <p className="text-sm text-red-600">{errors.organizationCode}</p>}
-                </div>
+              </div>
             )}
-            </div>
+          </div>
         )}
         {step === 2 && (
-             // Step 2 content remains the same
-            <div className="space-y-6">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold">Organization Details</h2>
-                    <p className="text-muted-foreground mt-2">Tell us about your organization</p>
-                </div>
-                <div className="grid gap-4">
-                    <div className="space-y-2">
-                    <Label htmlFor="orgName">Organization Name *</Label>
-                    <Input id="orgName" placeholder="Enter organization name" value={organizationData.name} onChange={(e) => { setOrganizationData((prev) => ({ ...prev, name: e.target.value })); clearError("orgName"); }} />
-                    {errors.orgName && <p className="text-sm text-red-600">{errors.orgName}</p>}
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="orgEmail">Organization Email *</Label>
-                    <Input id="orgEmail" type="email" placeholder="contact@organization.com" value={organizationData.email} onChange={(e) => { setOrganizationData((prev) => ({ ...prev, email: e.target.value })); clearError("orgEmail"); }} />
-                    {errors.orgEmail && <p className="text-sm text-red-600">{errors.orgEmail}</p>}
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="orgPhone">Phone Number (Optional)</Label>
-                    <Input id="orgPhone" type="tel" placeholder="+1 (555) 123-4567" value={organizationData.phone} onChange={(e) => setOrganizationData((prev) => ({ ...prev, phone: e.target.value }))} />
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="industry">Industry *</Label>
-                    <Select value={organizationData.industry} onValueChange={(value) => { setOrganizationData((prev) => ({ ...prev, industry: value })); clearError("industry"); }} >
-                        <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
-                        <SelectContent>{industries.map((industry) => (<SelectItem key={industry} value={industry}>{industry}</SelectItem>))}</SelectContent>
-                    </Select>
-                    {errors.industry && <p className="text-sm text-red-600">{errors.industry}</p>}
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="city">City *</Label>
-                        <Input id="city" placeholder="Enter city" value={organizationData.city} onChange={(e) => { setOrganizationData((prev) => ({ ...prev, city: e.target.value })); clearError("city"); }} />
-                        {errors.city && <p className="text-sm text-red-600">{errors.city}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="country">Country *</Label>
-                        <Select value={organizationData.country} onValueChange={(value) => { setOrganizationData((prev) => ({ ...prev, country: value })); clearError("country"); }} >
-                        <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
-                        <SelectContent>{countries.map((country) => (<SelectItem key={country} value={country}>{country}</SelectItem>))}</SelectContent>
-                        </Select>
-                        {errors.country && <p className="text-sm text-red-600">{errors.country}</p>}
-                    </div>
-                    </div>
-                </div>
+          // Step 2 content remains the same
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Organization Details</h2>
+              <p className="text-muted-foreground mt-2">Tell us about your organization</p>
             </div>
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="orgName">Organization Name *</Label>
+                <Input
+                  id="orgName"
+                  placeholder="Enter organization name"
+                  value={organizationData.name}
+                  onChange={(e) => {
+                    setOrganizationData((prev) => ({ ...prev, name: e.target.value }))
+                    clearError("orgName")
+                  }}
+                />
+                {errors.orgName && <p className="text-sm text-red-600">{errors.orgName}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="orgEmail">Organization Email *</Label>
+                <Input
+                  id="orgEmail"
+                  type="email"
+                  placeholder="contact@organization.com"
+                  value={organizationData.email}
+                  onChange={(e) => {
+                    setOrganizationData((prev) => ({ ...prev, email: e.target.value }))
+                    clearError("orgEmail")
+                  }}
+                />
+                {errors.orgEmail && <p className="text-sm text-red-600">{errors.orgEmail}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="orgPhone">Phone Number (Optional)</Label>
+                <Input
+                  id="orgPhone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={organizationData.phone}
+                  onChange={(e) => setOrganizationData((prev) => ({ ...prev, phone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry *</Label>
+                <Select
+                  value={organizationData.industry}
+                  onValueChange={(value) => {
+                    setOrganizationData((prev) => ({ ...prev, industry: value }))
+                    clearError("industry")
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industries.map((industry) => (
+                      <SelectItem key={industry} value={industry}>
+                        {industry}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.industry && <p className="text-sm text-red-600">{errors.industry}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City *</Label>
+                  <Input
+                    id="city"
+                    placeholder="Enter city"
+                    value={organizationData.city}
+                    onChange={(e) => {
+                      setOrganizationData((prev) => ({ ...prev, city: e.target.value }))
+                      clearError("city")
+                    }}
+                  />
+                  {errors.city && <p className="text-sm text-red-600">{errors.city}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country *</Label>
+                  <Select
+                    value={organizationData.country}
+                    onValueChange={(value) => {
+                      setOrganizationData((prev) => ({ ...prev, country: value }))
+                      clearError("country")
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.country && <p className="text-sm text-red-600">{errors.country}</p>}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
         {step === 3 && (
-            // Step 3 content remains the same
-            <div className="space-y-6">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold">Your Account Details</h2>
-                    <p className="text-muted-foreground mt-2">Create your personal account</p>
-                </div>
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
-                    <Input id="fullName" placeholder="Enter your full name" value={userData.fullName} onChange={(e) => { setUserData((prev) => ({ ...prev, fullName: e.target.value })); clearError("fullName"); }} />
-                    {errors.fullName && <p className="text-sm text-red-600">{errors.fullName}</p>}
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input id="email" type="email" placeholder="your.email@example.com" value={userData.email} onChange={(e) => { setUserData((prev) => ({ ...prev, email: e.target.value })); clearError("email"); }} />
-                    {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <Input id="password" type="password" placeholder="Create a password" value={userData.password} onChange={(e) => { setUserData((prev) => ({ ...prev, password: e.target.value })); clearError("password"); }} />
-                    {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
-                    </div>
-                    <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                    <Input id="confirmPassword" type="password" placeholder="Confirm your password" value={userData.confirmPassword} onChange={(e) => { setUserData((prev) => ({ ...prev, confirmPassword: e.target.value })); clearError("confirmPassword"); }} />
-                    {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword}</p>}
-                    </div>
-                </div>
+          // Step 3 content remains the same
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Your Account Details</h2>
+              <p className="text-muted-foreground mt-2">Create your personal account</p>
             </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name *</Label>
+                <Input
+                  id="fullName"
+                  placeholder="Enter your full name"
+                  value={userData.fullName}
+                  onChange={(e) => {
+                    setUserData((prev) => ({ ...prev, fullName: e.target.value }))
+                    clearError("fullName")
+                  }}
+                />
+                {errors.fullName && <p className="text-sm text-red-600">{errors.fullName}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={userData.email}
+                  onChange={(e) => {
+                    setUserData((prev) => ({ ...prev, email: e.target.value }))
+                    clearError("email")
+                  }}
+                />
+                {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  value={userData.password}
+                  onChange={(e) => {
+                    setUserData((prev) => ({ ...prev, password: e.target.value }))
+                    clearError("password")
+                  }}
+                />
+                {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={userData.confirmPassword}
+                  onChange={(e) => {
+                    setUserData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                    clearError("confirmPassword")
+                  }}
+                />
+                {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword}</p>}
+              </div>
+            </div>
+          </div>
         )}
         {step === 4 && (
-            // Step 4 content remains the same
-            <div className="space-y-6 text-center">
-                <div className="space-y-4">
-                    <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                    <Building2 className="w-8 h-8 text-green-600" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-green-600">Organization Created!</h2>
-                    <p className="text-muted-foreground">
-                    Your organization has been successfully created. Please check your email to verify your account.
-                    </p>
-                </div>
-                <div className="bg-muted p-6 rounded-lg">
-                    <h3 className="font-semibold mb-2">Your Organization Code</h3>
-                    <div className="text-3xl font-mono font-bold text-primary mb-2">{generatedCode}</div>
-                    <p className="text-sm text-muted-foreground">
-                    Share this code with team members so they can join your organization during signup.
-                    </p>
-                </div>
-                <Button onClick={() => router.push("/auth/login")} className="w-full">
-                    Continue to Login
-                </Button>
+          // Step 4 content remains the same
+          <div className="space-y-6 text-center">
+            <div className="space-y-4">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-green-600">Organization Created!</h2>
+              <p className="text-muted-foreground">
+                Your organization has been successfully created. Please check your email to verify your account.
+              </p>
             </div>
+            <div className="bg-muted p-6 rounded-lg">
+              <h3 className="font-semibold mb-2">Your Organization Code</h3>
+              <div className="text-3xl font-mono font-bold text-primary mb-2">{generatedCode}</div>
+              <p className="text-sm text-muted-foreground">
+                Share this code with team members so they can join your organization during signup.
+              </p>
+            </div>
+            <Button onClick={() => router.push("/auth/login")} className="w-full">
+              Continue to Login
+            </Button>
+          </div>
         )}
 
         {step < 4 && (
