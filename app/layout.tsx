@@ -10,7 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Alinnia - Financial Dashboard",
+  title: "Alinnia - Business Intelligence",
   description: "Modern financial dashboard and analytics platform",
     generator: 'v0.dev'
 }
