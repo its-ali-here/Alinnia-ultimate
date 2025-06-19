@@ -116,15 +116,17 @@ export interface UserPermissionItem {
   can_read: boolean
   can_write: boolean
   can_delete: boolean
-  user_id: string // Added for bulk fetching
 }
 
 // Profile functions
-export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+// In lib/database.ts
 
+export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+
+  // The table name has been corrected from "users" to "profiles"
   const { data, error } = await supabase
-    .from("profiles")
+    .from("profiles") // Corrected table name
     .insert({ id: userId, email: email, full_name: fullName, role: "member" }) // Default role
     .select()
     .single()
@@ -132,6 +134,7 @@ export async function createProfile(userId: string, fullName: string, email: str
   if (error) {
     console.error("DB:createProfile - Supabase error:", JSON.stringify(error, null, 2))
     if (error.code === "23505") {
+      // Unique constraint violation
       console.warn(
         `DB:createProfile - Profile for user ${userId} or email ${email} likely already exists. Attempting to fetch.`,
       )
@@ -145,7 +148,7 @@ export async function createProfile(userId: string, fullName: string, email: str
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  if (!isSupabaseConfigured() || !supabase) {
+  if (!isSupabaseConfigured()) {
     console.warn("DB:getProfile - Supabase not configured, returning demo data.")
     return {
       id: userId,
@@ -156,7 +159,12 @@ export async function getProfile(userId: string): Promise<Profile | null> {
       updated_at: new Date().toISOString(),
     }
   }
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle()
+  // Interacting with 'users' table
+  const { data, error } = await supabase
+    .from("profiles") // Verify this table name
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle()
 
   if (error) {
     console.error("DB:getProfile - Supabase error:", JSON.stringify(error, null, 2))
@@ -169,12 +177,13 @@ export async function updateProfile(
   userId: string,
   updates: Partial<Pick<Profile, "full_name" | "avatar_url" | "phone" | "timezone">>,
 ): Promise<Profile | null> {
-  if (!isSupabaseConfigured() || !supabase) {
+  if (!isSupabaseConfigured()) {
     console.warn("DB:updateProfile - Supabase not configured.")
     return null
   }
+  // Interacting with 'users' table (assuming profiles are in 'users')
   const { data, error } = await supabase
-    .from("profiles")
+    .from("profiles") // Verify this table name
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", userId)
     .select()
@@ -188,11 +197,16 @@ export async function updateProfile(
 }
 
 // Organization functions
-export async function createOrganization(ownerId: string, orgName: string): Promise<Organization> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("DB Error: Supabase admin client is not configured.")
+// This function is no longer used directly by signup, but kept for potential other uses
+export async function createOrganization(
+  ownerId: string,
+  orgName: string, // Simplified orgData to just orgName
+): Promise<Organization> {
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'organizations' table
   const { data: org, error: orgError } = await supabaseAdmin
     .from("organizations")
-    .insert({ name: orgName, owner_id: ownerId })
+    .insert({ name: orgName, owner_id: ownerId }) // No organization_code inserted
     .select()
     .single()
 
@@ -201,38 +215,55 @@ export async function createOrganization(ownerId: string, orgName: string): Prom
     throw new Error(`DB:createOrganization - ${orgError.message}`)
   }
 
+  // Link the user as owner in organization_members (no profile update needed)
   await addUserToOrganization(ownerId, org.id, "owner")
   return org
 }
 
+// Fetch all organizations a user belongs to
 export async function getUserOrganizations(userId: string): Promise<Organization[]> {
-  if (!isSupabaseConfigured()) return [] // <-- guard first
-  if (!supabase) return [] // secondary safety
+  if (!isSupabaseConfigured()) return []
 
   const { data, error } = await supabase
     .from("organization_members")
-    .select("organizations(*)")
+    .select("organizations(*)") // returns { organizations: { … } }
     .eq("user_id", userId)
-    .maybeSingle()
+    .maybeSingle() // Use maybeSingle as a user might not have an organization yet
 
   if (error) {
     console.error("Error fetching user organizations:", error)
     return []
   }
-  return data && data.organizations ? [data.organizations] : []
+  return data && data.organizations ? [data.organizations] : [] // Return as an array for consistency
 }
 
+// -----------------------------------------------------------------------------
+// Convenience helpers used by older pages/components
+// -----------------------------------------------------------------------------
+
+/**
+ * Create a new organisation and add the user as its owner.
+ * Returns the created organisation row.
+ */
 export async function createOrganizationAndLinkUser(userId: string, orgName: string): Promise<Organization> {
+  // Re-use createOrganization() defined above (keeps all validation in one place)
   return createOrganization(userId, orgName)
 }
 
+/**
+ * Join an existing organisation (by UUID) as a member.
+ * Throws if the org doesn’t exist or the user is already a member.
+ * Returns the organisation row.
+ */
 export async function joinOrganizationAndLinkUser(userId: string, orgId: string): Promise<Organization> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("Supabase admin client not configured.")
+  if (!isSupabaseConfigured()) throw new Error("Supabase not configured.")
 
+  // 1. ensure the organisation exists
   const { data: org, error: orgErr } = await supabaseAdmin.from("organizations").select("*").eq("id", orgId).single()
 
   if (orgErr || !org) throw new Error("Organization not found.")
 
+  // 2. check membership
   const { data: exists, error: memErr } = await supabaseAdmin
     .from("organization_members")
     .select("id")
@@ -243,6 +274,7 @@ export async function joinOrganizationAndLinkUser(userId: string, orgId: string)
   if (memErr) throw memErr
   if (exists) throw new Error("User is already a member of this organisation.")
 
+  // 3. insert membership
   const { error: insertErr } = await supabaseAdmin.from("organization_members").insert({
     organization_id: orgId,
     user_id: userId,
@@ -256,11 +288,12 @@ export async function joinOrganizationAndLinkUser(userId: string, orgId: string)
 
 // Account functions
 export async function getUserAccounts(userId: string): Promise<Account[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'accounts' table
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId) // This assumes accounts are directly linked to users. Adjust if linked to organization.
     .eq("is_active", true)
     .order("created_at", { ascending: false })
 
@@ -272,7 +305,7 @@ export async function getUserAccounts(userId: string): Promise<Account[]> {
 }
 
 export async function createAccount(
-  userId: string,
+  userId: string, // Or organizationId
   accountData: {
     account_name: string
     account_type: Account["account_type"]
@@ -281,7 +314,8 @@ export async function createAccount(
     account_number?: string
   },
 ): Promise<Account | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'accounts' table
   const { data, error } = await supabase
     .from("accounts")
     .insert({ user_id: userId, ...accountData })
@@ -297,11 +331,12 @@ export async function createAccount(
 
 // Transaction functions
 export async function getUserTransactions(userId: string, limit = 10): Promise<Transaction[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'transactions' table
   const { data, error } = await supabase
     .from("transactions")
     .select(`*, accounts(account_name, account_type)`)
-    .eq("user_id", userId)
+    .eq("user_id", userId) // Adjust if linked to organization
     .order("transaction_date", { ascending: false })
     .limit(limit)
 
@@ -313,7 +348,7 @@ export async function getUserTransactions(userId: string, limit = 10): Promise<T
 }
 
 export async function createTransaction(
-  userId: string,
+  userId: string, // Or organizationId
   transactionData: {
     account_id?: string
     transaction_type: Transaction["transaction_type"]
@@ -321,10 +356,11 @@ export async function createTransaction(
     amount: number
     description?: string
     merchant?: string
-    transaction_date: string
+    transaction_date: string // Ensure this is ISO string
   },
 ): Promise<Transaction | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'transactions' table
   const { data, error } = await supabase
     .from("transactions")
     .insert({ user_id: userId, ...transactionData })
@@ -340,11 +376,12 @@ export async function createTransaction(
 
 // Budget functions
 export async function getUserBudgetCategories(userId: string): Promise<BudgetCategory[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'budget_categories' table
   const { data, error } = await supabase
     .from("budget_categories")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId) // Adjust if linked to organization
     .eq("is_active", true)
     .order("category_name")
 
@@ -356,14 +393,15 @@ export async function getUserBudgetCategories(userId: string): Promise<BudgetCat
 }
 
 export async function createBudgetCategory(
-  userId: string,
+  userId: string, // Or organizationId
   categoryData: {
     category_name: string
     monthly_limit: number
     color?: string
   },
 ): Promise<BudgetCategory | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'budget_categories' table
   const { data, error } = await supabase
     .from("budget_categories")
     .insert({ user_id: userId, ...categoryData })
@@ -379,11 +417,12 @@ export async function createBudgetCategory(
 
 // Savings goals functions
 export async function getUserSavingsGoals(userId: string): Promise<SavingsGoal[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'savings_goals' table
   const { data, error } = await supabase
     .from("savings_goals")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId) // Adjust if linked to organization
     .order("created_at", { ascending: false })
 
   if (error) {
@@ -394,7 +433,7 @@ export async function getUserSavingsGoals(userId: string): Promise<SavingsGoal[]
 }
 
 export async function createSavingsGoal(
-  userId: string,
+  userId: string, // Or organizationId
   goalData: {
     goal_name: string
     target_amount: number
@@ -402,7 +441,8 @@ export async function createSavingsGoal(
     description?: string
   },
 ): Promise<SavingsGoal | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'savings_goals' table
   const { data, error } = await supabase
     .from("savings_goals")
     .insert({ user_id: userId, ...goalData })
@@ -418,8 +458,13 @@ export async function createSavingsGoal(
 
 // Bills functions
 export async function getUserBills(userId: string): Promise<Bill[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
-  const { data, error } = await supabase.from("bills").select("*").eq("user_id", userId).order("due_date")
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'bills' table
+  const { data, error } = await supabase
+    .from("bills")
+    .select("*")
+    .eq("user_id", userId) // Adjust if linked to organization
+    .order("due_date")
 
   if (error) {
     console.error("DB:getUserBills - Supabase error:", JSON.stringify(error, null, 2))
@@ -429,16 +474,17 @@ export async function getUserBills(userId: string): Promise<Bill[]> {
 }
 
 export async function createBill(
-  userId: string,
+  userId: string, // Or organizationId
   billData: {
     bill_name: string
     amount: number
-    due_date: string
+    due_date: string // Ensure ISO string
     category: string
     frequency?: Bill["frequency"]
   },
 ): Promise<Bill | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'bills' table
   const { data, error } = await supabase
     .from("bills")
     .insert({ user_id: userId, ...billData })
@@ -452,9 +498,10 @@ export async function createBill(
   return data
 }
 
-// Account balance update function
+// Account balance update function - THIS IS THE EXPORT IN QUESTION
 export async function updateAccountBalance(accountId: string, newBalance: number): Promise<Account | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'accounts' table
   const { data, error } = await supabase
     .from("accounts")
     .update({ balance: newBalance, updated_at: new Date().toISOString() })
@@ -471,7 +518,8 @@ export async function updateAccountBalance(accountId: string, newBalance: number
 
 // Mark bill as paid function
 export async function markBillAsPaid(billId: string): Promise<Bill | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'bills' table
   const { data, error } = await supabase
     .from("bills")
     .update({ is_paid: true, updated_at: new Date().toISOString() })
@@ -490,10 +538,11 @@ export async function markBillAsPaid(billId: string): Promise<Bill | null> {
 export async function getOrganizationMembers(
   organizationId: string,
 ): Promise<{ id: string; role: string; joined_at: string; invited_by: string | null; profiles: Profile | null }[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'organization_members' and 'users' tables
   const { data, error } = await supabase
     .from("organization_members")
-    .select(`id, role, joined_at, invited_by, profiles:profiles (*)`)
+    .select(`id, role, joined_at, invited_by, profiles:profiles (*)`) // Ensure 'users' is correct table name
     .eq("organization_id", organizationId)
     .order("joined_at")
 
@@ -510,9 +559,10 @@ export async function inviteMember(
   role: string,
   invitedByUserId: string,
 ): Promise<void> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("DB Error: Supabase admin client is not configured.")
-  const { data: userData, error: userError } = await supabaseAdmin
-    .from("profiles")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'users' and 'organization_members' tables
+  const { data: userData, error: userError } = await supabase
+    .from("profiles") // Ensure 'users' is correct table name
     .select("id")
     .eq("email", email)
     .maybeSingle()
@@ -538,12 +588,17 @@ export async function inviteMember(
   }
 }
 
-export async function updateMemberRole(memberId: string, newRole: string): Promise<any | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+export async function updateMemberRole(
+  memberId: string, // This should be organization_member_id
+  newRole: string,
+): Promise<any | null> {
+  // Define a proper return type
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'organization_members' table
   const { data, error } = await supabase
     .from("organization_members")
     .update({ role: newRole })
-    .eq("id", memberId)
+    .eq("id", memberId) // 'id' here refers to the primary key of 'organization_members' table
     .select()
     .single()
 
@@ -555,8 +610,10 @@ export async function updateMemberRole(memberId: string, newRole: string): Promi
 }
 
 export async function removeMember(memberId: string): Promise<void> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
-  const { error } = await supabase.from("organization_members").delete().eq("id", memberId)
+  // This should be organization_member_id
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'organization_members' table
+  const { error } = await supabase.from("organization_members").delete().eq("id", memberId) // 'id' here refers to the primary key of 'organization_members' table
 
   if (error) {
     console.error("DB:removeMember - Supabase error:", JSON.stringify(error, null, 2))
@@ -566,40 +623,24 @@ export async function removeMember(memberId: string): Promise<void> {
 
 // Permissions functions
 export async function getUserPermissions(organizationId: string, userId: string): Promise<UserPermissionItem[]> {
-  if (!isSupabaseConfigured() || !supabase) {
+  if (!isSupabaseConfigured()) {
     const defaultPermissionTypes = ["accounts", "transactions", "budgets", "reports", "settings", "members", "files"]
     return defaultPermissionTypes.map((pt) => ({
       permission_type: pt,
       can_read: false,
       can_write: false,
       can_delete: false,
-      user_id: userId, // Include user_id for consistency
     }))
   }
+  // Interacting with 'user_permissions' table
   const { data, error } = await supabase
     .from("user_permissions")
-    .select("permission_type, can_read, can_write, can_delete, user_id")
+    .select("permission_type, can_read, can_write, can_delete")
     .eq("organization_id", organizationId)
     .eq("user_id", userId)
 
   if (error) {
     console.error("DB:getUserPermissions - Supabase error:", JSON.stringify(error, null, 2))
-    throw error
-  }
-  return data || []
-}
-
-// NEW: Function to get all permissions for an organization
-export async function getAllOrganizationPermissions(organizationId: string): Promise<UserPermissionItem[]> {
-  if (!isSupabaseConfigured() || !supabase) return []
-
-  const { data, error } = await supabase
-    .from("user_permissions")
-    .select("user_id, permission_type, can_read, can_write, can_delete")
-    .eq("organization_id", organizationId)
-
-  if (error) {
-    console.error("DB:getAllOrganizationPermissions - Supabase error:", JSON.stringify(error, null, 2))
     throw error
   }
   return data || []
@@ -612,7 +653,8 @@ export async function updatePermission(
   newPermissions: { can_read: boolean; can_write: boolean; can_delete: boolean },
   actingUserId: string,
 ): Promise<UserPermissionItem | null> {
-  if (!isSupabaseConfigured() || !supabase) throw new Error("DB Error: Supabase is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'user_permissions' table
   const { data, error } = await supabase
     .from("user_permissions")
     .upsert(
@@ -625,7 +667,7 @@ export async function updatePermission(
       },
       { onConflict: "organization_id,user_id,permission_type" },
     )
-    .select("permission_type, can_read, can_write, can_delete, user_id")
+    .select("permission_type, can_read, can_write, can_delete")
     .single()
 
   if (error) {
@@ -637,7 +679,8 @@ export async function updatePermission(
 
 // Helper functions
 async function addUserToOrganization(userId: string, organizationId: string, role: string): Promise<void> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("DB Error: Supabase admin client is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'organization_members' table
   const { error } = await supabaseAdmin.from("organization_members").insert({
     user_id: userId,
     organization_id: organizationId,
@@ -664,7 +707,8 @@ export async function createUploadedFileRecord(
     fileType: string
   },
 ): Promise<UploadedFile | null> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("DB Error: Supabase admin client is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'uploaded_files' table
   const { data, error } = await supabaseAdmin
     .from("uploaded_files")
     .insert({
@@ -691,7 +735,8 @@ export async function updateUploadedFileStatus(
   status: UploadedFile["status"],
   updates?: Partial<Pick<UploadedFile, "rowCount" | "columnHeaders" | "processingError">>,
 ): Promise<UploadedFile | null> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("DB Error: Supabase admin client is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'uploaded_files' table
   const { data, error } = await supabaseAdmin
     .from("uploaded_files")
     .update({ status, ...updates, updated_at: new Date().toISOString() })
@@ -707,7 +752,8 @@ export async function updateUploadedFileStatus(
 }
 
 export async function getUploadedFilesForOrganization(organizationId: string): Promise<UploadedFile[]> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) return []
+  if (!isSupabaseConfigured()) return []
+  // Interacting with 'uploaded_files' table
   const { data, error } = await supabaseAdmin
     .from("uploaded_files")
     .select("*")
@@ -722,7 +768,8 @@ export async function getUploadedFilesForOrganization(organizationId: string): P
 }
 
 export async function deleteUploadedFileRecord(fileId: string): Promise<void> {
-  if (!isSupabaseConfigured() || !supabaseAdmin) throw new Error("DB Error: Supabase admin client is not configured.")
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  // Interacting with 'uploaded_files' table
   const { error } = await supabaseAdmin.from("uploaded_files").delete().eq("id", fileId)
   if (error) {
     console.error("DB:deleteUploadedFileRecord - Supabase error:", JSON.stringify(error, null, 2))

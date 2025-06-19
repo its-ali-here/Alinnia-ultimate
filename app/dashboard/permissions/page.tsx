@@ -9,12 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Shield, Eye, Edit, Trash2 } from "lucide-react"
-import {
-  getOrganizationMembers,
-  getAllOrganizationPermissions,
-  updatePermission,
-  getUserOrganizations,
-} from "@/lib/database"
+import { getOrganizationMembers, getUserPermissions, updatePermission, getUserOrganizations } from "@/lib/database"
 import { toast } from "sonner"
 
 interface Member {
@@ -40,8 +35,6 @@ const permissionTypes = [
   { key: "budgets", label: "Budgets", description: "Create and manage budgets" },
   { key: "reports", label: "Reports", description: "Generate and view reports" },
   { key: "settings", label: "Settings", description: "Modify organization settings" },
-  { key: "members", label: "Members", description: "Manage organization members" }, // Added for completeness
-  { key: "files", label: "Files", description: "Manage uploaded files" }, // Added for completeness
 ]
 
 export default function PermissionsPage() {
@@ -49,8 +42,7 @@ export default function PermissionsPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [userRole, setUserRole] = useState<string>("")
   const [organizationId, setOrganizationId] = useState<string>("")
-  // Store permissions as a map: memberId -> permissionType -> Permission object
-  const [permissions, setPermissions] = useState<Record<string, Record<string, Permission>>>({})
+  const [permissions, setPermissions] = useState<Record<string, Permission[]>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -72,31 +64,16 @@ export default function PermissionsPage() {
         const membersData = await getOrganizationMembers(org.organization_id)
         setMembers(membersData)
 
-        // Load all permissions for the organization in one go
-        const allOrgPermissions = await getAllOrganizationPermissions(org.organization_id)
-
-        // Process permissions into a nested map for easy lookup
-        const processedPermissions: Record<string, Record<string, Permission>> = {}
+        // Load permissions for each member
+        const permissionsData: Record<string, Permission[]> = {}
         for (const member of membersData) {
-          processedPermissions[member.profiles.id] = {}
-          for (const permType of permissionTypes) {
-            // Find the specific permission for this user and type, or use defaults
-            const foundPerm = allOrgPermissions.find(
-              (p) => p.user_id === member.profiles.id && p.permission_type === permType.key,
-            )
-            processedPermissions[member.profiles.id][permType.key] = {
-              permission_type: permType.key,
-              can_read: foundPerm?.can_read || false,
-              can_write: foundPerm?.can_write || false,
-              can_delete: foundPerm?.can_delete || false,
-            }
-          }
+          const memberPermissions = await getUserPermissions(org.organization_id, member.profiles.id)
+          permissionsData[member.profiles.id] = memberPermissions
         }
-        setPermissions(processedPermissions)
+        setPermissions(permissionsData)
       }
     } catch (error) {
       console.error("Error loading data:", error)
-      toast.error("Failed to load permissions: " + (error as Error).message)
     } finally {
       setLoading(false)
     }
@@ -109,8 +86,7 @@ export default function PermissionsPage() {
     value: boolean,
   ) => {
     try {
-      const currentPermission = permissions[memberId]?.[permissionType] || {
-        permission_type: permissionType,
+      const currentPermission = permissions[memberId]?.find((p) => p.permission_type === permissionType) || {
         can_read: false,
         can_write: false,
         can_delete: false,
@@ -127,17 +103,27 @@ export default function PermissionsPage() {
         user.id,
       )
 
-      // Update local state
-      setPermissions((prevPermissions) => ({
-        ...prevPermissions,
-        [memberId]: {
-          ...prevPermissions[memberId],
-          [permissionType]: {
-            ...currentPermission,
-            [field]: value,
-          },
-        },
-      }))
+      // Update local state more robustly
+      setPermissions((prevPermissions) => {
+        const memberPerms = prevPermissions[memberId] ? [...prevPermissions[memberId]] : []
+        const permIndex = memberPerms.findIndex((p) => p.permission_type === permissionType)
+        const updatedPerm = {
+          permission_type: permissionType,
+          can_read: field === "can_read" ? value : currentPermission?.can_read || false,
+          can_write: field === "can_write" ? value : currentPermission?.can_write || false,
+          can_delete: field === "can_delete" ? value : currentPermission?.can_delete || false,
+        }
+
+        if (permIndex > -1) {
+          memberPerms[permIndex] = updatedPerm
+        } else {
+          // If permission_type didn't exist, add it. This case should ideally be handled by
+          // ensuring all permission_types are present for a user upon creation or first load.
+          // The refactored getUserPermissions in database.ts aims to provide defaults.
+          memberPerms.push(updatedPerm)
+        }
+        return { ...prevPermissions, [memberId]: memberPerms }
+      })
 
       toast.success("Permission updated successfully!")
     } catch (error) {
@@ -146,7 +132,10 @@ export default function PermissionsPage() {
   }
 
   const getPermission = (memberId: string, permissionType: string, field: "can_read" | "can_write" | "can_delete") => {
-    return permissions[memberId]?.[permissionType]?.[field] || false
+    const permSet = permissions[memberId] // This is an array of UserPermissionItem
+    if (!permSet) return false
+    const specificPerm = permSet.find((p) => p.permission_type === permissionType)
+    return specificPerm ? specificPerm[field] : false
   }
 
   const canManagePermissions = userRole === "administrator" || userRole === "team_leader"
