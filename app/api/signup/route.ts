@@ -1,91 +1,80 @@
-import { NextResponse } from "next/server"
-import { createProfile, createOrganization, joinOrganizationByCode } from "@/lib/database"
+// In app/api/signup/route.ts
+
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-server"; // Use the admin client for elevated privileges
 
 export async function POST(req: Request) {
-  console.log("Received request for /api/signup")
-  try {
-    const body = await req.json()
-    console.log("Request body:", JSON.stringify(body, null, 2))
+  const body = await req.json();
+  const { email, password, fullName, orgType, orgName, orgId } = body;
 
-    const { userId, fullName, email, organizationType, organizationCode, organizationData } = body
-
-    if (!userId || !fullName || !email) {
-      console.error("Missing user information: userId, fullName, or email")
-      return NextResponse.json(
-        { error: "Missing user information: userId, fullName, or email required." },
-        { status: 400 },
-      )
-    }
-
-    // 1. Create the user profile
-    console.log(`Attempting to create profile for userId: ${userId}, fullName: ${fullName}, email: ${email}`)
-    try {
-      await createProfile(userId, fullName, email)
-      console.log(`Profile created successfully for userId: ${userId}`)
-    } catch (profileError) {
-      console.error(`Error creating profile for userId ${userId}:`, profileError)
-      return NextResponse.json(
-        { error: `Profile creation failed: ${(profileError as Error).message}` },
-        { status: 500 },
-      )
-    }
-
-    // 2. Handle organization
-    if (organizationType === "new") {
-      if (!organizationData) {
-        console.error("Missing organization data for 'new' organization type.")
-        return NextResponse.json({ error: "Missing organization data for new organization." }, { status: 400 })
-      }
-      console.log(
-        `Attempting to create new organization for userId: ${userId} with data:`,
-        JSON.stringify(organizationData, null, 2),
-      )
-      try {
-        const org = await createOrganization(userId, organizationData)
-        console.log(`New organization created successfully. ID: ${org.id}, Code: ${org.organization_code}`)
-        return NextResponse.json(
-          { message: "User and new organization created successfully.", organizationCode: org.organization_code },
-          { status: 200 },
-        )
-      } catch (orgCreateError) {
-        console.error(`Error creating new organization for userId ${userId}:`, orgCreateError)
-        return NextResponse.json(
-          { error: `New organization creation failed: ${(orgCreateError as Error).message}` },
-          { status: 500 },
-        )
-      }
-    } else if (organizationType === "existing") {
-      if (!organizationCode) {
-        console.error("Missing organization code for 'existing' organization type.")
-        return NextResponse.json(
-          { error: "Missing organization code for joining existing organization." },
-          { status: 400 },
-        )
-      }
-      console.log(`Attempting to join existing organization for userId: ${userId} with code: ${organizationCode}`)
-      try {
-        await joinOrganizationByCode(userId, organizationCode)
-        console.log(`User ${userId} successfully joined organization with code ${organizationCode}`)
-        return NextResponse.json({ message: "User created and successfully joined organization." }, { status: 200 })
-      } catch (orgJoinError) {
-        console.error(`Error joining organization for userId ${userId} with code ${organizationCode}:`, orgJoinError)
-        return NextResponse.json(
-          { error: `Joining organization failed: ${(orgJoinError as Error).message}` },
-          { status: 500 },
-        )
-      }
-    } else {
-      console.error("Invalid organization type provided:", organizationType)
-      return NextResponse.json({ error: "Invalid organization type. Must be 'new' or 'existing'." }, { status: 400 })
-    }
-  } catch (error) {
-    console.error("Unexpected error in /api/signup:", error)
-    let errorMessage = "An unexpected error occurred during signup."
-    if (error instanceof Error) {
-      errorMessage = error.message
-    } else if (typeof error === "string") {
-      errorMessage = error
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  // --- 1. Validate Input ---
+  if (!email || !password || !fullName || !orgType) {
+    return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
+  if (orgType === 'new' && !orgName) {
+    return NextResponse.json({ error: "Organization name is required to create a new organization." }, { status: 400 });
+  }
+  if (orgType === 'existing' && !orgId) {
+    return NextResponse.json({ error: "Organization ID is required to join an existing organization." }, { status: 400 });
+  }
+
+  // --- 2. Create the Auth User ---
+  const { data: { user }, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true, // You can set this to false for testing if you want
+    user_metadata: { full_name: fullName },
+  });
+
+  if (signUpError) {
+    console.error("Supabase sign up error:", signUpError);
+    return NextResponse.json({ error: signUpError.message }, { status: 500 });
+  }
+  if (!user) {
+    return NextResponse.json({ error: "User creation failed." }, { status: 500 });
+  }
+
+  // --- 3. Create the Public Profile ---
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .insert({ id: user.id, full_name: fullName, email: email });
+
+  if (profileError) {
+    console.error("Profile creation error:", profileError);
+    // In a real app, you might want to delete the auth user here if profile creation fails
+    return NextResponse.json({ error: "Failed to create user profile." }, { status: 500 });
+  }
+
+  // --- 4. Handle Organization ---
+  let finalOrgId = orgId;
+
+  if (orgType === 'new') {
+    const { data: newOrg, error: orgCreationError } = await supabaseAdmin
+      .from("organizations")
+      .insert({ name: orgName, owner_id: user.id })
+      .select()
+      .single();
+
+    if (orgCreationError) {
+      console.error("Organization creation error:", orgCreationError);
+      return NextResponse.json({ error: "Failed to create organization." }, { status: 500 });
+    }
+    finalOrgId = newOrg.id;
+  }
+
+  // --- 5. Link User to Organization ---
+  const { error: memberError } = await supabaseAdmin
+    .from("organization_members")
+    .insert({
+      organization_id: finalOrgId,
+      user_id: user.id,
+      role: orgType === 'new' ? 'owner' : 'member',
+    });
+
+  if (memberError) {
+    console.error("Organization membership error:", memberError);
+    return NextResponse.json({ error: "Failed to add user to organization." }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: "Signup successful! Please check your email to verify your account." }, { status: 200 });
 }
