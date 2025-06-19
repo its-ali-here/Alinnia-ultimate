@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,17 @@ export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const message = searchParams.get("message")
-  const { isSupabaseConfigured } = useAuth()
+  const { isSupabaseConfigured, user, organizationId, loading: authLoading } = useAuth()
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (organizationId) {
+        router.push("/dashboard")
+      } else {
+        router.push("/onboarding")
+      }
+    }
+  }, [user, organizationId, authLoading, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,12 +52,15 @@ export function LoginForm() {
 
       if (error) {
         setError(error.message)
+        setLoading(false)
       } else if (data.user) {
-        router.push("/dashboard")
+        // Redirection is now handled by the useEffect hook
+        // No direct router.push here
       }
     } catch (error) {
       setError("An unexpected error occurred")
       console.error("Login error:", error)
+      setLoading(false)
     } finally {
       setLoading(false)
     }
