@@ -4,7 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
-import { getUserOrganizations } from "@/lib/database"
+import { getUserOrganizationsServer } from "@/app/actions/organization" // Import the new Server Action
 
 interface AuthContextType {
   user: User | null
@@ -33,7 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAndSetOrganization = useCallback(async (currentUser: User) => {
     console.log("AuthContext: Fetching organizations for user", currentUser.id)
     try {
-      const orgs = await getUserOrganizations(currentUser.id)
+      // Call the Server Action to fetch organizations
+      const orgs = await getUserOrganizationsServer(currentUser.id)
       if (orgs && orgs.length > 0) {
         const firstOrgId = orgs[0].id
         setOrganizationId(firstOrgId)
@@ -84,19 +85,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Explicitly clear local storage items related to Supabase sessions
       // These keys might vary slightly based on Supabase-js version or configuration
-      localStorage.removeItem('sb-oauth-token'); // For OAuth sessions
-      localStorage.removeItem('sb-access-token'); // Old key for access token
-      localStorage.removeItem('supabase.auth.token'); // Common key for the full token object
-      localStorage.removeItem('sb-auth-token'); // Another common key for the full token object
+      localStorage.removeItem("sb-oauth-token") // For OAuth sessions
+      localStorage.removeItem("sb-access-token") // Old key for access token
+      localStorage.removeItem("supabase.auth.token") // Common key for the full token object
+      localStorage.removeItem("sb-auth-token") // Another common key for the full token object
 
       // Also clear any application-specific user state if not handled by onAuthStateChange
-      setUser(null);
-      setOrganizationId(null);
+      setUser(null)
+      setOrganizationId(null)
 
       // Force a full page reload to ensure all client-side state is reset
       // This is crucial for a definitive logout experience.
-      window.location.replace("/");
-
+      window.location.replace("/")
     } catch (error) {
       console.error("Error signing out:", error)
     }
