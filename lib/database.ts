@@ -122,7 +122,7 @@ export interface UserPermissionItem {
 
 export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  
+
   // The table name has been corrected from "users" to "profiles"
   const { data, error } = await supabase
     .from("profiles") // Corrected table name
@@ -160,7 +160,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   }
   // Interacting with 'users' table
   const { data, error } = await supabase
-    .from("users") // Verify this table name
+    .from("profiles") // Verify this table name
     .select("*")
     .eq("id", userId)
     .maybeSingle()
@@ -182,7 +182,7 @@ export async function updateProfile(
   }
   // Interacting with 'users' table (assuming profiles are in 'users')
   const { data, error } = await supabase
-    .from("users") // Verify this table name
+    .from("profiles") // Verify this table name
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", userId)
     .select()
@@ -217,7 +217,7 @@ export async function createOrganization(
   try {
     await addUserToOrganization(ownerId, org.id, "owner")
     // Update the user's profile with the organization_id and role
-    await supabase.from("users").update({ organization_id: org.id, role: "owner" }).eq("id", ownerId)
+    await supabase.from("profiles").update({ organization_id: org.id, role: "owner" }).eq("id", ownerId)
   } catch (linkError) {
     const errorMessage = `DB:createOrganization - Organization record created (ID: ${org.id}), but failed to link owner or update profile: ${(linkError as Error).message}`
     console.error(errorMessage)
@@ -252,7 +252,7 @@ export async function joinOrganizationByCode(userId: string, code: string): Prom
     }
     await addUserToOrganization(userId, organization.id, "member")
     // Update the user's profile with the organization_id and role
-    await supabase.from("users").update({ organization_id: organization.id, role: "member" }).eq("id", userId)
+    await supabase.from("profiles").update({ organization_id: organization.id, role: "member" }).eq("id", userId)
     return organization
   } catch (error) {
     console.error(`DB:joinOrganizationByCode - Error for user ${userId} with code ${code}:`, error)
@@ -528,7 +528,7 @@ export async function getOrganizationMembers(
   // Interacting with 'organization_members' and 'users' tables
   const { data, error } = await supabase
     .from("organization_members")
-    .select(`id, role, joined_at, invited_by, profiles:users (*)`) // Ensure 'users' is correct table name
+    .select(`id, role, joined_at, invited_by, profiles:profiles (*)`) // Ensure 'users' is correct table name
     .eq("organization_id", organizationId)
     .order("joined_at")
 
@@ -548,7 +548,7 @@ export async function inviteMember(
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'users' and 'organization_members' tables
   const { data: userData, error: userError } = await supabase
-    .from("users") // Ensure 'users' is correct table name
+    .from("profiles") // Ensure 'users' is correct table name
     .select("id")
     .eq("email", email)
     .maybeSingle()
