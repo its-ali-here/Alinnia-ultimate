@@ -1,50 +1,43 @@
-import { createClient } from "@supabase/supabase-js"
+"use client"
 
-// --- DEBUGGING LOGS ---
-console.log("lib/supabase.ts: NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
-console.log("lib/supabase.ts: NEXT_PUBLIC_SUPABASE_ANON_KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-// --- END DEBUGGING LOGS ---
+import { createBrowserClient } from "@supabase/ssr"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-// Create Supabase client with error handling
-export const supabase = (() => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn(
-      "Supabase environment variables are missing (client-side). Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    )
-    // Return a mock client to prevent crashes
-    return {
-      auth: {
-        getSession: async () => ({ data: { session: null }, error: null }),
-        signUp: async () => ({ data: { user: null, session: null }, error: { message: "Supabase not configured" } }),
-        signInWithPassword: async () => ({
-          data: { user: null, session: null },
-          error: { message: "Supabase not configured" },
-        }),
-        signOut: async () => ({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      },
-      from: () => ({
-        select: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-        insert: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-        update: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-        delete: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-      }),
-    } as any
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-    },
-  })
-})()
-
-// Helper function to check if Supabase is properly configured
-export const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseAnonKey)
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+function looksLikeUrl(url: string | undefined) {
+  return Boolean(url && /^https?:\/\/.+\..+/.test(url))
 }
+
+const PUBLIC_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const PUBLIC_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export function isSupabaseConfigured(): boolean {
+  return looksLikeUrl(PUBLIC_URL) && !!PUBLIC_ANON_KEY
+}
+
+/* ------------------------------------------------------------------ */
+/*  Real client or safe stub                                          */
+/* ------------------------------------------------------------------ */
+function createStub(): SupabaseClient {
+  // Minimal subset used in our codebase
+  const noOp = () => {
+    console.warn("[Supabase-STUB] Client not configured – env vars missing.")
+    return { select: () => ({ data: null, error: new Error("Supabase not configured") }) }
+  }
+  // @ts-expect-error – we purposely cheat for the stub
+  return {
+    auth: {
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signOut: async () => {},
+      getSession: async () => ({ data: { user: null }, error: null }),
+      refreshSession: async () => {},
+    },
+    from: () => ({ select: noOp, insert: noOp, update: noOp, delete: noOp, eq: () => ({}) }),
+  }
+}
+
+export const supabase: SupabaseClient = isSupabaseConfigured()
+  ? createBrowserClient(PUBLIC_URL!, PUBLIC_ANON_KEY!)
+  : createStub()
