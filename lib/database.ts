@@ -118,11 +118,14 @@ export interface UserPermissionItem {
 }
 
 // Profile functions
+// In lib/database.ts
+
 export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  // Interacting with 'users' table (ensure this matches your Supabase table name for user profiles)
+  
+  // The table name has been corrected from "users" to "profiles"
   const { data, error } = await supabase
-    .from("users") // Verify this table name
+    .from("profiles") // Corrected table name
     .insert({ id: userId, email: email, full_name: fullName, role: "member" }) // Default role
     .select()
     .single()
