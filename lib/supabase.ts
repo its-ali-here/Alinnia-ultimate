@@ -34,20 +34,7 @@ export const supabase = (() => {
       }),
     } as any
   }
-// lib/supabase.ts
-// ...
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-console.log("Client-side Supabase URL:", supabaseUrl); // ADD THIS
-console.log("Client-side Supabase Anon Key present:", !!supabaseAnonKey); // ADD THIS
-
-export const supabase = (() => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // ... mock client logic ...
-  }
-  return createClient(supabaseUrl, supabaseAnonKey, { /* ... */ });
-})();
+  
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
