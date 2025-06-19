@@ -198,14 +198,13 @@ export async function updateProfile(
 // Organization functions
 export async function createOrganization(
   ownerId: string,
-  orgData: { name: string; email: string; phone?: string; industry: string; city: string; country: string },
+  orgName: string, // Simplified orgData to just orgName
 ): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'organizations' table
-  const organizationCode = generateOrganizationCode()
   const { data: org, error: orgError } = await supabase
     .from("organizations")
-    .insert({ ...orgData, organization_code: organizationCode, owner_id: ownerId })
+    .insert({ name: orgName, owner_id: ownerId }) // No organization_code inserted
     .select()
     .single()
 
@@ -226,50 +225,23 @@ export async function createOrganization(
   return org
 }
 
-export async function getOrganizationByCode(code: string): Promise<Organization | null> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  // Interacting with 'organizations' table
-  const { data, error } = await supabase
-    .from("organizations")
-    .select("*")
-    .eq("organization_code", code.toUpperCase())
-    .single()
-
-  if (error) {
-    console.error("DB:getOrganizationByCode - Supabase error:", JSON.stringify(error, null, 2))
-    if (error.code === "PGRST116") return null // Not found
-    throw new Error(`DB:getOrganizationByCode - ${error.message}`)
-  }
-  return data
-}
-
-export async function joinOrganizationByCode(userId: string, code: string): Promise<Organization> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  try {
-    const organization = await getOrganizationByCode(code)
-    if (!organization) {
-      throw new Error("Organization not found with the provided code.")
-    }
-    await addUserToOrganization(userId, organization.id, "member")
-    // Update the user's profile with the organization_id and role
-    await supabase.from("profiles").update({ organization_id: organization.id, role: "member" }).eq("id", userId)
-    return organization
-  } catch (error) {
-    console.error(`DB:joinOrganizationByCode - Error for user ${userId} with code ${code}:`, error)
-    throw error
-  }
-}
-
+// Fetch all organizations a user belongs to
 export async function getUserOrganizations(userId: string): Promise<Organization[]> {
   if (!isSupabaseConfigured()) return []
-  // Interacting with 'organization_members' and 'organizations' tables
-  const { data, error } = await supabase.from("organization_members").select(`organizations (*)`).eq("user_id", userId)
+
+  // Join organization_members ➜ organizations via the FK relationship
+  const { data, error } = await supabase
+    .from("organization_members")
+    .select("organizations (*)") // returns { organizations: { … } }
+    .eq("user_id", userId)
 
   if (error) {
-    console.error("DB:getUserOrganizations - Supabase error:", JSON.stringify(error, null, 2))
+    console.error("DB:getUserOrganizations – Supabase error:", JSON.stringify(error, null, 2))
     return []
   }
-  return data.map((item: any) => item.organizations).filter(Boolean)
+
+  // Flatten the nested structure and remove any nulls
+  return (data ?? []).map((row: any) => row.organizations).filter(Boolean)
 }
 
 // Account functions
@@ -680,15 +652,6 @@ async function addUserToOrganization(userId: string, organizationId: string, rol
     )
     throw new Error(`DB:addUserToOrganization - ${error.message} (Code: ${error.code})`)
   }
-}
-
-function generateOrganizationCode(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  let result = ""
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
 }
 
 // Uploaded Files functions

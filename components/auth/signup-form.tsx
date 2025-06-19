@@ -1,89 +1,110 @@
 // In components/auth/signup-form.tsx
 
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Building2, Users, AlertCircle, Loader2 } from "lucide-react";
+"use client"
+import { useState } from "react"
+import type React from "react"
+
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, Building2, Users, AlertCircle, Loader2 } from "lucide-react"
 
 export function SignupForm() {
-  const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [orgType, setOrgType] = useState<'new' | 'existing'>('new');
-  
+  const router = useRouter()
+  const [step, setStep] = useState(1)
+  const [orgType, setOrgType] = useState<"new" | "existing">("new")
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
     confirmPassword: "",
     orgName: "",
-    orgId: "",
-  });
+    orgId: "", // This will now be a UUID directly
+  })
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
-  };
+    const { id, value } = e.target
+    setFormData((prev) => ({ ...prev, [id]: value }))
+  }
 
   const handleNext = () => {
     if (step === 1) {
-      if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match.");
-        return;
+      if (!formData.fullName.trim()) {
+        setError("Full name is required.")
+        return
+      }
+      if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
+        setError("A valid email is required.")
+        return
       }
       if (formData.password.length < 6) {
-        setError("Password must be at least 6 characters long.");
-        return;
+        setError("Password must be at least 6 characters long.")
+        return
       }
-      setError("");
-      setStep(2);
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match.")
+        return
+      }
+      setError("")
+      setStep(2)
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+
+    // Validate step 2 fields before submitting
+    if (orgType === "new" && !formData.orgName.trim()) {
+      setError("Organization name is required.")
+      setLoading(false)
+      return
+    }
+    if (orgType === "existing" && !formData.orgId.trim()) {
+      setError("Organization ID is required.")
+      setLoading(false)
+      return
+    }
 
     try {
-      const response = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
           fullName: formData.fullName,
           orgType: orgType,
-          orgName: formData.orgName,
-          orgId: formData.orgId,
+          orgName: orgType === "new" ? formData.orgName : undefined,
+          orgId: orgType === "existing" ? formData.orgId : undefined,
         }),
-      });
+      })
 
-      const result = await response.json();
+      const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || "An unknown error occurred.");
+        throw new Error(result.error || "An unknown error occurred during signup.")
       }
 
-      router.push(`/auth/login?message=${encodeURIComponent(result.message)}`);
-
+      router.push(`/auth/login?message=${encodeURIComponent(result.message)}`)
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <Card>
+    <Card className="w-full max-w-md mx-auto">
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit}>
           {error && (
@@ -113,9 +134,17 @@ export function SignupForm() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleInputChange} required />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                />
               </div>
-              <Button type="button" className="w-full" onClick={handleNext}>Next</Button>
+              <Button type="button" className="w-full" onClick={handleNext}>
+                Next
+              </Button>
             </div>
           )}
 
@@ -142,15 +171,27 @@ export function SignupForm() {
                 </Label>
               </RadioGroup>
 
-              {orgType === 'new' ? (
+              {orgType === "new" ? (
                 <div className="space-y-2">
                   <Label htmlFor="orgName">Organization Name</Label>
-                  <Input id="orgName" value={formData.orgName} onChange={handleInputChange} placeholder="Acme Inc." required />
+                  <Input
+                    id="orgName"
+                    value={formData.orgName}
+                    onChange={handleInputChange}
+                    placeholder="Acme Inc."
+                    required
+                  />
                 </div>
               ) : (
                 <div className="space-y-2">
                   <Label htmlFor="orgId">Organization ID</Label>
-                  <Input id="orgId" value={formData.orgId} onChange={handleInputChange} placeholder="Paste the organization UUID here" required />
+                  <Input
+                    id="orgId"
+                    value={formData.orgId}
+                    onChange={handleInputChange}
+                    placeholder="Paste the organization UUID here"
+                    required
+                  />
                 </div>
               )}
               <div className="flex justify-between mt-8">
@@ -168,5 +209,5 @@ export function SignupForm() {
         </form>
       </CardContent>
     </Card>
-  );
+  )
 }
