@@ -59,6 +59,7 @@ const countries = [
 ]
 
 export function SignupForm() {
+  const router = useRouter()
   const { isSupabaseConfigured } = useAuth() // This is a function from context
   const [step, setStep] = useState(1)
   const [organizationType, setOrganizationType] = useState<"new" | "existing" | "">("")
@@ -80,7 +81,6 @@ export function SignupForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [generatedCode, setGeneratedCode] = useState("")
-  const router = useRouter()
 
   const clearError = (field: string) => {
     setErrors((prev) => {
@@ -182,13 +182,30 @@ export function SignupForm() {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
-        options: { data: { full_name: userData.fullName } },
+        options: {
+          data: { full_name: userData.fullName },
+          // Make sure this URL is on your Supabase Auth Redirects allow-list
+          emailRedirectTo: process.env.NEXT_PUBLIC_VERCEL_URL
+            ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/auth/callback`
+            : "http://localhost:3000/auth/callback",
+        },
       })
 
       if (signUpError) {
         console.error("Supabase auth.signUp error:", JSON.stringify(signUpError, null, 2))
-        setErrors({ general: `Auth error: ${signUpError.message} (Code: ${signUpError.code || "N/A"})` })
-        // setLoading(false) handled in finally
+
+        // Provide clearer guidance for the most common Supabase 500 cause
+        if (signUpError.status === 500 && signUpError.code === "unexpected_failure") {
+          setErrors({
+            general:
+              "Supabase Auth returned an unexpected failure. " +
+              "Make sure Email/Password auth is enabled and your redirect URLs are whitelisted in Supabase Project Settings → Auth.",
+          })
+        } else {
+          setErrors({
+            general: `Auth error: ${signUpError.message} (Code: ${signUpError.code || "N/A"})`,
+          })
+        }
         return
       }
 
@@ -529,7 +546,7 @@ export function SignupForm() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            <Button onClick={handleNext} disabled={loading || !isSupabaseConfigured()}>
+            <Button onClick={handleNext} disabled={loading || !isSupabaseConfigured}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {loading ? "Processing..." : step === 3 ? "Create Account" : "Next"}
             </Button>

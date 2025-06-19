@@ -38,9 +38,3 @@ export const getClientSidePublicEnvStatus = () => {
     missingPublicVars: missing,
   }
 }
-
-// Deprecated: To avoid confusion and client-side access to server keys.
-// export const requiredEnvVars = { ... };
-// export const missingEnvVars = ...;
-// export const isEnvironmentConfigured = () => { ... };
-// export const getEnvironmentStatus = () => { ... };
