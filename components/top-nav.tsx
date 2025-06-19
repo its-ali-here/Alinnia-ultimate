@@ -37,7 +37,7 @@ export function TopNav() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut()
-      router.push("/")
+      window.location.replace("/")
     } catch (error) {
       console.error("Error signing out:", error)
     }
