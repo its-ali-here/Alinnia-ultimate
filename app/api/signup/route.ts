@@ -53,6 +53,7 @@ export async function POST(req: Request) {
 
   // --- 4. Handle Organization ---
   let finalOrgId = orgId
+  let organizationData = null
 
   if (orgType === "new") {
     const { data: newOrg, error: orgCreationError } = await supabaseAdmin
@@ -66,6 +67,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to create organization." }, { status: 500 })
     }
     finalOrgId = newOrg.id
+    organizationData = newOrg
+  } else {
+    // orgType === 'existing'
+    // Verify organization exists
+    const { data: existingOrg, error: fetchOrgError } = await supabaseAdmin
+      .from("organizations")
+      .select("id, name")
+      .eq("id", orgId)
+      .single()
+
+    if (fetchOrgError || !existingOrg) {
+      console.error("Error fetching existing organization:", fetchOrgError)
+      return NextResponse.json({ error: "Organization not found or inaccessible." }, { status: 404 })
+    }
+    finalOrgId = existingOrg.id
+    organizationData = existingOrg
   }
 
   // --- 5. Link User to Organization ---
@@ -80,8 +97,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to add user to organization." }, { status: 500 })
   }
 
+  // --- 6. Update User Profile with Organization ID ---
+  // (removed) We no longer attempt to write organization_id into profiles
+
   return NextResponse.json(
-    { message: "Signup successful! Please check your email to verify your account." },
+    {
+      message: "Signup successful! Please check your email to verify your account.",
+      organizationId: finalOrgId, // Return the organization ID
+      organizationName: organizationData?.name,
+    },
     { status: 200 },
   )
 }

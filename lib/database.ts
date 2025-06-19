@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "./supabase"
+import { supabaseAdmin } from "./supabase-server"
 
 // NOTE: This file interacts with tables in your Supabase 'public' schema.
 // Ensure the table names here (e.g., "users", "organizations") match your database exactly.
@@ -196,13 +197,14 @@ export async function updateProfile(
 }
 
 // Organization functions
+// This function is no longer used directly by signup, but kept for potential other uses
 export async function createOrganization(
   ownerId: string,
   orgName: string, // Simplified orgData to just orgName
 ): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'organizations' table
-  const { data: org, error: orgError } = await supabase
+  const { data: org, error: orgError } = await supabaseAdmin
     .from("organizations")
     .insert({ name: orgName, owner_id: ownerId }) // No organization_code inserted
     .select()
@@ -213,15 +215,8 @@ export async function createOrganization(
     throw new Error(`DB:createOrganization - ${orgError.message}`)
   }
 
-  try {
-    await addUserToOrganization(ownerId, org.id, "owner")
-    // Update the user's profile with the organization_id and role
-    await supabase.from("profiles").update({ organization_id: org.id, role: "owner" }).eq("id", ownerId)
-  } catch (linkError) {
-    const errorMessage = `DB:createOrganization - Organization record created (ID: ${org.id}), but failed to link owner or update profile: ${(linkError as Error).message}`
-    console.error(errorMessage)
-    throw new Error(errorMessage)
-  }
+  // Link the user as owner in organization_members (no profile update needed)
+  await addUserToOrganization(ownerId, org.id, "owner")
   return org
 }
 
@@ -229,19 +224,66 @@ export async function createOrganization(
 export async function getUserOrganizations(userId: string): Promise<Organization[]> {
   if (!isSupabaseConfigured()) return []
 
-  // Join organization_members ➜ organizations via the FK relationship
   const { data, error } = await supabase
     .from("organization_members")
-    .select("organizations (*)") // returns { organizations: { … } }
+    .select("organizations(*)") // returns { organizations: { … } }
     .eq("user_id", userId)
+    .maybeSingle() // Use maybeSingle as a user might not have an organization yet
 
   if (error) {
-    console.error("DB:getUserOrganizations – Supabase error:", JSON.stringify(error, null, 2))
+    console.error("Error fetching user organizations:", error)
     return []
   }
+  return data && data.organizations ? [data.organizations] : [] // Return as an array for consistency
+}
 
-  // Flatten the nested structure and remove any nulls
-  return (data ?? []).map((row: any) => row.organizations).filter(Boolean)
+// -----------------------------------------------------------------------------
+// Convenience helpers used by older pages/components
+// -----------------------------------------------------------------------------
+
+/**
+ * Create a new organisation and add the user as its owner.
+ * Returns the created organisation row.
+ */
+export async function createOrganizationAndLinkUser(userId: string, orgName: string): Promise<Organization> {
+  // Re-use createOrganization() defined above (keeps all validation in one place)
+  return createOrganization(userId, orgName)
+}
+
+/**
+ * Join an existing organisation (by UUID) as a member.
+ * Throws if the org doesn’t exist or the user is already a member.
+ * Returns the organisation row.
+ */
+export async function joinOrganizationAndLinkUser(userId: string, orgId: string): Promise<Organization> {
+  if (!isSupabaseConfigured()) throw new Error("Supabase not configured.")
+
+  // 1. ensure the organisation exists
+  const { data: org, error: orgErr } = await supabaseAdmin.from("organizations").select("*").eq("id", orgId).single()
+
+  if (orgErr || !org) throw new Error("Organization not found.")
+
+  // 2. check membership
+  const { data: exists, error: memErr } = await supabaseAdmin
+    .from("organization_members")
+    .select("id")
+    .eq("organization_id", orgId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (memErr) throw memErr
+  if (exists) throw new Error("User is already a member of this organisation.")
+
+  // 3. insert membership
+  const { error: insertErr } = await supabaseAdmin.from("organization_members").insert({
+    organization_id: orgId,
+    user_id: userId,
+    role: "member",
+  })
+
+  if (insertErr) throw insertErr
+
+  return org as Organization
 }
 
 // Account functions
@@ -533,7 +575,7 @@ export async function inviteMember(
     throw new Error(`DB:inviteMember - User with email ${email} not found.`)
   }
 
-  const { error: inviteError } = await supabase.from("organization_members").insert({
+  const { error: inviteError } = await supabaseAdmin.from("organization_members").insert({
     organization_id: organizationId,
     user_id: userData.id,
     role,
@@ -639,7 +681,7 @@ export async function updatePermission(
 async function addUserToOrganization(userId: string, organizationId: string, role: string): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'organization_members' table
-  const { error } = await supabase.from("organization_members").insert({
+  const { error } = await supabaseAdmin.from("organization_members").insert({
     user_id: userId,
     organization_id: organizationId,
     role: role,
@@ -667,7 +709,7 @@ export async function createUploadedFileRecord(
 ): Promise<UploadedFile | null> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'uploaded_files' table
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("uploaded_files")
     .insert({
       organization_id: organizationId,
@@ -695,7 +737,7 @@ export async function updateUploadedFileStatus(
 ): Promise<UploadedFile | null> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'uploaded_files' table
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("uploaded_files")
     .update({ status, ...updates, updated_at: new Date().toISOString() })
     .eq("id", fileId)
@@ -712,7 +754,7 @@ export async function updateUploadedFileStatus(
 export async function getUploadedFilesForOrganization(organizationId: string): Promise<UploadedFile[]> {
   if (!isSupabaseConfigured()) return []
   // Interacting with 'uploaded_files' table
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("uploaded_files")
     .select("*")
     .eq("organization_id", organizationId)
@@ -728,7 +770,7 @@ export async function getUploadedFilesForOrganization(organizationId: string): P
 export async function deleteUploadedFileRecord(fileId: string): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   // Interacting with 'uploaded_files' table
-  const { error } = await supabase.from("uploaded_files").delete().eq("id", fileId)
+  const { error } = await supabaseAdmin.from("uploaded_files").delete().eq("id", fileId)
   if (error) {
     console.error("DB:deleteUploadedFileRecord - Supabase error:", JSON.stringify(error, null, 2))
     throw new Error(`DB:deleteUploadedFileRecord - ${error.message}`)

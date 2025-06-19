@@ -4,15 +4,23 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
-import { getUserOrganizations } from "@/lib/database" // We need this function
+import { getUserOrganizations } from "@/lib/database"
 
 interface AuthContextType {
   user: User | null
-  organizationId: string | null // <-- ADDED
+  organizationId: string | null
   loading: boolean
   isSupabaseConfigured: boolean
   signOut: () => Promise<void>
-  refreshOrganization: () => Promise<void> // <-- ADDED
+  refreshOrganization: () => Promise<void>
+  signUp: (data: {
+    email: string
+    password: string
+    fullName: string
+    orgType: "new" | "existing"
+    orgName?: string
+    orgId?: string
+  }) => Promise<{ user: User | null; error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -27,8 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const orgs = await getUserOrganizations(currentUser.id)
       if (orgs && orgs.length > 0) {
-        // For now, we'll use the first organization.
-        // A multi-org setup would require a selector here.
         const firstOrgId = orgs[0].id
         setOrganizationId(firstOrgId)
         console.log("AuthContext: Set active organizationId to", firstOrgId)
@@ -82,15 +88,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Comprehensive signUp function that calls your custom API route
+  const signUp = useCallback(
+    async ({ email, password, fullName, orgType, orgName, orgId }) => {
+      if (!isSupabaseConfigured()) {
+        return { user: null, error: new Error("Supabase is not configured.") }
+      }
+
+      try {
+        const response = await fetch("/api/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            fullName,
+            orgType,
+            orgName,
+            orgId,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          return { user: null, error: new Error(result.error || "An unknown error occurred during signup.") }
+        }
+
+        // After successful signup via API, explicitly set the organizationId
+        if (result.organizationId) {
+          setOrganizationId(result.organizationId)
+          // Also trigger a session refresh to ensure the client-side user object is up-to-date
+          // and the auth state listener picks up the latest profile data.
+          await supabase.auth.refreshSession()
+          await refreshOrganization() // Ensure context is fully updated
+        }
+
+        // The auth state change listener will pick up the user.
+        const {
+          data: { user: signedUpUser },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+        if (sessionError) {
+          console.error("Error getting session after signup:", sessionError)
+        }
+
+        return { user: signedUpUser, error: null }
+      } catch (err) {
+        console.error("AuthContext: signUp error:", err)
+        return { user: null, error: err as Error }
+      }
+    },
+    [isSupabaseConfigured, refreshOrganization],
+  )
+
   return (
     <AuthContext.Provider
       value={{
         user,
-        organizationId, // <-- EXPOSED
+        organizationId,
         loading,
         isSupabaseConfigured: isSupabaseConfigured(),
         signOut,
-        refreshOrganization, // <-- EXPOSED
+        refreshOrganization,
+        signUp, // Expose the new signUp function
       }}
     >
       {children}

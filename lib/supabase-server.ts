@@ -1,5 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 
+// --- DEBUGGING LOGS ---
+console.log("lib/supabase-server.ts: NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log("lib/supabase-server.ts: NEXT_PUBLIC_SUPABASE_ANON_KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+console.log(
+  "lib/supabase-server.ts: SUPABASE_SERVICE_ROLE_KEY:",
+  process.env.SUPABASE_SERVICE_ROLE_KEY ? "****** (present)" : "undefined",
+)
+// --- END DEBUGGING LOGS ---
+
 // Environment variable validation for server-side
 const serverRequiredEnvVars = {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -9,7 +18,7 @@ const serverRequiredEnvVars = {
 
 // Check for missing environment variables
 const missingServerEnvVars = Object.entries(serverRequiredEnvVars)
-  .filter(([key, value]) => !value)
+  .filter(([, value]) => !value)
   .map(([key]) => key)
 
 if (missingServerEnvVars.length > 0) {
