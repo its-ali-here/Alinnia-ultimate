@@ -1,3 +1,4 @@
+// components/top-nav.tsx
 "use client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -28,19 +29,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useAuth } from "@/contexts/auth-context" // Import useAuth hook
 
 export function TopNav() {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const { signOut } = useAuth() // Use the signOut function from AuthContext
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut()
-      window.location.replace("/")
-    } catch (error) {
-      console.error("Error signing out:", error)
-    }
+    // The actual sign-out logic and page reload are now handled by the signOut function from useAuth
+    await signOut()
   }
 
   return (

@@ -81,8 +81,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
-      setUser(null)
-      setOrganizationId(null) // Explicitly clear on sign out
+
+      // Explicitly clear local storage items related to Supabase sessions
+      // These keys might vary slightly based on Supabase-js version or configuration
+      localStorage.removeItem('sb-oauth-token'); // For OAuth sessions
+      localStorage.removeItem('sb-access-token'); // Old key for access token
+      localStorage.removeItem('supabase.auth.token'); // Common key for the full token object
+      localStorage.removeItem('sb-auth-token'); // Another common key for the full token object
+
+      // Also clear any application-specific user state if not handled by onAuthStateChange
+      setUser(null);
+      setOrganizationId(null);
+
+      // Force a full page reload to ensure all client-side state is reset
+      // This is crucial for a definitive logout experience.
+      window.location.replace("/");
+
     } catch (error) {
       console.error("Error signing out:", error)
     }
