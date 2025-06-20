@@ -31,27 +31,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchAndSetOrganization = useCallback(async (currentUser: User) => {
-    console.log("AuthContext: Fetching organizations for user", currentUser.id)
+    console.log("AuthContext: fetchAndSetOrganization - Starting for user", currentUser.id)
     try {
       // Call the Server Action to fetch organizations
       const orgs = await getUserOrganizationsServer(currentUser.id)
+      console.log("AuthContext: fetchAndSetOrganization - Received organizations:", orgs)
       if (orgs && orgs.length > 0) {
         const firstOrgId = orgs[0].id
         setOrganizationId(firstOrgId)
-        console.log("AuthContext: Set active organizationId to", firstOrgId)
+        console.log("AuthContext: fetchAndSetOrganization - Set active organizationId to", firstOrgId)
       } else {
         setOrganizationId(null)
-        console.warn("AuthContext: User is not a member of any organization.")
+        console.warn("AuthContext: fetchAndSetOrganization - User is not a member of any organization.")
       }
     } catch (error) {
-      console.error("AuthContext: Error fetching user organizations:", error)
+      console.error("AuthContext: fetchAndSetOrganization - Error fetching user organizations:", error)
       setOrganizationId(null)
+    } finally {
+      console.log("AuthContext: fetchAndSetOrganization - Finished.")
     }
   }, [])
 
   const refreshOrganization = useCallback(async () => {
+    console.log("AuthContext: refreshOrganization called.")
     if (user) {
       await fetchAndSetOrganization(user)
+    } else {
+      console.warn("AuthContext: refreshOrganization called but no user is logged in.")
     }
   }, [user, fetchAndSetOrganization])
 
@@ -60,11 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("AuthContext: Auth state changed. Event:", event)
+      console.log("AuthContext: Auth state changed. Event:", event, "Session:", session)
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
       if (currentUser) {
+        console.log("AuthContext: User is logged in, fetching organization...")
         await fetchAndSetOrganization(currentUser)
       } else {
         // User logged out, clear organization
@@ -72,37 +79,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("AuthContext: User logged out, cleared organizationId.")
       }
       setLoading(false)
+      // Log the state after the effect has processed
+      console.log(
+        "AuthContext: Auth state change processed. Current user:",
+        currentUser?.id,
+        "Org ID (after processing):",
+        organizationId,
+      )
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [fetchAndSetOrganization])
+  }, [fetchAndSetOrganization, organizationId]) // Added organizationId to dependency array for logging its final state
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
 
       // Explicitly clear local storage items related to Supabase sessions
-      // These keys might vary slightly based on Supabase-js version or configuration
-      localStorage.removeItem("sb-oauth-token") // For OAuth sessions
-      localStorage.removeItem("sb-access-token") // Old key for access token
-      localStorage.removeItem("supabase.auth.token") // Common key for the full token object
-      localStorage.removeItem("sb-auth-token") // Another common key for the full token object
+      localStorage.removeItem("sb-oauth-token")
+      localStorage.removeItem("sb-access-token")
+      localStorage.removeItem("supabase.auth.token")
+      localStorage.removeItem("sb-auth-token")
 
       // Also clear any application-specific user state if not handled by onAuthStateChange
       setUser(null)
       setOrganizationId(null)
 
       // Force a full page reload to ensure all client-side state is reset
-      // This is crucial for a definitive logout experience.
       window.location.replace("/")
     } catch (error) {
       console.error("Error signing out:", error)
     }
   }
 
-  // Comprehensive signUp function that calls your custom API route
   const signUp = useCallback(
     async ({ email, password, fullName, orgType, orgName, orgId }) => {
       if (!isSupabaseConfigured()) {
@@ -124,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
 
         const result = await response.json()
+        console.log("AuthContext: signUp API response:", result)
 
         if (!response.ok) {
           return { user: null, error: new Error(result.error || "An unknown error occurred during signup.") }
@@ -132,8 +144,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // After successful signup via API, explicitly set the organizationId
         if (result.organizationId) {
           setOrganizationId(result.organizationId)
+          console.log("AuthContext: signUp - API returned organizationId:", result.organizationId)
           // Also trigger a session refresh to ensure the client-side user object is up-to-date
-          // and the auth state listener picks up the latest profile data.
           await supabase.auth.refreshSession()
           await refreshOrganization() // Ensure context is fully updated
         }
@@ -146,6 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (sessionError) {
           console.error("Error getting session after signup:", sessionError)
         }
+        console.log(
+          "AuthContext: signUp - Final signedUpUser:",
+          signedUpUser?.id,
+          "Current Org ID in state:",
+          organizationId,
+        )
 
         return { user: signedUpUser, error: null }
       } catch (err) {
@@ -153,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error: err as Error }
       }
     },
-    [isSupabaseConfigured, refreshOrganization],
+    [isSupabaseConfigured, refreshOrganization, organizationId], // Added organizationId to dependency array
   )
 
   return (

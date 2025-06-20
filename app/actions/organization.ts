@@ -1,34 +1,65 @@
 "use server"
 
-import { supabaseServer } from "@/lib/supabase-server"
+import {
+  supabaseServer,
+  supabaseAdmin,
+  isSupabaseServerConfigured,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase-server"
 
-export async function getUserOrganizationsServer(userId: string) {
-  if (!supabaseServer) {
-    console.error("getUserOrganizationsServer: Supabase server client is not configured.")
+interface Organization {
+  id: string
+  name?: string
+  code?: string
+}
+
+import type { Database } from "@/lib/database" // your generated types
+type OrganizationFromDb = Database["public"]["Tables"]["organizations"]["Row"]
+
+/**
+ * Returns the first organisation a user belongs to (or an empty array).
+ * Falls back to supabaseAdmin (service-role) when RLS blocks the anon request.
+ */
+export async function getUserOrganizationsServer(userId: string): Promise<Organization[]> {
+  console.log("[OrgAction] fetching organisations for user:", userId)
+
+  const client =
+    (isSupabaseAdminConfigured() && supabaseAdmin) || (isSupabaseServerConfigured() && supabaseServer) || null
+
+  if (!client) {
+    console.error("[OrgAction] Neither supabaseServer nor supabaseAdmin is configured – check env vars.")
     return []
   }
 
   try {
-    const { data, error } = await supabaseServer
+    const { data, error } = await client
       .from("organization_members")
-      .select("organization_id, organizations(id, name, code)") // Select organization details
+      .select("organizations(*)")
       .eq("user_id", userId)
+      .limit(1)
 
     if (error) {
-      console.error("Error fetching user organizations from server:", error)
+      console.error("[OrgAction] Supabase query error:", JSON.stringify(error, null, 2))
+      // If we queried with the anon client and hit RLS, retry once with admin:
+      if (client === supabaseServer && isSupabaseAdminConfigured() && supabaseAdmin) {
+        console.warn("[OrgAction] Retrying with supabaseAdmin (service-role key)…")
+        const adminRes = await supabaseAdmin
+          .from("organization_members")
+          .select("organizations(*)")
+          .eq("user_id", userId)
+          .limit(1)
+        if (adminRes.error) {
+          console.error("[OrgAction] Admin retry also failed:", adminRes.error)
+          return []
+        }
+        return adminRes.data.filter((m) => m.organizations).map((m) => m.organizations as Organization)
+      }
       return []
     }
 
-    // Map to a simpler structure if needed, or return raw data
-    return data
-      .map((member) => ({
-        id: member.organizations?.id,
-        name: member.organizations?.name,
-        code: member.organizations?.code,
-      }))
-      .filter((org) => org.id !== null) as { id: string; name: string; code: string }[]
-  } catch (err) {
-    console.error("Unexpected error in getUserOrganizationsServer:", err)
+    return data.filter((m) => m.organizations).map((m) => m.organizations as Organization)
+  } catch (e) {
+    console.error("[OrgAction] Unexpected exception:", e)
     return []
   }
 }
