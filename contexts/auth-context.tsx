@@ -13,14 +13,7 @@ interface AuthContextType {
   isSupabaseConfigured: boolean
   signOut: () => Promise<void>
   refreshOrganization: () => Promise<void>
-  signUp: (data: {
-    email: string
-    password: string
-    fullName: string
-    orgType: "new" | "existing"
-    orgName?: string
-    orgCode?: string
-  }) => Promise<{ user: User | null; error: Error | null }>
+  signUp: (data: any) => Promise<{ user: User | null; error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -110,50 +103,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = useCallback(
-    async ({ email, password, fullName, orgType, orgName, orgCode }) => {
+    async (formData: any) => {
       if (!isSupabaseConfigured()) {
-        return { user: null, error: new Error("Supabase is not configured.") }
+        return { user: null, error: new Error("Supabase is not configured.") };
       }
-
+  
       try {
         const response = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            password,
-            fullName,
-            orgType,
-            orgName,
-            orgCode,
-          }),
-        })
-
-        const result = await response.json()
-        console.log("AuthContext: signUp API response:", result)
-
+          body: JSON.stringify(formData),
+        });
+  
+        const result = await response.json();
+        console.log("AuthContext: signUp API response:", result);
+  
         if (!response.ok) {
-          return { user: null, error: new Error(result.error || "An unknown error occurred during signup.") }
+          return { user: null, error: new Error(result.error || "An unknown error occurred during signup.") };
         }
-
+  
         if (result.organizationId) {
-          setOrganizationId(result.organizationId)
-          await supabase.auth.refreshSession()
-          await refreshOrganization()
+          setOrganizationId(result.organizationId);
+          await supabase.auth.refreshSession();
+          await refreshOrganization();
         }
-
+  
         const {
           data: { user: signedUpUser },
-        } = await supabase.auth.getSession()
-
-        return { user: signedUpUser, error: null }
+        } = await supabase.auth.getSession();
+  
+        return { user: signedUpUser, error: null };
       } catch (err) {
-        console.error("AuthContext: signUp error:", err)
-        return { user: null, error: err as Error }
+        console.error("AuthContext: signUp error:", err);
+        return { user: null, error: err as Error };
       }
     },
     [refreshOrganization],
-  )
+  );
 
   return (
     <AuthContext.Provider
