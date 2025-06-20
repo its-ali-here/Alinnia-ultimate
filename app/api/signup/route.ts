@@ -45,12 +45,10 @@ async function generateUniqueOrgCode(maxAttempts = 5): Promise<string> {
   throw new Error("Failed to generate a unique organization code after several attempts.");
 }
 
-// Updated POST function in app/api/signup/route.ts
-
 export async function POST(req: Request) {
   try {
+    const supabaseAdmin = createSupabaseAdminClient();
     const body = await req.json();
-    // Destructure all the new fields from the form
     const { 
       email, password, fullName, orgType, 
       orgName, orgCode, orgEmail, orgIndustry, orgCity, orgCountry 
