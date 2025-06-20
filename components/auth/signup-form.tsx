@@ -91,7 +91,7 @@ export function SignupForm() {
       setLoading(false)
       return
     }
-    if (orgType === "existing" && !formData.orgId.trim()) {
+    if (orgType === "existing" && !formData.orgCode.trim()) {
       setError("Organization ID is required.")
       setLoading(false)
       return
@@ -212,8 +212,8 @@ export function SignupForm() {
                 <div className="space-y-2">
                   <Label htmlFor="orgCode">Organization Code</Label>
                   <Input
-                    id="orgCode" // Changed from orgId
-                    value={formData.orgCode} // Changed from orgId
+                    id="orgCode"
+                    value={formData.orgCode}
                     onChange={handleInputChange}
                     placeholder="Enter the 6-character code"
                     required

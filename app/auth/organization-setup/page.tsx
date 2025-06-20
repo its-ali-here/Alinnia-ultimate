@@ -19,7 +19,7 @@ export default function OrganizationSetupPage() {
   const router = useRouter()
   const [orgType, setOrgType] = useState<"new" | "existing">("new")
   const [orgName, setOrgName] = useState("")
-  const [orgId, setOrgId] = useState("")
+  const [orgCode, setOrgCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,12 +57,12 @@ export default function OrganizationSetupPage() {
         }
         await createOrganizationAndLinkUser(user.id, orgName)
       } else {
-        if (!orgId.trim()) {
+        if (!orgCode.trim()) {
           setError("Organization ID cannot be empty.")
           setLoading(false)
           return
         }
-        await joinOrganizationAndLinkUser(user.id, orgId)
+        await joinOrganizationAndLinkUser(user.id, orgCode)
       }
       await refreshOrganization() // Refresh the organization ID in context
       // Redirection will be handled by the useEffect after organizationId is updated
@@ -142,9 +142,9 @@ export default function OrganizationSetupPage() {
                 <Input
                   id="organizationId"
                   type="text"
-                  placeholder="Paste the organization UUID here"
-                  value={orgId}
-                  onChange={(e) => setOrgId(e.target.value)}
+                  placeholder="Enter 6-digit organization code here"
+                  value={orgCode}
+                  onChange={(e) => setOrgCode(e.target.value)}
                   required
                   disabled={loading}
                 />

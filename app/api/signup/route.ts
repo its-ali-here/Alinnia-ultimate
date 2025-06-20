@@ -3,28 +3,45 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
-// Helper function to generate a unique organization code with retries
+// New, corrected helper function for app/api/signup/route.ts
 async function generateUniqueOrgCode(maxAttempts = 5): Promise<string> {
   let attempts = 0;
   while (attempts < maxAttempts) {
     attempts++;
+    // Generate a random 6-character code
     const code = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       .split('')
       .sort(() => 0.5 - Math.random())
       .join('')
       .substring(0, 6);
 
+    // Attempt to find an organization with this code
     const { data, error } = await supabaseAdmin
       .from("organizations")
-      .select("id")
+      .select("organization_code")
       .eq("organization_code", code)
       .single();
 
-    if (!data && !error) {
-      // If no data is found, the code is unique
-      return code;
+    // VITAL CHANGE IS HERE:
+    // This is the expected error when no rows are found. It means the code is unique!
+    if (error && error.code === 'PGRST116') {
+      return code; // This is our SUCCESS case.
+    }
+
+    // If there was no error and we got data back, it means the code is a duplicate.
+    if (!error && data) {
+      console.warn(`Organization code collision for '${code}'. Retrying...`);
+      continue; // Continue the loop to try a new code.
+    }
+
+    // If there was any other kind of error, it's an actual problem, and we should stop.
+    if (error) {
+      console.error("Unexpected database error while checking org code:", error);
+      throw new Error(`Database error: ${error.message}`);
     }
   }
+
+  // If the loop finishes after all attempts, we throw the final error.
   throw new Error("Failed to generate a unique organization code after several attempts.");
 }
 

@@ -255,11 +255,11 @@ export async function createOrganizationAndLinkUser(userId: string, orgName: str
  * Throws if the org doesn’t exist or the user is already a member.
  * Returns the organisation row.
  */
-export async function joinOrganizationAndLinkUser(userId: string, orgId: string): Promise<Organization> {
+export async function joinOrganizationAndLinkUser(userId: string, orgCodw: string): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("Supabase not configured.")
 
   // 1. ensure the organisation exists
-  const { data: org, error: orgErr } = await supabaseAdmin.from("organizations").select("*").eq("id", orgId).single()
+  const { data: org, error: orgErr } = await supabaseAdmin.from("organizations").select("*").eq("id", orgCode).single()
 
   if (orgErr || !org) throw new Error("Organization not found.")
 
@@ -267,7 +267,7 @@ export async function joinOrganizationAndLinkUser(userId: string, orgId: string)
   const { data: exists, error: memErr } = await supabaseAdmin
     .from("organization_members")
     .select("id")
-    .eq("organization_id", orgId)
+    .eq("organization_id", orgCode)
     .eq("user_id", userId)
     .maybeSingle()
 
@@ -276,7 +276,7 @@ export async function joinOrganizationAndLinkUser(userId: string, orgId: string)
 
   // 3. insert membership
   const { error: insertErr } = await supabaseAdmin.from("organization_members").insert({
-    organization_id: orgId,
+    organization_id: orgCode,
     user_id: userId,
     role: "member",
   })
