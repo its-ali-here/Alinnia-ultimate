@@ -90,21 +90,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchAndSetOrganization])
   // --- END OF CORRECTED SECTION ---
 
-
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
-      localStorage.removeItem("sb-oauth-token")
-      localStorage.removeItem("sb-access-token")
-      localStorage.removeItem("supabase.auth.token")
-      localStorage.removeItem("sb-auth-token")
-      setUser(null)
-      setOrganizationId(null)
-      window.location.replace("/")
-    } catch (error) {
-      console.error("Error signing out:", error)
+      // Let Supabase handle all session and storage clearing.
+      const { error } = await supabase.auth.signOut();
+
+      // If signOut itself has an error, log it and stop.
+      if (error) {
+        console.error("Error during Supabase signOut:", error);
+        return;
+      }
+
+      // This forces a full page reload to the homepage, ensuring a clean state.
+      window.location.replace("/");
+
+    } catch (err) {
+      console.error("Unexpected error during signOut process:", err);
     }
-  }
+  };
 
   const signUp = useCallback(
     async ({ email, password, fullName, orgType, orgName, orgCode }) => {
