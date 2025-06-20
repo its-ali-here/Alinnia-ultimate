@@ -107,38 +107,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isSupabaseConfigured()) {
         return { user: null, error: new Error("Supabase is not configured.") };
       }
-  
+
       try {
         const response = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
-  
+
         const result = await response.json();
-        console.log("AuthContext: signUp API response:", result);
-  
+
         if (!response.ok) {
-          return { user: null, error: new Error(result.error || "An unknown error occurred during signup.") };
+          // If the API returns an error, pass it along
+          throw new Error(result.error || "An unknown error occurred during signup.");
         }
-  
-        if (result.organizationId) {
-          setOrganizationId(result.organizationId);
-          await supabase.auth.refreshSession();
-          await refreshOrganization();
-        }
-  
-        const {
-          data: { user: signedUpUser },
-        } = await supabase.auth.getSession();
-  
-        return { user: signedUpUser, error: null };
+
+        // On success, just return a success state with no user object
+        return { user: null, error: null };
+        
       } catch (err) {
         console.error("AuthContext: signUp error:", err);
         return { user: null, error: err as Error };
       }
     },
-    [refreshOrganization],
+    [], // Dependencies removed as they are no longer needed here
   );
 
   return (
