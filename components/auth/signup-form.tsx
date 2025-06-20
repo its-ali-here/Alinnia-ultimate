@@ -24,7 +24,7 @@ export function SignupForm() {
   const [signupSuccess, setSignupSuccess] = useState(false) // --- CHANGE 2: State for success UI ---
 
   const [formData, setFormData] = useState({
-    fullName: "", email: "", password: "", confirmPassword: "", orgType: "new",
+    fullName: "", email: "", password: "", confirmPassword: "", designation: "", orgType: "new",
     orgName: "", orgCode: "", orgEmail: "", orgIndustry: "", orgCity: "", orgCountry: "",
   })
 
@@ -130,6 +130,7 @@ export function SignupForm() {
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-2"><Label htmlFor="fullName">Full Name</Label><Input id="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="e.g., John Doe" required /></div>
+              <div className="space-y-2"><Label htmlFor="designation">Designation</Label><Input id="designation" value={formData.designation} onChange={handleInputChange} placeholder="e.g., Finance Director" required /></div>
               <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="e.g., john.doe@example.com" required /></div>
               <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" value={formData.password} onChange={handleInputChange} placeholder="6+ characters" required /></div>
               <div className="space-y-2"><Label htmlFor="confirmPassword">Confirm Password</Label><Input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Re-enter your password" required /></div>

@@ -52,18 +52,19 @@ export default function OrganizationPage() {
   }, [user])
 
   // Corrected function in app/dashboard/organization/page.tsx
+  // Corrected function in app/dashboard/organization/page.tsx
   const loadData = async () => {
     setLoading(true);
     try {
-      // This one call now gets us the role and the full organization object
+      // This function now returns a single object like { role: '...', organization: {...} }
       const orgMembership = await getUserOrganizations(user.id);
 
-      // Check that we got back a valid membership and organization
+      // THE FIX: We check if the object and its nested 'organization' property exist,
+      // instead of checking for an array's length.
       if (orgMembership && orgMembership.organization) {
         setUserRole(orgMembership.role);
-        setOrganization(orgMembership.organization); // We already have the org details! No second query needed.
+        setOrganization(orgMembership.organization);
 
-        // Now, load the members for that organization
         const membersData = await getOrganizationMembers(orgMembership.organization.id);
         setMembers(membersData);
       }
@@ -190,7 +191,7 @@ export default function OrganizationPage() {
                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {members.map((member) => (
                     <Card key={member.id}>
-                        <CardHeader className="pb-3"><div className="flex items-center justify-between"><div className="flex items-center space-x-3"><Avatar className="h-12 w-12"><AvatarImage src={member.profiles.avatar_url || "/placeholder.svg"} alt={member.profiles.full_name} /><AvatarFallback>{member.profiles.full_name.split(" ").map((n) => n[0]).join("")}</AvatarFallback></Avatar><div><CardTitle className="text-lg">{member.profiles.full_name}</CardTitle><Badge className={getRoleBadgeColor(member.role)}>{member.role.replace("_", " ")}</Badge></div></div>{canManageMembers && member.profiles.id !== user.id && (<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{(canManageTeamLeaders || member.role === "member") && (<><DropdownMenuItem onClick={() => handleRoleChange(member.id, "member")} disabled={member.role === "member"}>Make Member</DropdownMenuItem><DropdownMenuItem onClick={() => handleRoleChange(member.id, "team_leader")} disabled={member.role === "team_leader"}>Make Team Leader</DropdownMenuItem>{canManageTeamLeaders && (<DropdownMenuItem onClick={() => handleRoleChange(member.id, "administrator")} disabled={member.role === "administrator"}>Make Administrator</DropdownMenuItem>)}</>)}<DropdownMenuItem onClick={() => handleRemoveMember(member.id)} className="text-red-600"><UserMinus className="h-4 w-4 mr-2" />Remove Member</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}</div></CardHeader>
+                        <CardHeader className="pb-3"><div className="flex items-center justify-between"><div className="flex items-center space-x-3"><Avatar className="h-12 w-12"><AvatarImage src={member.profiles.avatar_url || "/placeholder.svg"} alt={member.profiles.full_name} /><AvatarFallback>{member.profiles.full_name.split(" ").map((n) => n[0]).join("")}</AvatarFallback></Avatar><div><CardTitle className="text-lg">{member.profiles.full_name}</CardTitle><p className="text-sm text-muted-foreground">{member.profiles.designation || 'Member'}</p></div></div>{canManageMembers && member.profiles.id !== user.id && (<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{(canManageTeamLeaders || member.role === "member") && (<><DropdownMenuItem onClick={() => handleRoleChange(member.id, "member")} disabled={member.role === "member"}>Make Member</DropdownMenuItem><DropdownMenuItem onClick={() => handleRoleChange(member.id, "team_leader")} disabled={member.role === "team_leader"}>Make Team Leader</DropdownMenuItem>{canManageTeamLeaders && (<DropdownMenuItem onClick={() => handleRoleChange(member.id, "administrator")} disabled={member.role === "administrator"}>Make Administrator</DropdownMenuItem>)}</>)}<DropdownMenuItem onClick={() => handleRemoveMember(member.id)} className="text-red-600"><UserMinus className="h-4 w-4 mr-2" />Remove Member</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}</div></CardHeader>
                         <CardContent><p className="text-sm text-muted-foreground">Joined {new Date(member.joined_at).toLocaleDateString()}</p></CardContent>
                     </Card>
                     ))}

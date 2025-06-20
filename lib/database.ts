@@ -560,6 +560,7 @@ export async function getOrganizationMembers(
         id,
         full_name,
         avatar_url
+        designation
       )
     `)
     .eq("organization_id", organizationId)

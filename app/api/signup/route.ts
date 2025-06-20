@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const supabaseAdmin = createSupabaseAdminClient();
     const body = await req.json();
     const { 
-      email, password, fullName, orgType, 
+      email, password, fullName, designation, orgType, 
       orgName, orgCode, orgEmail, orgIndustry, orgCity, orgCountry 
     } = body;
 
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     // --- 3. Create the Public Profile ---
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .insert({ id: user.id, full_name: fullName, email: email });
+      .insert({ id: user.id, full_name: fullName, email: email, designation: designation });
     if (profileError) {
       await supabaseAdmin.auth.admin.deleteUser(user.id);
       throw new Error("Failed to create user profile.");
