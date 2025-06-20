@@ -62,36 +62,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchAndSetOrganization])
 
   useEffect(() => {
-    setLoading(true)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("AuthContext: Auth state changed. Event:", event, "Session:", session)
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setLoading(true)
+      try {
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
 
-      if (currentUser) {
-        console.log("AuthContext: User is logged in, fetching organization...")
-        await fetchAndSetOrganization(currentUser)
-      } else {
-        // User logged out, clear organization
+        if (currentUser) {
+          await fetchAndSetOrganization(currentUser)
+        } else {
+          setOrganizationId(null)
+        }
+      } catch (e) {
+        console.error("Error during auth state change:", e)
+        setUser(null)
         setOrganizationId(null)
-        console.log("AuthContext: User logged out, cleared organizationId.")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
-      // Log the state after the effect has processed
-      console.log(
-        "AuthContext: Auth state change processed. Current user:",
-        currentUser?.id,
-        "Org ID (after processing):",
-        organizationId,
-      )
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [fetchAndSetOrganization, organizationId]) // Added organizationId to dependency array for logging its final state
+  }, [fetchAndSetOrganization])
 
   const signOut = async () => {
     try {
