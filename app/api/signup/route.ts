@@ -106,4 +106,6 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("Signup API Error:", error.message);
-    return NextResponse.json({ error: error.message }, {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
