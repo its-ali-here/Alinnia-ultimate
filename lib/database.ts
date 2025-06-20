@@ -538,19 +538,35 @@ export async function markBillAsPaid(billId: string): Promise<Bill | null> {
 export async function getOrganizationMembers(
   organizationId: string,
 ): Promise<{ id: string; role: string; joined_at: string; invited_by: string | null; profiles: Profile | null }[]> {
-  if (!isSupabaseConfigured()) return []
-  // Interacting with 'organization_members' and 'users' tables
+  if (!isSupabaseConfigured()) return [];
+
   const { data, error } = await supabase
     .from("organization_members")
-    .select(`id, role, joined_at, invited_by, profiles:profiles (*)`) // Ensure 'users' is correct table name
+    // --- THE FIX IS HERE ---
+    // This new select statement is more explicit. It tells Supabase:
+    // "For a key named 'profiles', use the 'user_id' column to find the related
+    // data in the profiles table, and only give me these specific columns."
+    .select(`
+      id,
+      role,
+      joined_at,
+      invited_by,
+      profiles:user_id (
+        id,
+        full_name,
+        avatar_url
+      )
+    `)
     .eq("organization_id", organizationId)
-    .order("joined_at")
+    .order("joined_at");
 
   if (error) {
-    console.error("DB:getOrganizationMembers - Supabase error:", JSON.stringify(error, null, 2))
-    return []
+    console.error("DB:getOrganizationMembers - Supabase error:", JSON.stringify(error, null, 2));
+    return [];
   }
-  return data || []
+
+  // A safety check to ensure we don't pass members with no profile data to the frontend.
+  return (data || []).filter(member => member.profiles);
 }
 
 export async function inviteMember(
