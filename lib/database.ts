@@ -559,7 +559,7 @@ export async function getOrganizationMembers(
       profiles:user_id (
         id,
         full_name,
-        avatar_url
+        avatar_url,
         designation
       )
     `)
