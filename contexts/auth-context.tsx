@@ -61,28 +61,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchAndSetOrganization])
 
+  // Corrected code for contexts/auth-context.tsx
+
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true)
+      setLoading(true); // Set loading to true at the start of every auth change event
       try {
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
         if (currentUser) {
-          await fetchAndSetOrganization(currentUser)
+          // We MUST wait for this to finish before we stop loading.
+          await fetchAndSetOrganization(currentUser);
         } else {
-          setOrganizationId(null)
+          // If there's no user, there's no organization.
+          setOrganizationId(null);
         }
       } catch (e) {
-        console.error("Error during auth state change:", e)
-        setUser(null)
-        setOrganizationId(null)
+        console.error("Error during auth state change:", e);
+        // Reset state in case of an error
+        setUser(null);
+        setOrganizationId(null);
       } finally {
-        setLoading(false)
+        // This `finally` block ensures that loading is set to false
+        // only after everything in the `try` block is done.
+        setLoading(false);
       }
-    })
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+    // The dependency array should be simple. The listener will refire on its own.
+  }, [fetchAndSetOrganization]);
 
     return () => {
       subscription.unsubscribe()
