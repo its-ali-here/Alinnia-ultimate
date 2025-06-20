@@ -556,7 +556,6 @@ export async function getOrganizationMembers(
       id,
       role,
       joined_at,
-      invited_by,
       profiles:user_id (
         id,
         full_name,
@@ -601,7 +600,6 @@ export async function inviteMember(
     organization_id: organizationId,
     user_id: userData.id,
     role,
-    invited_by: invitedByUserId,
   })
 
   if (inviteError) {
