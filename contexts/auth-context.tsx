@@ -19,7 +19,7 @@ interface AuthContextType {
     fullName: string
     orgType: "new" | "existing"
     orgName?: string
-    orgId?: string
+    orgCode?: string
   }) => Promise<{ user: User | null; error: Error | null }>
 }
 
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signUp = useCallback(
-    async ({ email, password, fullName, orgType, orgName, orgId }) => {
+    async ({ email, password, fullName, orgType, orgName, orgCode }) => {
       if (!isSupabaseConfigured()) {
         return { user: null, error: new Error("Supabase is not configured.") }
       }
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fullName,
             orgType,
             orgName,
-            orgId,
+            orgCode,
           }),
         })
 

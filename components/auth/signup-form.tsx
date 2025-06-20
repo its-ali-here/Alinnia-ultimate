@@ -25,7 +25,7 @@ export function SignupForm() {
     password: "",
     confirmPassword: "",
     orgName: "",
-    orgId: "",
+    orgCode: "",
   })
 
   const [error, setError] = useState("")
@@ -105,7 +105,7 @@ export function SignupForm() {
         fullName: formData.fullName,
         orgType: orgType,
         orgName: orgType === "new" ? formData.orgName : undefined,
-        orgId: orgType === "existing" ? formData.orgId : undefined,
+        orgCode: orgType === "existing" ? formData.orgCode : undefined,
       })
 
       if (signupError) {
@@ -210,13 +210,14 @@ export function SignupForm() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="orgId">Organization ID</Label>
+                  <Label htmlFor="orgCode">Organization Code</Label>
                   <Input
-                    id="orgId"
-                    value={formData.orgId}
+                    id="orgCode" // Changed from orgId
+                    value={formData.orgCode} // Changed from orgId
                     onChange={handleInputChange}
-                    placeholder="Paste the organization UUID here"
+                    placeholder="Enter the 6-character code"
                     required
+                    maxLength={6}
                   />
                 </div>
               )}
