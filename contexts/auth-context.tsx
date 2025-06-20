@@ -4,7 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
-import { getUserOrganizationsServer } from "@/app/actions/organization" // Import the new Server Action
+import { getUserOrganizationsServer } from "@/app/actions/organization"
 
 interface AuthContextType {
   user: User | null
@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAndSetOrganization = useCallback(async (currentUser: User) => {
     console.log("AuthContext: fetchAndSetOrganization - Starting for user", currentUser.id)
     try {
-      // Call the Server Action to fetch organizations
       const orgs = await getUserOrganizationsServer(currentUser.id)
       console.log("AuthContext: fetchAndSetOrganization - Received organizations:", orgs)
       if (orgs && orgs.length > 0) {
@@ -61,62 +60,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchAndSetOrganization])
 
-  // Corrected code for contexts/auth-context.tsx
-
+  // --- THIS IS THE CORRECTED SECTION ---
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true); // Set loading to true at the start of every auth change event
+      setLoading(true)
       try {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
 
         if (currentUser) {
-          // We MUST wait for this to finish before we stop loading.
-          await fetchAndSetOrganization(currentUser);
+          await fetchAndSetOrganization(currentUser)
         } else {
-          // If there's no user, there's no organization.
-          setOrganizationId(null);
+          setOrganizationId(null)
         }
       } catch (e) {
-        console.error("Error during auth state change:", e);
-        // Reset state in case of an error
-        setUser(null);
-        setOrganizationId(null);
+        console.error("Error during auth state change:", e)
+        setUser(null)
+        setOrganizationId(null)
       } finally {
-        // This `finally` block ensures that loading is set to false
-        // only after everything in the `try` block is done.
-        setLoading(false);
+        setLoading(false)
       }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-    // The dependency array should be simple. The listener will refire on its own.
-  }, [fetchAndSetOrganization]);
+    })
 
     return () => {
       subscription.unsubscribe()
     }
   }, [fetchAndSetOrganization])
+  // --- END OF CORRECTED SECTION ---
+
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
-
-      // Explicitly clear local storage items related to Supabase sessions
       localStorage.removeItem("sb-oauth-token")
       localStorage.removeItem("sb-access-token")
       localStorage.removeItem("supabase.auth.token")
       localStorage.removeItem("sb-auth-token")
-
-      // Also clear any application-specific user state if not handled by onAuthStateChange
       setUser(null)
       setOrganizationId(null)
-
-      // Force a full page reload to ensure all client-side state is reset
       window.location.replace("/")
     } catch (error) {
       console.error("Error signing out:", error)
@@ -150,29 +133,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { user: null, error: new Error(result.error || "An unknown error occurred during signup.") }
         }
 
-        // After successful signup via API, explicitly set the organizationId
         if (result.organizationId) {
           setOrganizationId(result.organizationId)
-          console.log("AuthContext: signUp - API returned organizationId:", result.organizationId)
-          // Also trigger a session refresh to ensure the client-side user object is up-to-date
           await supabase.auth.refreshSession()
-          await refreshOrganization() // Ensure context is fully updated
+          await refreshOrganization()
         }
 
-        // The auth state change listener will pick up the user.
         const {
           data: { user: signedUpUser },
-          error: sessionError,
         } = await supabase.auth.getSession()
-        if (sessionError) {
-          console.error("Error getting session after signup:", sessionError)
-        }
-        console.log(
-          "AuthContext: signUp - Final signedUpUser:",
-          signedUpUser?.id,
-          "Current Org ID in state:",
-          organizationId,
-        )
 
         return { user: signedUpUser, error: null }
       } catch (err) {
@@ -180,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error: err as Error }
       }
     },
-    [isSupabaseConfigured, refreshOrganization, organizationId], // Added organizationId to dependency array
+    [refreshOrganization],
   )
 
   return (
@@ -192,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isSupabaseConfigured: isSupabaseConfigured(),
         signOut,
         refreshOrganization,
-        signUp, // Expose the new signUp function
+        signUp,
       }}
     >
       {children}
