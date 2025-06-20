@@ -27,14 +27,12 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart2 }, // Updated href
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
   { name: "Organization", href: "/dashboard/organization", icon: Building2 },
   { name: "Files", href: "/dashboard/files", icon: FileText },
   { name: "Transactions", href: "/dashboard/transactions", icon: Wallet },
   { name: "Invoices", href: "/dashboard/invoices", icon: Receipt },
   { name: "Payments", href: "/dashboard/payments", icon: CreditCard },
-  { name: "Members", href: "/dashboard/members", icon: Users2 },
-  { name: "Permissions", href: "/dashboard/permissions", icon: Shield },
   { name: "Chat", href: "/dashboard/chat", icon: MessagesSquare },
   { name: "Meetings", href: "/dashboard/meetings", icon: Video },
   { name: "Alinnia AI", href: "/dashboard/ai", icon: Bot },
