@@ -221,20 +221,26 @@ export async function createOrganization(
 }
 
 // Fetch all organizations a user belongs to
-export async function getUserOrganizations(userId: string): Promise<Organization[]> {
-  if (!isSupabaseConfigured()) return []
+// Corrected function in lib/database.ts
+export async function getUserOrganizations(userId: string) {
+  if (!isSupabaseConfigured()) return null;
 
   const { data, error } = await supabase
     .from("organization_members")
-    .select("organizations(*)") // returns { organizations: { … } }
+    .select(`
+      role,
+      organization:organizations ( * )
+    `) // Fetches the role AND the full related organization object
     .eq("user_id", userId)
-    .maybeSingle() // Use maybeSingle as a user might not have an organization yet
+    .maybeSingle(); // Use maybeSingle since a user might only be in one org, or none.
 
   if (error) {
-    console.error("Error fetching user organizations:", error)
-    return []
+    console.error("Error fetching user's organization and role:", error);
+    return null;
   }
-  return data && data.organizations ? [data.organizations] : [] // Return as an array for consistency
+
+  // This will return an object like: { role: 'admin', organization: { id: '...', name: '...' } }
+  return data;
 }
 
 // -----------------------------------------------------------------------------

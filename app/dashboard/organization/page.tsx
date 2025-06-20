@@ -51,30 +51,29 @@ export default function OrganizationPage() {
     }
   }, [user])
 
+  // Corrected function in app/dashboard/organization/page.tsx
   const loadData = async () => {
     setLoading(true);
     try {
-      const orgs = await getUserOrganizations(user.id)
-      if (orgs.length > 0) {
-        const currentOrg = orgs[0]
-        setUserRole(currentOrg.role)
+      // This one call now gets us the role and the full organization object
+      const orgMembership = await getUserOrganizations(user.id);
 
-        // Fetch full organization details
-        const { data: orgData, error: orgError } = await supabase.from('organizations').select('*').eq('id', currentOrg.organization_id).single();
-        if(orgError) throw orgError;
-        setOrganization(orgData);
+      // Check that we got back a valid membership and organization
+      if (orgMembership && orgMembership.organization) {
+        setUserRole(orgMembership.role);
+        setOrganization(orgMembership.organization); // We already have the org details! No second query needed.
 
-        // Load members
-        const membersData = await getOrganizationMembers(currentOrg.organization_id)
-        setMembers(membersData)
+        // Now, load the members for that organization
+        const membersData = await getOrganizationMembers(orgMembership.organization.id);
+        setMembers(membersData);
       }
     } catch (error) {
-      console.error("Error loading organization data:", error)
-      toast.error("Failed to load organization data.")
+      console.error("Error loading organization data:", error);
+      toast.error("Failed to load organization data.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
   
   const handleCopyCode = () => {
     if(!organization?.organization_code) return;
