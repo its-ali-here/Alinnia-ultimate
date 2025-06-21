@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const IDLE_TIMEOUT_DURATION = 30 * 1000; // 30 minutes
+  const IDLE_TIMEOUT_DURATION = 10 * 1000; // 30 minutes
 
   const signOut = useCallback(async () => {
     try {
@@ -41,7 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logoutDueToInactivity = useCallback(() => {
     signOut();
-    alert("You have been logged out due to inactivity.");
+    toast.info("You have been logged out due to inactivity.", {
+      description: "Please log in again to continue.",
+      duration: 5000,
+    });
   }, [signOut]);
 
   const resetIdleTimer = useCallback(() => {
