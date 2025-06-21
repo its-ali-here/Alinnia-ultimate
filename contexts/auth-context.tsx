@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isIdle, setIsIdle] = useState(false);
 
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const IDLE_TIMEOUT_DURATION = 30 * 1000; // 30 seconds for testing
+  const IDLE_TIMEOUT_DURATION = 30 * 60 * 1000; // 30 seconds for testing
 
   const signOut = useCallback(async () => {
     try {

@@ -2,8 +2,8 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-// import { useRouter } from "next/navigation" // NOTE: This is mocked below for preview purposes
-// import { useAuth } from "@/contexts/auth-context" // NOTE: This is mocked below for preview purposes
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,32 +12,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
-// --- Mock Implementation for Preview Environment ---
-// In a real Next.js environment, the original `useAuth` and `useRouter` hooks would be used.
-// These mocks provide the necessary data for the component to render without build errors.
-const useAuthMock = () => ({
-    user: { id: 'mock-user-123', email: 'user@example.com' },
-    organizationId: null,
-    loading: false,
-    authLoading: false,
-    refreshOrganization: async () => { 
-        console.log("Mock refreshOrganization called");
-        toast.info("In a real app, this would refresh your session.");
-    },
-});
-
-const useRouterMock = () => ({
-    push: (path: string) => {
-        console.log(`Mock router push to: ${path}`);
-        toast.info(`In a real app, you would be redirected to ${path}.`);
-    }
-});
-// --- End Mock Implementation ---
-
 
 export default function OnboardingPage() {
-    const { user, organizationId, loading: authLoading, refreshOrganization } = useAuthMock()
-    const router = useRouterMock()
+    const { user, organizationId, loading: authLoading, refreshOrganization } = useAuth()
+    const router = useRouter()
     const [designation, setDesignation] = useState("")
     const [orgCode, setOrgCode] = useState("")
     const [loading, setLoading] = useState(false)
