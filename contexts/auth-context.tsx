@@ -5,6 +5,15 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import { getUserOrganizationsServer } from "@/app/actions/organization"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AuthContextType {
   user: User | null
@@ -22,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [organizationId, setOrganizationId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isIdle, setIsIdle] = useState(false);
 
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
   const IDLE_TIMEOUT_DURATION = 10 * 1000; // 30 minutes
@@ -39,12 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const handleIdleLogout = useCallback(async () => {
+    await signOut();
+    window.location.replace("/auth/login");
+  }, [signOut]);
+
   const logoutDueToInactivity = useCallback(() => {
-    signOut();
-    toast.info("You have been logged out due to inactivity.", {
-      description: "Please log in again to continue.",
-      duration: 5000,
-    });
+    signOut(); // Sign out the session in the background
+    setIsIdle(true); // Show the blocking modal
   }, [signOut]);
 
   const resetIdleTimer = useCallback(() => {
@@ -187,6 +199,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+
+      {/* Add this AlertDialog to show when the user is idle */}
+      <AlertDialog open={isIdle}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Session Expired</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have been logged out due to inactivity. Please log in again to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleIdleLogout}>
+              Go to Login
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AuthContext.Provider>
   )
 }
