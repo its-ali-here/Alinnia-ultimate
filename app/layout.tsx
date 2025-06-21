@@ -6,8 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { SettingsProvider } from "@/contexts/settings-context"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { Analytics } from "@vercel/analytics/react" // 1. ADD THIS IMPORT
-import { SpeedInsights } from "@vercel/speed-insights/next" // 2. ADD THIS IMPORT
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"] })
 
