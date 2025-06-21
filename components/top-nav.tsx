@@ -29,14 +29,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useAuth } from "@/contexts/auth-context" // Import useAuth hook
+import { useAuth } from "@/contexts/auth-context" 
+import { ModeToggle } from "@/components/mode-toggle" // 1. ADD THIS IMPORT
 
 export function TopNav() {
   const router = useRouter()
-  const { signOut } = useAuth() // Use the signOut function from AuthContext
+  const { signOut } = useAuth() 
 
   const handleLogout = async () => {
-    // The actual sign-out logic and page reload are now handled by the signOut function from useAuth
     await signOut()
   }
 
@@ -147,7 +147,9 @@ export function TopNav() {
           </div>
         </form>
       </div>
-      <div className="flex items-center gap-4">
+      {/* 2. MODIFIED THIS WRAPPER DIV */}
+      <div className="flex items-center gap-2">
+        <ModeToggle /> {/* 3. ADD THIS COMPONENT */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="icon" className="rounded-full">
