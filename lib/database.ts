@@ -310,7 +310,50 @@ export async function getUserTransactions(userId: string, limit = 10): Promise<T
   return data || []
 }
 
-// ... (The rest of the functions for transactions, budgets, savings, bills, etc., remain the same) ...
+export async function createTransaction(
+  userId: string,
+  transactionData: {
+    account_id?: string
+    transaction_type: Transaction["transaction_type"]
+    category: string
+    amount: number
+    description?: string
+    merchant?: string
+    transaction_date: string
+  },
+): Promise<Transaction | null> {
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert({ user_id: userId, ...transactionData })
+    .select()
+    .single()
+
+  if (error) {
+    console.error("DB:createTransaction - Supabase error:", JSON.stringify(error, null, 2))
+    throw error
+  }
+  return data
+}
+
+// Budget functions
+export async function getUserBudgetCategories(userId: string): Promise<BudgetCategory[]> {
+  if (!isSupabaseConfigured()) return []
+  const { data, error } = await supabase
+    .from("budget_categories")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("category_name")
+
+  if (error) {
+    console.error("DB:getUserBudgetCategories - Supabase error:", JSON.stringify(error, null, 2))
+    return []
+  }
+  return data || []
+}
+
+// ... other functions ...
 
 // Account balance update function
 export async function updateAccountBalance(accountId: string, newBalance: number): Promise<Account | null> {
@@ -376,83 +419,10 @@ export async function getOrganizationMembers(
   return (data || []).filter(member => member.profiles);
 }
 
-export async function inviteMember(
-  organizationId: string,
-  email: string,
-  role: string,
-  invitedByUserId: string,
-): Promise<void> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { data: userData, error: userError } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle()
+// ... other organization functions ...
 
-  if (userError) {
-    throw new Error(`DB:inviteMember - Error finding user: ${userError.message}`)
-  }
-  if (!userData) {
-    throw new Error(`DB:inviteMember - User with email ${email} not found.`)
-  }
+// --- CHAT FUNCTIONS ---
 
-  const { error: inviteError } = await supabaseAdmin.from("organization_members").insert({
-    organization_id: organizationId,
-    user_id: userData.id,
-    role,
-  })
-
-  if (inviteError) {
-    throw new Error(`DB:inviteMember - ${inviteError.message}`)
-  }
-}
-
-export async function updateMemberRole(
-  memberId: string,
-  newRole: string,
-): Promise<any | null> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { data, error } = await supabase
-    .from("organization_members")
-    .update({ role: newRole })
-    .eq("id", memberId)
-    .select()
-    .single()
-
-  if (error) {
-    throw error
-  }
-  return data
-}
-
-export async function removeMember(memberId: string): Promise<void> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { error } = await supabase.from("organization_members").delete().eq("id", memberId)
-
-  if (error) {
-    throw new Error(`DB:removeMember - ${error.message}`)
-  }
-}
-
-// ... (Permissions functions remain the same) ...
-
-// Helper function
-async function addUserToOrganization(userId: string, organizationId: string, role: string): Promise<void> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { error } = await supabaseAdmin.from("organization_members").insert({
-    user_id: userId,
-    organization_id: organizationId,
-    role: role,
-  })
-
-  if (error) {
-    throw new Error(`DB:addUserToOrganization - ${error.message} (Code: ${error.code})`)
-  }
-}
-
-// Add these new functions to lib/database.ts
-
-// Interface for our Channel data
 export interface Channel {
   id: string;
   name?: string;
@@ -460,22 +430,18 @@ export interface Channel {
   organization_id: string;
   created_at: string;
   created_by?: string;
-  // This will be populated with the other member's profile in a DM
   other_member?: Profile;
 }
 
-// Interface for our Message data
 export interface Message {
   id: number;
   content: string;
   created_at: string;
   user_id: string;
   channel_id: string;
-  // This will be populated with the sender's profile
-  author?: Profile;
+  author?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>;
 }
 
-// Function to get all channels a user is a member of
 export async function getChannelsForUser(userId: string): Promise<Channel[]> {
   if (!isSupabaseConfigured()) return [];
   const { data, error } = await supabase
@@ -487,19 +453,16 @@ export async function getChannelsForUser(userId: string): Promise<Channel[]> {
     console.error("Error fetching user channels:", error);
     return [];
   }
-
-  // For DM channels, we can fetch the other member's profile to display their name
   const channels = data.map(item => item.channel) as Channel[];
-  // This part of the logic will be expanded upon when we build the channel list UI
   return channels;
 }
 
-// Function to get messages for a specific channel
 export async function getMessagesForChannel(channelId: string): Promise<Message[]> {
   if (!isSupabaseConfigured()) return [];
+  
   const { data, error } = await supabase
     .from('messages')
-    .select('*, author:profiles(*)') // Assumes a 'profiles' table with user info
+    .select('*, author:profiles!user_id(id, full_name, avatar_url)')
     .eq('channel_id', channelId)
     .order('created_at', { ascending: true });
     
@@ -507,10 +470,9 @@ export async function getMessagesForChannel(channelId: string): Promise<Message[
     console.error("Error fetching messages:", error);
     return [];
   }
-  return data || [];
+  return (data as any) || [];
 }
 
-// Function to send a new message
 export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message | null> {
   if (!isSupabaseConfigured()) return null;
   const { data, error } = await supabase
@@ -528,4 +490,18 @@ export async function sendMessage(channelId: string, userId: string, content: st
     return null;
   }
   return data;
+}
+
+// Helper function
+async function addUserToOrganization(userId: string, organizationId: string, role: string): Promise<void> {
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  const { error } = await supabaseAdmin.from("organization_members").insert({
+    user_id: userId,
+    organization_id: organizationId,
+    role: role,
+  })
+
+  if (error) {
+    throw new Error(`DB:addUserToOrganization - ${error.message} (Code: ${error.code})`)
+  }
 }
