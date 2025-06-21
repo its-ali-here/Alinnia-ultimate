@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import { getUserOrganizationsServer } from "@/app/actions/organization"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,16 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isIdle, setIsIdle] = useState(false);
 
   const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const IDLE_TIMEOUT_DURATION = 10 * 1000; // 30 minutes
+  const IDLE_TIMEOUT_DURATION = 30 * 1000; // 30 seconds for testing
 
   const signOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Error during Supabase signOut:", error);
-        return;
       }
-      window.location.replace("/");
     } catch (err) {
       console.error("Unexpected error during signOut process:", err);
     }
@@ -55,9 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [signOut]);
 
   const logoutDueToInactivity = useCallback(() => {
-    signOut(); // Sign out the session in the background
-    setIsIdle(true); // Show the blocking modal
+    signOut();
+    setIsIdle(true);
   }, [signOut]);
+
 
   const resetIdleTimer = useCallback(() => {
     if (timeoutId.current) {
@@ -125,37 +125,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchAndSetOrganization])
 
+  // MODIFIED: This logic is now simpler and more robust.
   useEffect(() => {
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        await fetchAndSetOrganization(currentUser);
-      }
-      setLoading(false); 
-    };
-
-    getInitialSession();
-
+    // Set loading to true immediately.
+    setLoading(true);
+  
+    // Listen for auth changes. This handles initial load, login, and logout.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-
+  
         if (currentUser) {
+          // If a user is logged in, fetch their organization details.
           await fetchAndSetOrganization(currentUser);
         } else {
+          // If no user, ensure organizationId is null.
           setOrganizationId(null);
         }
+        
+        // Only set loading to false after all checks are complete.
+        setLoading(false);
       }
     );
-
+  
+    // Cleanup the subscription when the component unmounts.
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchAndSetOrganization]);
+  }, [fetchAndSetOrganization]); // Dependency array is correct.
 
   const signUp = useCallback(
     async (formData: any) => {
@@ -199,8 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-
-      {/* Add this AlertDialog to show when the user is idle */}
+      
       <AlertDialog open={isIdle}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -216,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </AuthContext.Provider>
   )
 }
