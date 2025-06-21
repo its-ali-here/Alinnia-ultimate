@@ -241,7 +241,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Check className="size-4 text-primary" />
-                  <span>14-day trial</span>
+                  <span>3-day trial</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Check className="size-4 text-primary" />
