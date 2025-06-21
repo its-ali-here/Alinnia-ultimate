@@ -29,6 +29,8 @@ export default function RootLayout({
           <AuthProvider>
             <SettingsProvider>
               <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
+              <Analytics />
+              <SpeedInsights />
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
