@@ -449,3 +449,83 @@ async function addUserToOrganization(userId: string, organizationId: string, rol
     throw new Error(`DB:addUserToOrganization - ${error.message} (Code: ${error.code})`)
   }
 }
+
+// Add these new functions to lib/database.ts
+
+// Interface for our Channel data
+export interface Channel {
+  id: string;
+  name?: string;
+  type: 'dm' | 'group' | 'organization';
+  organization_id: string;
+  created_at: string;
+  created_by?: string;
+  // This will be populated with the other member's profile in a DM
+  other_member?: Profile;
+}
+
+// Interface for our Message data
+export interface Message {
+  id: number;
+  content: string;
+  created_at: string;
+  user_id: string;
+  channel_id: string;
+  // This will be populated with the sender's profile
+  author?: Profile;
+}
+
+// Function to get all channels a user is a member of
+export async function getChannelsForUser(userId: string): Promise<Channel[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('channel_members')
+    .select('channel:channels(*)')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error("Error fetching user channels:", error);
+    return [];
+  }
+
+  // For DM channels, we can fetch the other member's profile to display their name
+  const channels = data.map(item => item.channel) as Channel[];
+  // This part of the logic will be expanded upon when we build the channel list UI
+  return channels;
+}
+
+// Function to get messages for a specific channel
+export async function getMessagesForChannel(channelId: string): Promise<Message[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*, author:profiles(*)') // Assumes a 'profiles' table with user info
+    .eq('channel_id', channelId)
+    .order('created_at', { ascending: true });
+    
+  if (error) {
+    console.error("Error fetching messages:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// Function to send a new message
+export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message | null> {
+  if (!isSupabaseConfigured()) return null;
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      channel_id: channelId,
+      user_id: userId,
+      content: content,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error sending message:", error);
+    return null;
+  }
+  return data;
+}
