@@ -59,3 +59,40 @@ export async function createProjectAction(args: CreateProjectArgs) {
   
   return { data: projectData };
 }
+
+export async function getProjectsForOrganizationAction(organizationId: string) {
+  if (!organizationId) {
+    return { error: "Organization ID is required." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select(`
+      id,
+      name,
+      description,
+      status,
+      due_date,
+      project_members (
+        profiles (
+          full_name,
+          avatar_url
+        )
+      )
+    `)
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching projects:", error);
+    return { error: "Could not fetch projects." };
+  }
+
+  // We can add a 'progress' field here for the UI, or calculate it on the client
+  const projectsWithProgress = data.map(p => ({ ...p, progress: Math.floor(Math.random() * 100) }));
+
+
+  return { data: projectsWithProgress };
+}
