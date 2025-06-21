@@ -229,8 +229,18 @@ export async function getUserOrganizations(userId: string) {
     .from("organization_members")
     .select(`
       role,
-      organization:organizations ( * )
-    `) // Fetches the role AND the full related organization object
+      organization:organizations (
+        id,
+        name,
+        organization_code,
+        email,
+        phone,
+        industry,
+        city,
+        country,
+        logo_url
+      )
+    `)
     .eq("user_id", userId)
     .maybeSingle(); // Use maybeSingle since a user might only be in one org, or none.
 
@@ -543,15 +553,11 @@ export async function markBillAsPaid(billId: string): Promise<Bill | null> {
 // Organization members functions
 export async function getOrganizationMembers(
   organizationId: string,
-): Promise<{ id: string; role: string; joined_at: string; invited_by: string | null; profiles: Profile | null }[]> {
+): Promise<any[]> { // Changed Promise return type for simplicity during debug
   if (!isSupabaseConfigured()) return [];
 
   const { data, error } = await supabase
     .from("organization_members")
-    // --- THE FIX IS HERE ---
-    // This new select statement is more explicit. It tells Supabase:
-    // "For a key named 'profiles', use the 'user_id' column to find the related
-    // data in the profiles table, and only give me these specific columns."
     .select(`
       id,
       role,
@@ -570,8 +576,10 @@ export async function getOrganizationMembers(
     console.error("DB:getOrganizationMembers - Supabase error:", JSON.stringify(error, null, 2));
     return [];
   }
+  
+  // --- ADD THIS LOG ---
+  console.log("DATABASE LOG: Raw data from Supabase for members:", data);
 
-  // A safety check to ensure we don't pass members with no profile data to the frontend.
   return (data || []).filter(member => member.profiles);
 }
 
