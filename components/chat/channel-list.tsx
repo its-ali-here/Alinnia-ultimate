@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { getChannelsForUserAction } from "@/app/actions/chat.ts"
+import { getChannelsForUserAction } from "@/app/actions/chat"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Users, Hash, MessageSquare, Plus } from "lucide-react"
+import { CreateTeamModal } from "./create-team-modal" // Import the new modal
 
-// Define the type for the channel data we expect from our server action
 type ChannelWithDetails = Awaited<ReturnType<typeof getChannelsForUserAction>>[number];
 
 interface ChannelListProps {
@@ -21,14 +21,20 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
   const { user } = useAuth()
   const [channels, setChannels] = useState<ChannelWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false); // State to control the modal
 
-  useEffect(() => {
+  const fetchChannels = () => {
     if (user?.id) {
+      setIsLoading(true);
       getChannelsForUserAction(user.id).then(data => {
         setChannels(data)
         setIsLoading(false)
       })
     }
+  }
+  
+  useEffect(() => {
+    fetchChannels();
   }, [user?.id])
 
   if (isLoading) {
@@ -64,33 +70,43 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
   );
 
   return (
-    <div className="p-2 space-y-2">
-      {organizationChannel && <ChannelButton channel={organizationChannel} />}
+    <>
+      <div className="p-2 space-y-2">
+        {organizationChannel && <ChannelButton channel={organizationChannel} />}
 
-      <Accordion type="multiple" defaultValue={['teams', 'dms']} className="w-full">
-        <AccordionItem value="teams" className="border-b-0">
-          <AccordionTrigger className="p-2 text-sm text-muted-foreground hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4" /> Teams
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="p-0 pl-4 space-y-1">
-            {groupChannels.map(channel => <ChannelButton key={channel.id} channel={channel} />)}
-            <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Create Team</Button>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="dms" className="border-b-0">
-          <AccordionTrigger className="p-2 text-sm text-muted-foreground hover:no-underline">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" /> Direct Messages
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="p-0 pl-4 space-y-1">
-            {dmChannels.map(channel => <ChannelButton key={channel.id} channel={channel} />)}
-            <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> New Message</Button>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
+        <Accordion type="multiple" defaultValue={['teams', 'dms']} className="w-full">
+          <AccordionItem value="teams" className="border-b-0">
+            <AccordionTrigger className="p-2 text-sm text-muted-foreground hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4" /> Teams
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-0 pl-4 space-y-1">
+              {groupChannels.map(channel => <ChannelButton key={channel.id} channel={channel} />)}
+              {/* This button now opens the modal */}
+              <Button onClick={() => setIsCreateTeamModalOpen(true)} variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Create Team</Button>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="dms" className="border-b-0">
+            <AccordionTrigger className="p-2 text-sm text-muted-foreground hover:no-underline">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" /> Direct Messages
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-0 pl-4 space-y-1">
+              {dmChannels.map(channel => <ChannelButton key={channel.id} channel={channel} />)}
+              <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> New Message</Button>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
+      
+      {/* Render the modal */}
+      <CreateTeamModal 
+        isOpen={isCreateTeamModalOpen}
+        onOpenChange={setIsCreateTeamModalOpen}
+        onTeamCreated={fetchChannels} // Refresh the channel list on success
+      />
+    </>
   )
 }
