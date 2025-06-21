@@ -1,23 +1,26 @@
 // app/dashboard/projects/page.tsx
-"use client" // 1. ADD THIS to make the page interactive
+"use client"
 
-import { useState } from "react" // 2. ADD a state import
-import { format } from "date-fns" // 3. ADD date formatting import
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Briefcase, Filter, ArrowRight, Calendar as CalendarIcon } from "lucide-react" // 4. ADD CalendarIcon
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog" // 5. ADD Dialog imports
-import { Input } from "@/components/ui/input" // 6. ADD Input import
-import { Label } from "@/components/ui/label" // 7. ADD Label import
-import { Textarea } from "@/components/ui/textarea" // 8. ADD Textarea import
-import { Calendar } from "@/components/ui/calendar" // 9. ADD Calendar import
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover" // 10. ADD Popover imports
-import { cn } from "@/lib/utils" // 11. ADD cn utility import
+import { Plus, Briefcase, Filter, ArrowRight, Calendar as CalendarIcon, Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { createProjectAction } from "@/app/actions/projects"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
-// Dummy data to represent your projects (remains the same)
+// Dummy data to represent your projects
 const projects = [
   {
     id: "PROJ-001",
@@ -78,29 +81,50 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 export default function ProjectsPage() {
-  // 12. ADD state management for the form fields
+  const { user, organizationId } = useAuth();
   const [projectName, setProjectName] = useState("")
   const [projectDesc, setProjectDesc] = useState("")
   const [dueDate, setDueDate] = useState<Date | undefined>()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
-  // 13. ADD a handler function for creating the project
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!projectName || !dueDate) {
-        alert("Project Name and Due Date are required.");
+        toast.error("Project Name and Due Date are required.");
         return;
     }
-    const newProject = {
-        name: projectName,
-        description: projectDesc,
-        dueDate: format(dueDate, "yyyy-MM-dd"),
-    };
-    console.log("New Project Created:", newProject); // For now, we just log it
-    setIsDialogOpen(false); // Close the dialog
-    // Reset form fields
-    setProjectName("")
-    setProjectDesc("")
-    setDueDate(undefined)
+    if (!user || !organizationId) {
+        toast.error("You must be logged in to create a project.");
+        return;
+    }
+
+    setIsCreating(true);
+    
+    try {
+        const result = await createProjectAction({
+            organizationId,
+            userId: user.id,
+            name: projectName,
+            description: projectDesc,
+            dueDate: dueDate.toISOString(),
+        });
+
+        if (result.error) {
+            throw new Error(result.error);
+        }
+
+        toast.success(`Project "${projectName}" created successfully!`);
+        setIsDialogOpen(false); 
+        
+        // Reset form fields after successful creation
+        setProjectName("")
+        setProjectDesc("")
+        setDueDate(undefined)
+    } catch (error) {
+        toast.error((error as Error).message || "An unexpected error occurred.");
+    } finally {
+        setIsCreating(false);
+    }
   }
 
   return (
@@ -120,7 +144,6 @@ export default function ProjectsPage() {
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
             </Button>
-            {/* 14. WRAP the button in the DialogTrigger */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                     <Button>
@@ -167,9 +190,12 @@ export default function ProjectsPage() {
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant="outline" disabled={isCreating}>Cancel</Button>
                         </DialogClose>
-                        <Button onClick={handleCreateProject}>Create Project</Button>
+                        <Button onClick={handleCreateProject} disabled={isCreating}>
+                            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isCreating ? "Creating..." : "Create Project"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -177,7 +203,6 @@ export default function ProjectsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* The project card mapping remains the same */}
         {projects.map((project) => (
           <Card key={project.id} className="flex flex-col">
             <CardHeader>
