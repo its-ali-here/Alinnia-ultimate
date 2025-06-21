@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react" // 1. ADD useCallback
+import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,13 +15,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Skeleton } from "@/components/ui/skeleton" // 2. ADD Skeleton import
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { createProjectAction, getProjectsForOrganizationAction } from "@/app/actions/projects" // 3. IMPORT get action
+import { createProjectAction, getProjectsForOrganizationAction } from "@/app/actions/projects"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
-
-// We no longer need the dummy data array
 
 const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -33,7 +32,6 @@ const getStatusBadgeVariant = (status: string) => {
 export default function ProjectsPage() {
   const { user, organizationId } = useAuth();
   
-  // 4. ADD state for projects list and loading states
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,7 +41,6 @@ export default function ProjectsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  // 5. ADD function to load projects from the database
   const loadProjects = useCallback(async () => {
     if (!organizationId) return;
     setIsLoading(true);
@@ -56,7 +53,6 @@ export default function ProjectsPage() {
     setIsLoading(false);
   }, [organizationId]);
 
-  // 6. ADD useEffect to load projects when the page loads
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
@@ -104,12 +100,78 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       <div className="flex items-center justify-between">
-        {/* ... Header remains the same ... */}
-        <div>...</div>
-        <div className="flex items-center gap-2">...</div>
+        <div>
+          <h1 className="text-lg font-semibold md:text-2xl flex items-center">
+            <Briefcase className="mr-3 h-6 w-6" />
+            Projects
+          </h1>
+          <p className="text-muted-foreground">
+            Organize, track, and manage your team's work from start to finish.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+            <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Project
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Create New Project</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details below to start a new project.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">Name</Label>
+                            <Input id="name" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="col-span-3" placeholder="e.g., Q4 Marketing Campaign" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="description" className="text-right">Description</Label>
+                            <Textarea id="description" value={projectDesc} onChange={(e) => setProjectDesc(e.target.value)} className="col-span-3" placeholder="A brief description of the project."/>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="due-date" className="text-right">Due Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "col-span-3 justify-start text-left font-normal",
+                                            !dueDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline" disabled={isCreating}>Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleCreateProject} disabled={isCreating}>
+                            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isCreating ? "Creating..." : "Create Project"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
-      {/* 7. ADD loading state UI */}
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, index) => (
@@ -125,7 +187,6 @@ export default function ProjectsPage() {
             ))}
         </div>
       ) : (
-        // 8. UPDATE the grid to use the live 'projects' state
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
             <Card key={project.id} className="flex flex-col">
@@ -158,9 +219,11 @@ export default function ProjectsPage() {
                             </Avatar>
                         ))}
                     </div>
-                    <Button variant="ghost" size="sm">
-                        View <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <Link href={`/dashboard/projects/${project.id}`} passHref>
+                        <Button variant="ghost" size="sm">
+                            View <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Link>
                 </CardFooter>
             </Card>
             ))}

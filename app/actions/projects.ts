@@ -96,3 +96,39 @@ export async function getProjectsForOrganizationAction(organizationId: string) {
 
   return { data: projectsWithProgress };
 }
+
+export async function getProjectByIdAction(projectId: string) {
+  if (!projectId) {
+    return { error: "Project ID is required." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select(`
+      id,
+      name,
+      description,
+      status,
+      due_date,
+      project_members (
+        role,
+        profiles (
+          id,
+          full_name,
+          avatar_url
+        )
+      ),
+      tasks ( * )
+    `)
+    .eq("id", projectId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching project:", error);
+    return { error: "Could not fetch project details." };
+  }
+
+  return { data };
+}
