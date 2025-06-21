@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 import { getUserOrganizationsServer } from "@/app/actions/organization"
@@ -22,6 +22,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [organizationId, setOrganizationId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const timeoutId = useRef<NodeJS.Timeout>();
+  const IDLE_TIMEOUT_DURATION = 30 * 60 * 1000; // 30 minutes
+
+  const logoutDueToInactivity = useCallback(() => {
+    // We use the signOut function you already created!
+    signOut();
+    // You can use a more elegant notification here if you like
+    alert("You have been logged out due to inactivity.");
+  }, [signOut]);
+
+  const resetIdleTimer = useCallback(() => {
+    // Clear any existing timer
+    if (timeoutId.current) {
+      clearTimeout(timeoutId.current);
+    }
+    // Set a new timer
+    timeoutId.current = setTimeout(logoutDueToInactivity, IDLE_TIMEOUT_DURATION);
+  }, [logoutDueToInactivity]);
+
+  useEffect(() => {
+    // Don't run the timer if no user is logged in
+    if (!user) {
+      return;
+    }
+
+    // List of events that indicate user activity
+    const activityEvents: (keyof WindowEventMap)[] = [
+      'mousemove',
+      'keydown',
+      'mousedown',
+      'touchstart',
+      'scroll',
+    ];
+
+    // Add event listeners to reset the timer on any activity
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, resetIdleTimer);
+    });
+
+    // Start the timer when the component mounts (or when the user logs in)
+    resetIdleTimer();
+
+    // Cleanup function to remove listeners when the component unmounts
+    return () => {
+      if (timeoutId.current) {
+        clearTimeout(timeoutId.current);
+      }
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, resetIdleTimer);
+      });
+    };
+  }, [user, resetIdleTimer]); // Rerun this effect if the user logs in or out
 
   const fetchAndSetOrganization = useCallback(async (currentUser: User) => {
     console.log("AuthContext: fetchAndSetOrganization - Starting for user", currentUser.id)
@@ -55,32 +108,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // --- THIS IS THE CORRECTED SECTION ---
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true)
-      try {
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
+    // This function runs once on initial load to get the session
+    // and stop the main loading screen.
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        await fetchAndSetOrganization(currentUser);
+      }
+      setLoading(false); // End the initial loading state
+    };
+
+    getInitialSession();
+
+    // The listener now only updates the user session in the background
+    // without triggering the main loading screen.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
 
         if (currentUser) {
-          await fetchAndSetOrganization(currentUser)
+          // If a user logs in, fetch their org info
+          await fetchAndSetOrganization(currentUser);
         } else {
-          setOrganizationId(null)
+          // If a user logs out, clear the org info
+          setOrganizationId(null);
         }
-      } catch (e) {
-        console.error("Error during auth state change:", e)
-        setUser(null)
-        setOrganizationId(null)
-      } finally {
-        setLoading(false)
       }
-    })
+    );
 
     return () => {
-      subscription.unsubscribe()
-    }
-  }, [fetchAndSetOrganization])
+      subscription.unsubscribe();
+    };
+  }, [fetchAndSetOrganization]);
   // --- END OF CORRECTED SECTION ---
 
   const signOut = async () => {
