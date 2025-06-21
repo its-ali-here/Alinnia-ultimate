@@ -23,32 +23,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organizationId, setOrganizationId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const timeoutId = useRef<NodeJS.Timeout>();
+  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
   const IDLE_TIMEOUT_DURATION = 30 * 60 * 1000; // 30 minutes
 
+  const signOut = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error during Supabase signOut:", error);
+        return;
+      }
+      window.location.replace("/");
+    } catch (err) {
+      console.error("Unexpected error during signOut process:", err);
+    }
+  }, []);
+
   const logoutDueToInactivity = useCallback(() => {
-    // We use the signOut function you already created!
     signOut();
-    // You can use a more elegant notification here if you like
     alert("You have been logged out due to inactivity.");
   }, [signOut]);
 
   const resetIdleTimer = useCallback(() => {
-    // Clear any existing timer
     if (timeoutId.current) {
       clearTimeout(timeoutId.current);
     }
-    // Set a new timer
     timeoutId.current = setTimeout(logoutDueToInactivity, IDLE_TIMEOUT_DURATION);
   }, [logoutDueToInactivity]);
 
   useEffect(() => {
-    // Don't run the timer if no user is logged in
     if (!user) {
       return;
     }
 
-    // List of events that indicate user activity
     const activityEvents: (keyof WindowEventMap)[] = [
       'mousemove',
       'keydown',
@@ -57,15 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'scroll',
     ];
 
-    // Add event listeners to reset the timer on any activity
     activityEvents.forEach((event) => {
       window.addEventListener(event, resetIdleTimer);
     });
 
-    // Start the timer when the component mounts (or when the user logs in)
     resetIdleTimer();
 
-    // Cleanup function to remove listeners when the component unmounts
     return () => {
       if (timeoutId.current) {
         clearTimeout(timeoutId.current);
@@ -74,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.removeEventListener(event, resetIdleTimer);
       });
     };
-  }, [user, resetIdleTimer]); // Rerun this effect if the user logs in or out
+  }, [user, resetIdleTimer]);
 
   const fetchAndSetOrganization = useCallback(async (currentUser: User) => {
     console.log("AuthContext: fetchAndSetOrganization - Starting for user", currentUser.id)
@@ -106,10 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchAndSetOrganization])
 
-  // --- THIS IS THE CORRECTED SECTION ---
   useEffect(() => {
-    // This function runs once on initial load to get the session
-    // and stop the main loading screen.
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user ?? null;
@@ -118,23 +119,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser) {
         await fetchAndSetOrganization(currentUser);
       }
-      setLoading(false); // End the initial loading state
+      setLoading(false); 
     };
 
     getInitialSession();
 
-    // The listener now only updates the user session in the background
-    // without triggering the main loading screen.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
 
         if (currentUser) {
-          // If a user logs in, fetch their org info
           await fetchAndSetOrganization(currentUser);
         } else {
-          // If a user logs out, clear the org info
           setOrganizationId(null);
         }
       }
@@ -144,26 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, [fetchAndSetOrganization]);
-  // --- END OF CORRECTED SECTION ---
-
-  const signOut = async () => {
-    try {
-      // Let Supabase handle all session and storage clearing.
-      const { error } = await supabase.auth.signOut();
-
-      // If signOut itself has an error, log it and stop.
-      if (error) {
-        console.error("Error during Supabase signOut:", error);
-        return;
-      }
-
-      // This forces a full page reload to the homepage, ensuring a clean state.
-      window.location.replace("/");
-
-    } catch (err) {
-      console.error("Unexpected error during signOut process:", err);
-    }
-  };
 
   const signUp = useCallback(
     async (formData: any) => {
@@ -181,11 +158,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const result = await response.json();
 
         if (!response.ok) {
-          // If the API returns an error, pass it along
           throw new Error(result.error || "An unknown error occurred during signup.");
         }
 
-        // On success, just return a success state with no user object
         return { user: null, error: null };
         
       } catch (err) {
@@ -193,7 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error: err as Error };
       }
     },
-    [], // Dependencies removed as they are no longer needed here
+    [],
   );
 
   return (
