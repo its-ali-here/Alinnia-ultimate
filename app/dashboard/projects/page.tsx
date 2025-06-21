@@ -1,13 +1,23 @@
 // app/dashboard/projects/page.tsx
+"use client" // 1. ADD THIS to make the page interactive
 
+import { useState } from "react" // 2. ADD a state import
+import { format } from "date-fns" // 3. ADD date formatting import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus, Briefcase, Filter, ArrowRight } from "lucide-react"
+import { Plus, Briefcase, Filter, ArrowRight, Calendar as CalendarIcon } from "lucide-react" // 4. ADD CalendarIcon
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog" // 5. ADD Dialog imports
+import { Input } from "@/components/ui/input" // 6. ADD Input import
+import { Label } from "@/components/ui/label" // 7. ADD Label import
+import { Textarea } from "@/components/ui/textarea" // 8. ADD Textarea import
+import { Calendar } from "@/components/ui/calendar" // 9. ADD Calendar import
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover" // 10. ADD Popover imports
+import { cn } from "@/lib/utils" // 11. ADD cn utility import
 
-// Dummy data to represent your projects
+// Dummy data to represent your projects (remains the same)
 const projects = [
   {
     id: "PROJ-001",
@@ -68,6 +78,31 @@ const getStatusBadgeVariant = (status: string) => {
 }
 
 export default function ProjectsPage() {
+  // 12. ADD state management for the form fields
+  const [projectName, setProjectName] = useState("")
+  const [projectDesc, setProjectDesc] = useState("")
+  const [dueDate, setDueDate] = useState<Date | undefined>()
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  // 13. ADD a handler function for creating the project
+  const handleCreateProject = () => {
+    if (!projectName || !dueDate) {
+        alert("Project Name and Due Date are required.");
+        return;
+    }
+    const newProject = {
+        name: projectName,
+        description: projectDesc,
+        dueDate: format(dueDate, "yyyy-MM-dd"),
+    };
+    console.log("New Project Created:", newProject); // For now, we just log it
+    setIsDialogOpen(false); // Close the dialog
+    // Reset form fields
+    setProjectName("")
+    setProjectDesc("")
+    setDueDate(undefined)
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       <div className="flex items-center justify-between">
@@ -85,14 +120,64 @@ export default function ProjectsPage() {
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
             </Button>
-            <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Project
-            </Button>
+            {/* 14. WRAP the button in the DialogTrigger */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Project
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Create New Project</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details below to start a new project.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">Name</Label>
+                            <Input id="name" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="col-span-3" placeholder="e.g., Q4 Marketing Campaign" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="description" className="text-right">Description</Label>
+                            <Textarea id="description" value={projectDesc} onChange={(e) => setProjectDesc(e.target.value)} className="col-span-3" placeholder="A brief description of the project."/>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="due-date" className="text-right">Due Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "col-span-3 justify-start text-left font-normal",
+                                            !dueDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleCreateProject}>Create Project</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* The project card mapping remains the same */}
         {projects.map((project) => (
           <Card key={project.id} className="flex flex-col">
             <CardHeader>
