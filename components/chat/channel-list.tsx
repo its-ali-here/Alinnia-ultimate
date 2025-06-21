@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { getChannelsForUserAction } from "@/app/actions/chat"
+import { getChannelsForUserAction } from "@/app/actions/chat.ts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Users, Hash, MessageSquare, Plus } from "lucide-react"
-import { CreateTeamModal } from "./create-team-modal" // Import the new modal
+import { CreateTeamModal } from "./create-team-modal"
+import { NewMessageModal } from "./new-message-modal"
 
 type ChannelWithDetails = Awaited<ReturnType<typeof getChannelsForUserAction>>[number];
 
@@ -21,7 +22,8 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
   const { user } = useAuth()
   const [channels, setChannels] = useState<ChannelWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false); // State to control the modal
+  const [isCreateTeamModalOpen, setIsCreateTeamModalOpen] = useState(false);
+  const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
 
   const fetchChannels = () => {
     if (user?.id) {
@@ -36,6 +38,11 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
   useEffect(() => {
     fetchChannels();
   }, [user?.id])
+
+  const handleDmCreated = (newChannelId: string) => {
+    fetchChannels();
+    onSelectChannel(newChannelId);
+  }
 
   if (isLoading) {
     return (
@@ -58,7 +65,7 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
       {channel.type === 'dm' ? (
         <Avatar className="h-5 w-5">
           <AvatarImage src={channel.other_member_avatar_url || ''} />
-          <AvatarFallback>{channel.name?.charAt(0)}</AvatarFallback>
+          <AvatarFallback>{channel.name?.charAt(0) || '?'}</AvatarFallback>
         </Avatar>
       ) : channel.type === 'group' ? (
         <Users className="h-5 w-5 text-muted-foreground" />
@@ -83,7 +90,6 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
             </AccordionTrigger>
             <AccordionContent className="p-0 pl-4 space-y-1">
               {groupChannels.map(channel => <ChannelButton key={channel.id} channel={channel} />)}
-              {/* This button now opens the modal */}
               <Button onClick={() => setIsCreateTeamModalOpen(true)} variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> Create Team</Button>
             </AccordionContent>
           </AccordionItem>
@@ -95,17 +101,21 @@ export function ChannelList({ onSelectChannel, activeChannelId }: ChannelListPro
             </AccordionTrigger>
             <AccordionContent className="p-0 pl-4 space-y-1">
               {dmChannels.map(channel => <ChannelButton key={channel.id} channel={channel} />)}
-              <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> New Message</Button>
+              <Button onClick={() => setIsNewMessageModalOpen(true)} variant="ghost" className="w-full justify-start gap-2 text-muted-foreground"><Plus className="h-4 w-4" /> New Message</Button>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
       </div>
       
-      {/* Render the modal */}
       <CreateTeamModal 
         isOpen={isCreateTeamModalOpen}
         onOpenChange={setIsCreateTeamModalOpen}
-        onTeamCreated={fetchChannels} // Refresh the channel list on success
+        onTeamCreated={fetchChannels}
+      />
+      <NewMessageModal
+        isOpen={isNewMessageModalOpen}
+        onOpenChange={setIsNewMessageModalOpen}
+        onDmCreated={handleDmCreated}
       />
     </>
   )
