@@ -6,8 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { SettingsProvider } from "@/contexts/settings-context"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/react" // 1. ADD THIS IMPORT
+import { SpeedInsights } from "@vercel/speed-insights/next" // 2. ADD THIS IMPORT
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -29,11 +29,11 @@ export default function RootLayout({
           <AuthProvider>
             <SettingsProvider>
               <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
-              <Analytics />
-              <SpeedInsights />
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
+        <Analytics /> {/* 3. ADD THIS COMPONENT */}
+        <SpeedInsights /> {/* 4. ADD THIS COMPONENT */}
       </body>
     </html>
   )
