@@ -401,7 +401,7 @@ export async function getOrganizationMembers(
       id,
       role,
       joined_at,
-      profiles:user_id (
+      profiles (
         id,
         full_name,
         avatar_url,
@@ -416,6 +416,7 @@ export async function getOrganizationMembers(
     return [];
   }
   
+  // This filter is important: it removes any members whose profiles couldn't be found.
   return (data || []).filter(member => member.profiles);
 }
 
