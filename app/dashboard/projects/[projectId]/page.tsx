@@ -43,7 +43,6 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     const [project, setProject] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // State for the "Add Task" dialog
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
     const [isCreatingTask, setIsCreatingTask] = useState(false);
     const [taskTitle, setTaskTitle] = useState("");
@@ -52,6 +51,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     const [taskPriority, setTaskPriority] = useState("medium");
     const [taskDueDate, setTaskDueDate] = useState<Date | undefined>();
 
+    // We restored the full data fetching logic in the server action, so this now works
     const loadProject = useCallback(async () => {
         const result = await getProjectByIdAction(params.projectId);
         if (result.error) {
@@ -95,7 +95,6 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
             
             toast.success("Task created successfully!");
             
-            // Reset state and close dialog
             setTaskTitle("");
             setTaskDescription("");
             setTaskAssigneeId(undefined);
@@ -103,7 +102,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
             setTaskDueDate(undefined);
             setIsTaskDialogOpen(false);
             
-            await loadProject(); // Re-fetch project data to show the new task
+            await loadProject();
         } catch (error) {
             toast.error((error as Error).message);
         } finally {
@@ -233,6 +232,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                            {/* THIS IS THE KEY CHANGE: We now map over project.tasks */}
                             {project.tasks.length > 0 ? project.tasks.map((task: any) => (
                                 <TableRow key={task.id}>
                                     <TableCell>{getStatusIcon(task.status)}</TableCell>
