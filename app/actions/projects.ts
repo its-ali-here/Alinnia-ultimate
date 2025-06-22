@@ -42,17 +42,69 @@ export async function getProjectsForOrganizationAction(organizationId: string) {
 }
 
 export async function getProjectByIdAction(projectId: string) {
-  // ... existing code
-   if (!projectId) {
+  if (!projectId) {
     return { error: "Project ID is required." };
   }
+
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.from("projects").select(`id, name, description, status, due_date, project_members (role, profiles (id, full_name, avatar_url)), tasks (*, assignee:profiles (id, full_name, avatar_url))`).eq("id", projectId).single();
-  if (error) {
-    console.error("Error fetching project:", error);
-    return { error: "Could not fetch project details." };
+
+  // Step 1: Fetch the main project details
+  const { data: projectData, error: projectError } = await supabase
+    .from("projects")
+    .select(`*`)
+    .eq("id", projectId)
+    .single();
+
+  if (projectError || !projectData) {
+    console.error("Error fetching project:", projectError);
+    return { error: "Could not find the specified project." };
   }
-  return { data };
+
+  // Step 2: Fetch the project members and their profiles
+  const { data: membersData, error: membersError } = await supabase
+    .from("project_members")
+    .select(`
+      role,
+      profiles (
+        id,
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq("project_id", projectId);
+
+  if (membersError) {
+    console.error("Error fetching project members:", membersError);
+    return { error: "Could not fetch project members." };
+  }
+
+  // Step 3: Fetch the tasks for the project and their assignees
+  const { data: tasksData, error: tasksError } = await supabase
+    .from("tasks")
+    .select(`
+      *,
+      assignee:profiles (
+          id,
+          full_name,
+          avatar_url
+      )
+    `)
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+
+  if (tasksError) {
+    console.error("Error fetching tasks:", tasksError);
+    return { error: "Could not fetch project tasks." };
+  }
+
+  // Step 4: Combine all the data into a single object
+  const fullProjectData = {
+    ...projectData,
+    project_members: membersData || [],
+    tasks: tasksData || [],
+  };
+
+  return { data: fullProjectData };
 }
 
 
