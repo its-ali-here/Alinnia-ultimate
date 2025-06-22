@@ -1,4 +1,3 @@
-// app/dashboard/projects/[projectId]/page.tsx
 "use client"
 
 import { useEffect, useState, useCallback } from 'react';
@@ -51,11 +50,11 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     const [taskPriority, setTaskPriority] = useState("medium");
     const [taskDueDate, setTaskDueDate] = useState<Date | undefined>();
 
-    // We restored the full data fetching logic in the server action, so this now works
     const loadProject = useCallback(async () => {
         const result = await getProjectByIdAction(params.projectId);
         if (result.error) {
             toast.error(result.error);
+            setProject(null); // Set project to null on error
         } else {
             setProject(result.data);
         }
@@ -122,7 +121,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     }
     
     if (!project) {
-        return <div className="p-6">Project not found.</div>
+        return <div className="p-6 text-center text-lg text-muted-foreground">Project not found or you do not have permission to view it.</div>
     }
 
     return (
@@ -140,7 +139,10 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                         <div className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4" /> Due on {new Date(project.due_date).toLocaleDateString()}</div>
                         <div className="flex items-center"><Users className="mr-2 h-4 w-4" /> {project.project_members.length} Members</div>
                         <div className="flex items-center -space-x-2">
-                            {project.project_members.map((member: any) => (
+                            {/* FIX #1: Added a filter to prevent crash if a member's profile is missing */}
+                            {project.project_members && project.project_members
+                                .filter((member: any) => member.profiles)
+                                .map((member: any) => (
                                 <Avatar key={member.profiles.id} className="h-6 w-6 border-2 border-background">
                                     <AvatarImage src={member.profiles.avatar_url} />
                                     <AvatarFallback>{member.profiles.full_name?.charAt(0)}</AvatarFallback>
@@ -178,7 +180,10 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                                         <Select value={taskAssigneeId} onValueChange={setTaskAssigneeId}>
                                             <SelectTrigger><SelectValue placeholder="Select a member" /></SelectTrigger>
                                             <SelectContent>
-                                                {project.project_members.map((member: any) => (
+                                                {/* FIX #2: Added a filter to the member dropdown */}
+                                                {project.project_members && project.project_members
+                                                    .filter((member: any) => member.profiles)
+                                                    .map((member: any) => (
                                                     <SelectItem key={member.profiles.id} value={member.profiles.id}>{member.profiles.full_name}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -232,7 +237,6 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {/* THIS IS THE KEY CHANGE: We now map over project.tasks */}
                             {project.tasks.length > 0 ? project.tasks.map((task: any) => (
                                 <TableRow key={task.id}>
                                     <TableCell>{getStatusIcon(task.status)}</TableCell>
