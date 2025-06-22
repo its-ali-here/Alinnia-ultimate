@@ -11,7 +11,7 @@ interface CreateProjectArgs {
   dueDate?: string;
 }
 
-// Keep the existing createProjectAction function
+// This function is correct, no changes needed here.
 export async function createProjectAction(args: CreateProjectArgs) {
   const { organizationId, userId, name, description, dueDate } = args;
 
@@ -56,8 +56,7 @@ export async function createProjectAction(args: CreateProjectArgs) {
   return { data: projectData };
 }
 
-
-// Keep the existing getProjectsForOrganizationAction function
+// This function is also correct, no changes needed.
 export async function getProjectsForOrganizationAction(organizationId: string) {
   if (!organizationId) {
     return { error: "Organization ID is required." };
@@ -95,7 +94,7 @@ export async function getProjectsForOrganizationAction(organizationId: string) {
   return { data: projectsWithProgress };
 }
 
-// Keep the existing getProjectByIdAction function
+// THIS IS THE MODIFIED FUNCTION FOR DEBUGGING
 export async function getProjectByIdAction(projectId: string) {
   if (!projectId) {
     return { error: "Project ID is required." };
@@ -103,45 +102,30 @@ export async function getProjectByIdAction(projectId: string) {
 
   const supabase = createSupabaseAdminClient();
 
-  // This is the full query that also fetches members and tasks
+  console.log(`[Action Debug] Fetching project with ID: ${projectId}`);
+
+  // Step 1 of debugging: Fetch the project and its direct members, but not the nested member profiles yet.
   const { data, error } = await supabase
     .from("projects")
     .select(`
-      id,
-      name,
-      description,
-      status,
-      due_date,
-      project_members (
-        role,
-        profiles (
-          id,
-          full_name,
-          avatar_url
-        )
-      ),
-      tasks (
-        *,
-        assignee:profiles (
-            id,
-            full_name,
-            avatar_url
-        )
-      )
+      *, 
+      project_members ( * )
     `)
     .eq("id", projectId)
     .single();
 
   if (error) {
-    console.error("Error fetching project:", error);
-    return { error: "Could not fetch project details." };
+    console.error("Error fetching project [with basic members join]:", error);
+    return { error: `Database error: ${error.message}` };
   }
 
-  return { data };
+  // To prevent the UI from breaking, ensure the tasks array exists.
+  const dataWithEmptyTasks = { ...data, tasks: [] };
+  
+  return { data: dataWithEmptyTasks };
 }
 
-
-// ADD THIS NEW FUNCTION TO CREATE A TASK
+// This function is correct, no changes needed.
 interface CreateTaskArgs {
   projectId: string;
   userId: string;
@@ -180,7 +164,6 @@ export async function createTaskAction(args: CreateTaskArgs) {
     return { error: "Could not create the task." };
   }
 
-  // Revalidate the project detail page to show the new task immediately
   revalidatePath(`/dashboard/projects/${projectId}`);
 
   return { data };
