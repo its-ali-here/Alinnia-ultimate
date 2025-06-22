@@ -104,41 +104,30 @@ export async function getProjectByIdAction(projectId: string) {
 
   const supabase = createSupabaseAdminClient();
 
-  // Update the query to also fetch assignee details for tasks
+  console.log(`[Action] Fetching project with ID: ${projectId}`); // For debugging in your terminal
+
+  // We are temporarily simplifying the query to fetch only from the 'projects' table
   const { data, error } = await supabase
     .from("projects")
-    .select(`
-      id,
-      name,
-      description,
-      status,
-      due_date,
-      project_members (
-        role,
-        profiles (
-          id,
-          full_name,
-          avatar_url
-        )
-      ),
-      tasks (
-        *,
-        assignee:profiles (
-            id,
-            full_name,
-            avatar_url
-        )
-      )
-    `)
+    .select(`*`) // The original query had complex joins here
     .eq("id", projectId)
     .single();
 
+  // This error log is the most important part for debugging.
+  // Check your terminal where `pnpm run dev` is running if there's an error.
   if (error) {
-    console.error("Error fetching project:", error);
-    return { error: "Could not fetch project details." };
+    console.error("Error fetching project [SIMPLIFIED]:", error);
+    return { error: `Database error: ${error.message}` };
   }
 
-  return { data };
+  // So the UI doesn't break, we'll add back empty arrays for members and tasks
+  const dataWithEmptyRelations = {
+    ...data,
+    project_members: [],
+    tasks: []
+  };
+
+  return { data: dataWithEmptyRelations };
 }
 
 
