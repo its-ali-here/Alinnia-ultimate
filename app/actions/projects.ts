@@ -168,3 +168,34 @@ export async function createTaskAction(args: CreateTaskArgs) {
 
   return { data };
 }
+
+interface UpdateTaskStatusArgs {
+  projectId: string;
+  taskId: string;
+  status: 'todo' | 'in_progress' | 'done';
+}
+
+export async function updateTaskStatusAction(args: UpdateTaskStatusArgs) {
+  const { projectId, taskId, status } = args;
+
+  if (!projectId || !taskId || !status) {
+    return { error: "Project ID, Task ID, and status are required." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ status: status, updated_at: new Date().toISOString() })
+    .eq("id", taskId);
+
+  if (error) {
+    console.error("Error updating task status:", error);
+    return { error: "Could not update the task status." };
+  }
+
+  // Revalidate the project detail page to show the updated status
+  revalidatePath(`/dashboard/projects/${projectId}`);
+
+  return { data: { success: true } };
+}

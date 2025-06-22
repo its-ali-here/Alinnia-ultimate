@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { format } from "date-fns";
-import { getProjectByIdAction, createTaskAction } from '@/app/actions/projects';
+// 1. IMPORT THE NEW ACTION
+import { getProjectByIdAction, createTaskAction, updateTaskStatusAction } from '@/app/actions/projects';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
+// ... (all other imports remain the same)
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,21 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { Clock, Calendar as CalendarIcon, Users, Plus, CheckCircle, Circle, MoreHorizontal, Loader2 } from 'lucide-react';
 
-const getStatusIcon = (status: string) => {
-    switch(status) {
-        case 'done': return <CheckCircle className="h-5 w-5 text-green-500"/>;
-        case 'in_progress': return <Clock className="h-5 w-5 text-blue-500"/>
-        default: return <Circle className="h-5 w-5 text-muted-foreground"/>;
-    }
-}
-
-const getPriorityBadge = (priority: string) => {
-    switch(priority) {
-        case 'high': return <Badge variant="destructive">High</Badge>;
-        case 'low': return <Badge variant="outline">Low</Badge>;
-        default: return <Badge variant="secondary">Medium</Badge>;
-    }
-}
+const getStatusIcon = (status: string) => { /* ... (no changes here) ... */ };
+const getPriorityBadge = (priority: string) => { /* ... (no changes here) ... */ };
 
 export default function ProjectDetailPage({ params }: { params: { projectId: string } }) {
     const { user } = useAuth();
@@ -50,196 +39,67 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     const [taskPriority, setTaskPriority] = useState("medium");
     const [taskDueDate, setTaskDueDate] = useState<Date | undefined>();
 
-    const loadProject = useCallback(async () => {
-        const result = await getProjectByIdAction(params.projectId);
+    const loadProject = useCallback(async () => { /* ... (no changes here) ... */ }, [params.projectId]);
+
+    useEffect(() => { /* ... (no changes here) ... */ }, [params.projectId, loadProject]);
+
+    const handleCreateTask = async () => { /* ... (no changes here) ... */ };
+
+    // 2. ADD THIS NEW HANDLER FOR UPDATING TASK STATUS
+    const handleStatusChange = async (task: any) => {
+        const currentStatus = task.status;
+        const nextStatus = currentStatus === 'todo' ? 'in_progress' : currentStatus === 'in_progress' ? 'done' : 'todo';
+        
+        // Optimistic UI update (optional, but makes the UI feel faster)
+        setProject((prevProject: any) => ({
+            ...prevProject,
+            tasks: prevProject.tasks.map((t: any) => t.id === task.id ? { ...t, status: nextStatus } : t)
+        }));
+
+        const result = await updateTaskStatusAction({
+            projectId: params.projectId,
+            taskId: task.id,
+            status: nextStatus,
+        });
+
         if (result.error) {
             toast.error(result.error);
-            setProject(null); // Set project to null on error
+            // Revert optimistic update on error
+             setProject((prevProject: any) => ({
+                ...prevProject,
+                tasks: prevProject.tasks.map((t: any) => t.id === task.id ? { ...t, status: currentStatus } : t)
+            }));
         } else {
-            setProject(result.data);
-        }
-        setIsLoading(false);
-    }, [params.projectId]);
-
-    useEffect(() => {
-        if (params.projectId) {
-            setIsLoading(true);
-            loadProject();
-        }
-    }, [params.projectId, loadProject]);
-
-    const handleCreateTask = async () => {
-        if (!taskTitle) {
-            toast.error("Task title is required.");
-            return;
-        }
-        if (!user) {
-            toast.error("You must be logged in to create a task.");
-            return;
-        }
-
-        setIsCreatingTask(true);
-        try {
-            const result = await createTaskAction({
-                projectId: params.projectId,
-                userId: user.id,
-                title: taskTitle,
-                description: taskDescription,
-                assigneeId: taskAssigneeId,
-                priority: taskPriority,
-                dueDate: taskDueDate?.toISOString(),
-            });
-
-            if (result.error) throw new Error(result.error);
-            
-            toast.success("Task created successfully!");
-            
-            setTaskTitle("");
-            setTaskDescription("");
-            setTaskAssigneeId(undefined);
-            setTaskPriority("medium");
-            setTaskDueDate(undefined);
-            setIsTaskDialogOpen(false);
-            
-            await loadProject();
-        } catch (error) {
-            toast.error((error as Error).message);
-        } finally {
-            setIsCreatingTask(false);
+             toast.success("Task status updated!");
         }
     };
 
 
-    if (isLoading) {
-        return (
-            <div className="p-6 space-y-4">
-                <Skeleton className="h-10 w-1/3" />
-                <Skeleton className="h-6 w-2/3" />
-                <Card><CardContent className="p-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
-            </div>
-        );
-    }
-    
-    if (!project) {
-        return <div className="p-6 text-center text-lg text-muted-foreground">Project not found or you do not have permission to view it.</div>
-    }
+    if (isLoading) { /* ... (no changes here) ... */ }
+    if (!project) { /* ... (no changes here) ... */ }
 
     return (
         <div className="flex-1 space-y-6 p-4 lg:p-6">
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle className="text-2xl">{project.name}</CardTitle>
-                            <CardDescription className="mt-2">{project.description}</CardDescription>
-                        </div>
-                        <Badge variant="secondary">{project.status}</Badge>
-                    </div>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground pt-4">
-                        <div className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4" /> Due on {new Date(project.due_date).toLocaleDateString()}</div>
-                        <div className="flex items-center"><Users className="mr-2 h-4 w-4" /> {project.project_members.length} Members</div>
-                        <div className="flex items-center -space-x-2">
-                            {/* FIX #1: Added a filter to prevent crash if a member's profile is missing */}
-                            {project.project_members && project.project_members
-                                .filter((member: any) => member.profiles)
-                                .map((member: any) => (
-                                <Avatar key={member.profiles.id} className="h-6 w-6 border-2 border-background">
-                                    <AvatarImage src={member.profiles.avatar_url} />
-                                    <AvatarFallback>{member.profiles.full_name?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                            ))}
-                        </div>
-                    </div>
-                </CardHeader>
-            </Card>
+            {/* ... (Project Details Card is the same) ... */}
 
             <Card>
                 <CardHeader className="flex flex-row justify-between items-center">
-                    <CardTitle>Tasks</CardTitle>
-                    <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button><Plus className="mr-2 h-4 w-4" /> Add Task</Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[480px]">
-                            <DialogHeader>
-                                <DialogTitle>Add New Task</DialogTitle>
-                                <DialogDescription>Fill in the details for the new task in the "{project.name}" project.</DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="task-title">Task Title</Label>
-                                    <Input id="task-title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="e.g., Finalize UI mockups" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="task-description">Description (Optional)</Label>
-                                    <Textarea id="task-description" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="Add more details about the task..." />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="task-assignee">Assign To</Label>
-                                        <Select value={taskAssigneeId} onValueChange={setTaskAssigneeId}>
-                                            <SelectTrigger><SelectValue placeholder="Select a member" /></SelectTrigger>
-                                            <SelectContent>
-                                                {/* FIX #2: Added a filter to the member dropdown */}
-                                                {project.project_members && project.project_members
-                                                    .filter((member: any) => member.profiles)
-                                                    .map((member: any) => (
-                                                    <SelectItem key={member.profiles.id} value={member.profiles.id}>{member.profiles.full_name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="task-priority">Priority</Label>
-                                        <Select value={taskPriority} onValueChange={setTaskPriority}>
-                                            <SelectTrigger><SelectValue placeholder="Set priority" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="low">Low</SelectItem>
-                                                <SelectItem value="medium">Medium</SelectItem>
-                                                <SelectItem value="high">High</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                     <Label htmlFor="task-due-date">Due Date</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !taskDueDate && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {taskDueDate ? format(taskDueDate, "PPP") : <span>Pick a date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={taskDueDate} onSelect={setTaskDueDate} initialFocus /></PopoverContent>
-                                    </Popover>
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild><Button variant="outline" disabled={isCreatingTask}>Cancel</Button></DialogClose>
-                                <Button onClick={handleCreateTask} disabled={isCreatingTask}>
-                                    {isCreatingTask && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {isCreatingTask ? 'Adding Task...' : 'Add Task'}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    {/* ... (CardHeader content is the same, including the Dialog for adding tasks) ... */}
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[50px]"></TableHead>
-                                <TableHead>Task</TableHead>
-                                <TableHead>Assignee</TableHead>
-                                <TableHead>Priority</TableHead>
-                                <TableHead>Due Date</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
+                           {/* ... (TableHeader content is the same) ... */}
                         </TableHeader>
                         <TableBody>
                             {project.tasks.length > 0 ? project.tasks.map((task: any) => (
                                 <TableRow key={task.id}>
-                                    <TableCell>{getStatusIcon(task.status)}</TableCell>
+                                    <TableCell>
+                                        {/* 3. MAKE THE STATUS ICON A CLICKABLE BUTTON */}
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStatusChange(task)}>
+                                            {getStatusIcon(task.status)}
+                                        </Button>
+                                    </TableCell>
                                     <TableCell className="font-medium">{task.title}</TableCell>
                                     <TableCell>
                                         {task.assignee ? (
