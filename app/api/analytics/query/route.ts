@@ -5,27 +5,29 @@ import { createSupabaseAdminClient } from '@/lib/supabase-server';
 // This is a helper function to perform a "GROUP BY" and "COUNT" on our JSON data.
 // This is where the magic happens! It turns raw rows into aggregated insights.
 const processData = (data: any[], categoryKey: string, valueKey: string) => {
-    if (!data || data.length === 0) return [];
+  if (!data || data.length === 0) return [];
 
-    const result = data.reduce((acc, row) => {
-        const category = row[categoryKey];
-        // We check if the row has the category key we're grouping by.
-        if (category) {
-            if (!acc[category]) {
-                acc[category] = 0;
-            }
-            // For now, we are just counting the number of times each category appears.
-            acc[category] += 1;
-        }
-        return acc;
-    }, {} as Record<string, number>);
+  const result = data.reduce((acc, row) => {
+      const category = row[categoryKey];
+      // Convert the value from the CSV (which is a string) to a number.
+      // If it's not a valid number, treat it as 0.
+      const value = parseFloat(row[valueKey]) || 0;
 
-    // The result is an object like { "Laptops": 114, "Chairs": 119 }.
-    // We need to convert it into an array of objects for the recharts library.
-    return Object.entries(result).map(([key, count]) => ({
-        [categoryKey]: key,
-        [valueKey]: count, // We use the valueKey here for consistency with our ChartWidget
-    }));
+      if (category) {
+          if (!acc[category]) {
+              acc[category] = 0;
+          }
+          // THE FIX: We now SUM the value, instead of just counting (+= 1).
+          acc[category] += value;
+      }
+      return acc;
+  }, {} as Record<string, number>);
+
+  // Convert the aggregated object back into an array for the chart
+  return Object.entries(result).map(([key, sum]) => ({
+      [categoryKey]: key,
+      [valueKey]: sum,
+  }));
 };
 
 export async function POST(req: Request) {
