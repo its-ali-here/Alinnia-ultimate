@@ -14,8 +14,8 @@ import { UploadCloud, Trash2, FileText, RefreshCw, Loader2 } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 
 // Helper function to format bytes into a readable string
-function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
+function formatBytes(bytes: number | null | undefined, decimals = 2) {
+  if (!bytes) return '0 Bytes'; // Handles null, undefined, and 0
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -211,7 +211,11 @@ const handleFileUpload = async () => {
                   <TableRow key={file.id}>
                     <TableCell className="font-medium">{file.name}</TableCell>
                     <TableCell>{formatBytes(file.metadata.size)}</TableCell>
-                    <TableCell>{formatDistanceToNow(new Date(file.metadata.lastModified), { addSuffix: true })}</TableCell>
+                    <TableCell>
+                    {file.metadata?.lastModified 
+                      ? formatDistanceToNow(new Date(file.metadata.lastModified), { addSuffix: true }) 
+                      : 'N/A'}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteFile(file)}>
                         <Trash2 className="h-4 w-4" />
