@@ -65,36 +65,76 @@ export function FileManager() {
     }
   }
 
-  const handleFileUpload = async () => {
-    if (!selectedFile || !user || !organizationId || !isSupabaseConfigured()) {
-      toast.error("Cannot upload file. Please check if you are logged in and a file is selected.")
-      return
-    }
+  // In components/files/file-manager.tsx
 
-    setIsUploading(true)
-    const filePath = `${organizationId}/${selectedFile.name}`
-
-    try {
-      const { error } = await supabase.storage
-        .from("files") // Correct bucket name
-        .upload(filePath, selectedFile, {
-          cacheControl: "3600",
-          upsert: true, // Use true to allow overwriting files with the same name
-        })
-
-      if (error) throw error
-
-      toast.success(`"${selectedFile.name}" uploaded successfully.`)
-      fetchFiles() // Refresh the file list
-    } catch (error) {
-      toast.error(`Upload failed: ${(error as Error).message}`)
-    } finally {
-      setIsUploading(false)
-      setSelectedFile(null)
-      const fileInput = document.getElementById("file-upload-input") as HTMLInputElement
-      if (fileInput) fileInput.value = ""
-    }
+const handleFileUpload = async () => {
+  if (!selectedFile || !user || !organizationId || !isSupabaseConfigured()) {
+    toast.error("Cannot upload file. Please check if you are logged in and a file is selected.");
+    return;
   }
+
+  setIsUploading(true);
+  let datasourceId = ''; // Variable to hold the ID of our new datasource record
+
+  try {
+    // Step 1: Create a record in our new 'datasources' table.
+    const { data: datasourceRecord, error: dbError } = await supabase
+      .from('datasources')
+      .insert({
+        file_name: selectedFile.name,
+        organization_id: organizationId,
+        uploaded_by_user_id: user.id,
+        status: 'uploading',
+        // We don't know the storage path yet, so we use a temporary placeholder
+        storage_path: 'pending' 
+      })
+      .select('id')
+      .single();
+
+    if (dbError) throw dbError;
+    datasourceId = datasourceRecord.id;
+
+    // Step 2: Define the actual storage path using the new ID for a clean structure.
+    const filePath = `${organizationId}/${datasourceId}/${selectedFile.name}`;
+
+    // Step 3: Upload the file to Supabase Storage.
+    const { error: uploadError } = await supabase.storage
+      .from("files")
+      .upload(filePath, selectedFile, {
+        cacheControl: "3600",
+        upsert: false, // It's a new file, so we don't need to upsert.
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Step 4: Update our datasource record with the final storage path and set status to 'processing'.
+    await supabase
+      .from('datasources')
+      .update({ storage_path: filePath, status: 'processing' })
+      .eq('id', datasourceId);
+
+    // Step 5: Invoke the Edge Function to process the file in the background.
+    const { error: functionError } = await supabase.functions.invoke('process-csv', {
+      body: { datasourceId },
+    })
+    if (functionError) throw functionError;
+    
+    toast.success(`"${selectedFile.name}" uploaded. Processing has started.`);
+    fetchFiles(); // This will now show the file with its 'processing' status
+
+  } catch (error) {
+    toast.error(`Upload failed: ${(error as Error).message}`);
+    // If something failed, clean up the record in the datasources table.
+    if (datasourceId) {
+      await supabase.from('datasources').delete().eq('id', datasourceId);
+    }
+  } finally {
+    setIsUploading(false);
+    setSelectedFile(null);
+    const fileInput = document.getElementById("file-upload-input") as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
+  }
+};
 
   const handleDeleteFile = async (file: FileObject) => {
     if (!organizationId || !isSupabaseConfigured()) return;
