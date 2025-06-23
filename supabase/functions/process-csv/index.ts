@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
       .update({
         status: 'ready',
         column_definitions: headers, // Storing the headers as column definitions
-        row_count: rowCount
+        row_count: rowCount,
+        processed_data: rows, // Save the actual parsed rows into our new column
       })
       .eq('id', datasourceId);
 
