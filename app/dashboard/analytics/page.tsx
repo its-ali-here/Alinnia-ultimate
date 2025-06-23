@@ -31,9 +31,9 @@ export default function AnalyticsPage() {
             // Later, these values will come from UI controls (dropdowns, etc.)
             chartType: 'bar',
             datasourceId: 'some-id-from-a-dropdown',
-            // IMPORTANT: These keys match the dummy data in our API route
-            categoryKey: 'Laptops', // Using the key from your dummy data
-            valueKey: 'sales',      // Using the key from your dummy data
+            datasourceId: 'some-id-from-a-dropdown', // This will be dynamic later
+            categoryKey: 'Product',      // <-- Correct: Matches your CSV
+            valueKey: 'Units Sold',  // <-- Correct: Matches your CSV
           }),
         });
         const data = await response.json();
@@ -73,11 +73,11 @@ export default function AnalyticsPage() {
             <Skeleton className="h-[350px] w-full" />
           ) : (
             <ChartWidget
-              title="Sales by Product (from API)"
+              title="Items Sold by Product"
               chartType="bar"
               data={chartData}
-              categoryKey="Laptops" // Tell the widget which data key to use for the X-axis
-              valueKey="sales"   // and which to use for the Y-axis
+              categoryKey="Product"      // <-- Correct
+              valueKey="Units Sold"  // <-- Correct
             />
           )}
         </TabsContent>
