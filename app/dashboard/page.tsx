@@ -2,7 +2,8 @@ import { AccountsOverview } from "@/components/accounts-overview"
 import { RecentTransactions } from "@/components/recent-transactions"
 import { BusinessMetrics } from "@/components/business-metrics"
 import { ConfigurationBanner } from "@/components/configuration-banner"
-import { ProjectSnapshot } from "@/components/project-snapshot" // ✨ IMPORT OUR NEW WIDGET
+import { ProjectSnapshot } from "@/components/project-snapshot"
+import { MarketPulse } from "@/components/market-pulse"
 
 export default function Dashboard() {
   return (
@@ -14,6 +15,8 @@ export default function Dashboard() {
       <p className="text-muted-foreground">
         Here's your business at a glance.
       </p>
+
+      <MarketPulse />
 
       {/* ✨ KEEP THE BUSINESS METRICS AS REQUESTED */}
       <BusinessMetrics />
