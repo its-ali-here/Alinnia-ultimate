@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Overview", href: "/dashboard", icon: Home },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
   { name: "Organization", href: "/dashboard/organization", icon: Building2 },
   { name: "Files", href: "/dashboard/files", icon: FileText },
