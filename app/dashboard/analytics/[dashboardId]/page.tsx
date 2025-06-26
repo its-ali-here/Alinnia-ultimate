@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChartWidget } from '@/components/analytics/widgets/chart-widget';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -139,7 +140,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                                 <Select value={widgetCategoryKey} onValueChange={setWidgetCategoryKey}>
                                     <SelectTrigger><SelectValue placeholder="Select a column..." /></SelectTrigger>
                                     <SelectContent>
-                                        {columnDefinitions..filter(Boolean)map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
+                                        {columnDefinitions.filter(Boolean).map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -148,7 +149,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                                 <Select value={widgetValueKey} onValueChange={setWidgetValueKey}>
                                     <SelectTrigger><SelectValue placeholder="Select a column..." /></SelectTrigger>
                                     <SelectContent>
-                                        {columnDefinitions..filter(Boolean)map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
+                                        {columnDefinitions.filter(Boolean).map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -172,16 +173,12 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                     cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
                     rowHeight={100}
                 >
-                    {dashboard.layout.map((widget: any) => (
-                        <div key={widget.i} className="p-2">
-                            <Card className="h-full w-full">
-                                <CardHeader>
-                                    <CardTitle className="text-base">{widget.title || 'Untitled Widget'}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground">Chart will be rendered here.</p>
-                                </CardContent>
-                            </Card>
+                    {dashboard.layout.map((widgetConfig: any) => (
+                        <div key={widgetConfig.i}>
+                            <ChartWidget 
+                                widgetConfig={widgetConfig}
+                                datasourceId={dashboard.datasource.id}
+                            />
                         </div>
                     ))}
                 </ResponsiveGridLayout>
