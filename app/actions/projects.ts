@@ -203,3 +203,61 @@ export async function addMemberToProjectAction(projectId: string, userId: string
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { data };
 }
+
+// Add these to the end of app/actions/projects.ts
+
+/**
+ * Deletes a specific task from a project.
+ */
+export async function deleteTaskAction(args: { projectId: string; taskId: string }) {
+  const { projectId, taskId } = args;
+  if (!projectId || !taskId) {
+      return { error: "Project ID and Task ID are required." };
+  }
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+
+  if (error) {
+      console.error("Error deleting task:", error);
+      return { error: "Could not delete the task." };
+  }
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  return { data: { success: true } };
+}
+
+/**
+* Updates the details of a specific task.
+*/
+export async function updateTaskAction(args: {
+  projectId: string;
+  taskId: string;
+  updates: {
+      title?: string;
+      description?: string;
+      assignee_id?: string;
+      priority?: string;
+      due_date?: string;
+  };
+}) {
+  const { projectId, taskId, updates } = args;
+  if (!projectId || !taskId || !updates) {
+      return { error: "Project ID, Task ID, and updates are required." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+      .from("tasks")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", taskId)
+      .select()
+      .single();
+
+  if (error) {
+      console.error("Error updating task:", error);
+      return { error: "Could not update the task." };
+  }
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  return { data };
+}
