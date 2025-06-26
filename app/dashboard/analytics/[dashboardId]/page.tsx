@@ -139,7 +139,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                                 <Select value={widgetCategoryKey} onValueChange={setWidgetCategoryKey}>
                                     <SelectTrigger><SelectValue placeholder="Select a column..." /></SelectTrigger>
                                     <SelectContent>
-                                        {columnDefinitions.map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
+                                        {columnDefinitions..filter(Boolean)map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -148,7 +148,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                                 <Select value={widgetValueKey} onValueChange={setWidgetValueKey}>
                                     <SelectTrigger><SelectValue placeholder="Select a column..." /></SelectTrigger>
                                     <SelectContent>
-                                        {columnDefinitions.map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
+                                        {columnDefinitions..filter(Boolean)map((col: string) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
