@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Plus, Mail, MoreHorizontal, UserMinus, Users2, Building, Copy } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { getOrganizationMembers, inviteMember, updateMemberRole, removeMember, getUserOrganizations } from "@/lib/database"
+import { getOrganizationMembers, inviteMember, updateMemberRole, removeMember } from "@/lib/database"
+import { getUserOrganizationsServer } from "@/app/actions/organization"
 import { toast } from "sonner"
 
 // We can define our types here for clarity
@@ -55,11 +56,15 @@ export default function OrganizationPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const orgMembership = await getUserOrganizations(user.id);
-      if (orgMembership && orgMembership.organization) {
-        setUserRole(orgMembership.role);
-        setOrganization(orgMembership.organization);
-        const membersData = await getOrganizationMembers(orgMembership.organization.id);
+      const orgs = await getUserOrganizationsServer(user.id);
+      if (orgs && orgs.length > 0) {
+        const org = orgs[0];
+        setOrganization(org);
+        // Assuming user's role in an org is not directly on the user object, we find it from the membership
+        const { data: memberData } = await supabase.from('organization_members').select('role').eq('user_id', user.id).eq('organization_id', org.id).single();
+        if(memberData) setUserRole(memberData.role);
+  
+        const membersData = await getOrganizationMembers(org.id);
         setMembers(membersData);
       }
     } catch (error) {

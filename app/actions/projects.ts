@@ -51,7 +51,7 @@ export async function getProjectByIdAction(projectId: string) {
   // Step 1: Fetch the main project details
   const { data: projectData, error: projectError } = await supabase
     .from("projects")
-    .select(`*`)
+    .select(`id, name, description, status, due_date, created_at`)
     .eq("id", projectId)
     .single();
 
