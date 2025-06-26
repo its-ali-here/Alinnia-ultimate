@@ -9,8 +9,8 @@ import {
   getOrganizationMembersForProjectInviteAction,
   addMemberToProjectAction,
   deleteTaskAction,
-  updateTaskAction
-  updateProjectIconAction
+  updateTaskAction,
+  updateProjectIconAction,
 } from '@/app/actions/projects';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
