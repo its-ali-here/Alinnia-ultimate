@@ -261,3 +261,24 @@ export async function updateTaskAction(args: {
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { data };
 }
+
+export async function updateProjectIconAction(args: { projectId: string; icon: string }) {
+  const { projectId, icon } = args;
+  if (!projectId || !icon) {
+      return { error: "Project ID and icon name are required." };
+  }
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+      .from("projects")
+      .update({ icon })
+      .eq("id", projectId)
+      .select()
+      .single();
+
+  if (error) {
+      console.error("Error updating project icon:", error);
+      return { error: "Could not update project icon." };
+  }
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  return { data };
+}

@@ -68,6 +68,22 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
     const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState<any>(null);
     const [isDeletingTask, setIsDeletingTask] = useState(false);
+    const [editTaskTitle, setEditTaskTitle] = useState("");
+    const [editTaskDescription, setEditTaskDescription] = useState("");
+    const [editTaskAssigneeId, setEditTaskAssigneeId] = useState<string | undefined>();
+    const [editTaskPriority, setEditTaskPriority] = useState("medium");
+    const [editTaskDueDate, setEditTaskDueDate] = useState<Date | undefined>();
+    const [isUpdatingTask, setIsUpdatingTask] = useState(false);
+
+    useEffect(() => {
+        if (taskToEdit) {
+            setEditTaskTitle(taskToEdit.title || "");
+            setEditTaskDescription(taskToEdit.description || "");
+            setEditTaskAssigneeId(taskToEdit.assignee_id || undefined);
+            setEditTaskPriority(taskToEdit.priority || "medium");
+            setEditTaskDueDate(taskToEdit.due_date ? new Date(taskToEdit.due_date) : undefined);
+        }
+    }, [taskToEdit]);
 
     const loadProject = useCallback(async () => {
         const result = await getProjectByIdAction(params.projectId);
@@ -184,20 +200,37 @@ const handleOpenEditDialog = (task: any) => {
     setIsEditTaskOpen(true);
 };
 
-const handleUpdateTask = async (updates: any) => {
+// Replace the existing handleUpdateTask function with this
+
+const handleUpdateTask = async () => {
     if (!taskToEdit) return;
+
+    setIsUpdatingTask(true);
     try {
+        const updates = {
+            title: editTaskTitle,
+            description: editTaskDescription,
+            assignee_id: editTaskAssigneeId,
+            priority: editTaskPriority,
+            due_date: editTaskDueDate?.toISOString(),
+        };
+
         const result = await updateTaskAction({
             projectId: params.projectId,
             taskId: taskToEdit.id,
             updates,
         });
+
         if (result.error) throw new Error(result.error);
+
         toast.success("Task updated successfully!");
         setIsEditTaskOpen(false);
+        setTaskToEdit(null);
         await loadProject();
     } catch (error) {
         toast.error((error as Error).message);
+    } finally {
+        setIsUpdatingTask(false);
     }
 };
 
@@ -232,13 +265,22 @@ const handleDeleteTask = async () => {
             <Card>
                 <CardHeader>
                     <div className="flex items-center gap-4">
-                        <Briefcase className="h-8 w-8 text-muted-foreground" />
+                        <IconPicker
+                            currentIcon={project.icon || "Briefcase"}
+                            onIconChange={async (iconName) => {
+                                await updateProjectIconAction({ projectId: project.id, icon: iconName });
+                                await loadProject(); // Refresh to show new icon
+                            }}
+                        />
                         <div>
                             <CardTitle className="text-2xl">{project.name}</CardTitle>
                             <CardDescription>{project.description || "No description provided."}</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3">
+                    {/* ... CardContent remains the same ... */}
+                </CardContent>
             </Card>
 
             <Card>
@@ -416,16 +458,64 @@ const handleDeleteTask = async () => {
             {/* Add these dialogs at the end, inside the main div */}
             {taskToEdit && (
                 <Dialog open={isEditTaskOpen} onOpenChange={setIsEditTaskOpen}>
-                    {/* Similar structure to Create Task Dialog, but for editing */}
-                    {/* For brevity, we will skip creating a separate component now */}
-                    {/* A more advanced implementation would use a reusable TaskForm component */}
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>Edit Task</DialogTitle>
+                            <DialogDescription>Make changes to your task here. Click save when you're done.</DialogDescription>
                         </DialogHeader>
-                        {/* A full form would go here, for simplicity we'll just show the concept */}
-                        <p>Editing task: {taskToEdit.title}</p>
-                        <Button onClick={() => handleUpdateTask({ title: "Updated Title" })}>Save Changes</Button>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-task-title">Title</Label>
+                                <Input id="edit-task-title" value={editTaskTitle} onChange={(e) => setEditTaskTitle(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-task-assignee">Assignee</Label>
+                                <Select value={editTaskAssigneeId} onValueChange={setEditTaskAssigneeId}>
+                                    <SelectTrigger id="edit-task-assignee">
+                                        <SelectValue placeholder="Select a member" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {project.project_members.map((member: any) => (
+                                            <SelectItem key={member.profiles.id} value={member.profiles.id}>
+                                                {member.profiles.full_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-task-priority">Priority</Label>
+                                <Select value={editTaskPriority} onValueChange={setEditTaskPriority}>
+                                    <SelectTrigger id="edit-task-priority">
+                                        <SelectValue placeholder="Select priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="low">Low</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="high">High</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-task-due-date">Due Date</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !editTaskDueDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {editTaskDueDate ? format(editTaskDueDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={editTaskDueDate} onSelect={setEditTaskDueDate} initialFocus /></PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsEditTaskOpen(false)}>Cancel</Button>
+                            <Button onClick={handleUpdateTask} disabled={isUpdatingTask}>
+                                {isUpdatingTask && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
             )}
