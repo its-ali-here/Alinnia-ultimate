@@ -1,3 +1,5 @@
+// components/notifications.tsx
+
 "use client"
 
 import { useState } from "react"

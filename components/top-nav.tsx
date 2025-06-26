@@ -1,4 +1,3 @@
-// components/top-nav.tsx
 "use client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -30,7 +29,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "@/contexts/auth-context" 
-import { ModeToggle } from "@/components/mode-toggle" // 1. ADD THIS IMPORT
+import { ModeToggle } from "@/components/mode-toggle"
+import { Notifications } from "@/components/notifications";
 
 export function TopNav() {
   const router = useRouter()
@@ -135,21 +135,10 @@ export function TopNav() {
           </nav>
         </SheetContent>
       </Sheet>
-      <div className="w-full flex-1">
-        <form>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search products..."
-              className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
-            />
-          </div>
-        </form>
-      </div>
       {/* 2. MODIFIED THIS WRAPPER DIV */}
       <div className="flex items-center gap-2">
-        <ModeToggle /> {/* 3. ADD THIS COMPONENT */}
+        <Notifications />
+        <ModeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="icon" className="rounded-full">
