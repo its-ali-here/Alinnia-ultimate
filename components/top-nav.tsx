@@ -135,7 +135,10 @@ export function TopNav() {
           </nav>
         </SheetContent>
       </Sheet>
-      {/* 2. MODIFIED THIS WRAPPER DIV */}
+      
+      {/* This is the new spacer div that pushes content to the right */}
+      <div className="w-full flex-1" />
+
       <div className="flex items-center gap-2">
         <Notifications />
         <ModeToggle />
