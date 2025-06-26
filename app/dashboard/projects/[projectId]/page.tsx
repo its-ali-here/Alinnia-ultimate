@@ -10,6 +10,7 @@ import {
   addMemberToProjectAction,
   deleteTaskAction,
   updateTaskAction
+  updateProjectIconAction
 } from '@/app/actions/projects';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from 'sonner';
@@ -30,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Clock, Calendar as CalendarIcon, Users, Plus, CheckCircle, Circle, MoreHorizontal, Loader2, UserPlus, Briefcase } from 'lucide-react';
+import { IconPicker } from '@/components/projects/icon-picker';
 
 const getStatusIcon = (status: string) => {
     switch(status) {
