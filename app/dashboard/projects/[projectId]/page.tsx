@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Clock, Calendar as CalendarIcon, Users, Plus, CheckCircle, Circle, MoreHorizontal, Loader2, UserPlus } from 'lucide-react';
 
@@ -44,7 +45,6 @@ const getPriorityBadge = (priority: string) => {
 }
 
 export default function ProjectDetailPage({ params }: { params: { projectId: string } }) {
-    console.log("Project Detail Page is trying to load ID:", params.projectId);
     const { user, organizationId } = useAuth();
     const [project, setProject] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -92,8 +92,63 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
         fetchPotentialMembers();
     }, [isMemberDialogOpen, organizationId, params.projectId]);
 
-    const handleCreateTask = async () => { /* ... (no changes here) ... */ };
-    const handleStatusChange = async (task: any) => { /* ... (no changes here) ... */ };
+    const handleCreateTask = async () => {
+        if (!taskTitle) {
+            toast.error("Task title is required.");
+            return;
+        }
+        if (!user) {
+            toast.error("You must be logged in.");
+            return;
+        }
+    
+        setIsCreatingTask(true);
+        try {
+            const result = await createTaskAction({
+                projectId: params.projectId,
+                userId: user.id,
+                title: taskTitle,
+                description: taskDescription,
+                assigneeId: taskAssigneeId,
+                priority: taskPriority,
+                dueDate: taskDueDate?.toISOString(),
+            });
+    
+            if (result.error) throw new Error(result.error);
+    
+            toast.success("Task created successfully!");
+            await loadProject(); // Refresh the project data
+        } catch (error) {
+            toast.error((error as Error).message);
+        } finally {
+            setIsCreatingTask(false);
+            setIsTaskDialogOpen(false);
+            // Reset form
+            setTaskTitle("");
+            setTaskDescription("");
+            setTaskAssigneeId(undefined);
+            setTaskPriority("medium");
+            setTaskDueDate(undefined);
+        }
+    };
+    
+    const handleStatusChange = async (task: any) => {
+        const currentStatus = task.status;
+        const newStatus = currentStatus === 'to_do' ? 'in_progress' : currentStatus === 'in_progress' ? 'done' : 'to_do';
+    
+        try {
+            const result = await updateTaskStatusAction({
+                projectId: params.projectId,
+                taskId: task.id,
+                status: newStatus,
+            });
+            if (result.error) throw new Error(result.error);
+            toast.success(`Task status updated to "${newStatus.replace('_', ' ')}".`);
+            await loadProject();
+        } catch (error) {
+            toast.error((error as Error).message);
+        }
+    };
 
     const handleAddMember = async () => {
         if (!selectedMemberId) {
@@ -134,7 +189,7 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                 <CardHeader className="flex flex-row justify-between items-center">
                     <CardTitle>Tasks</CardTitle>
                     <div className="flex items-center gap-2">
-                        {/* ADD MEMBER DIALOG TRIGGER */}
+                        {/* Add Member Dialog */}
                         <Dialog open={isMemberDialogOpen} onOpenChange={setIsMemberDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
@@ -166,9 +221,71 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-                        {/* ADD TASK DIALOG TRIGGER */}
+
+                        {/* Add Task Dialog */}
                         <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-                           {/* ... (Add Task Dialog remains the same) ... */}
+                            <DialogTrigger asChild>
+                                <Button><Plus className="mr-2 h-4 w-4" /> Add Task</Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Create New Task</DialogTitle>
+                                    <DialogDescription>Fill in the details for the new task.</DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="task-title">Title</Label>
+                                        <Input id="task-title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="e.g., Design the homepage" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="task-assignee">Assignee</Label>
+                                        <Select onValueChange={setTaskAssigneeId}>
+                                            <SelectTrigger id="task-assignee">
+                                                <SelectValue placeholder="Select a member" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {project.project_members.map((member: any) => (
+                                                    <SelectItem key={member.profiles.id} value={member.profiles.id}>
+                                                        {member.profiles.full_name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="task-priority">Priority</Label>
+                                        <Select value={taskPriority} onValueChange={setTaskPriority}>
+                                            <SelectTrigger id="task-priority">
+                                                <SelectValue placeholder="Select priority" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="low">Low</SelectItem>
+                                                <SelectItem value="medium">Medium</SelectItem>
+                                                <SelectItem value="high">High</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="task-due-date">Due Date</Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !taskDueDate && "text-muted-foreground")}>
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {taskDueDate ? format(taskDueDate, "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={taskDueDate} onSelect={setTaskDueDate} initialFocus /></PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                                    <Button onClick={handleCreateTask} disabled={isCreatingTask}>
+                                        {isCreatingTask && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Create Task
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
                         </Dialog>
                     </div>
                 </CardHeader>
@@ -185,7 +302,6 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {/* BUG FIX: Check if project.tasks exists before mapping */}
                             {project.tasks && project.tasks.length > 0 ? project.tasks.map((task: any) => (
                                 <TableRow key={task.id}>
                                     <TableCell>
@@ -204,7 +320,17 @@ export default function ProjectDetailPage({ params }: { params: { projectId: str
                                     </TableCell>
                                     <TableCell>{getPriorityBadge(task.priority)}</TableCell>
                                     <TableCell>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</TableCell>
-                                    <TableCell className="text-right"><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4"/></Button></TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4"/></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem>Edit Task</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-red-600">Delete Task</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
