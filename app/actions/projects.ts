@@ -41,6 +41,8 @@ export async function getProjectsForOrganizationAction(organizationId: string) {
   return { data: projectsWithProgress };
 }
 
+// in app/actions/projects.ts
+
 export async function getProjectByIdAction(projectId: string) {
   if (!projectId) {
     return { error: "Project ID is required." };
@@ -56,7 +58,7 @@ export async function getProjectByIdAction(projectId: string) {
     .single();
 
   if (projectError || !projectData) {
-    console.error("Error fetching project in server action:", JSON.stringify(projectError, null, 2));
+    // The console.error log is no longer needed here
     return { error: "Could not find the specified project." };
   }
 
@@ -78,12 +80,12 @@ export async function getProjectByIdAction(projectId: string) {
     return { error: "Could not fetch project members." };
   }
 
-  // Step 3: Fetch the tasks for the project and their assignees
+  // Step 3: Fetch the tasks for the project and their assignees (with the fix)
   const { data: tasksData, error: tasksError } = await supabase
     .from("tasks")
     .select(`
       *,
-      assignee:profiles (
+      assignee:profiles!tasks_assignee_id_fkey (
           id,
           full_name,
           avatar_url
@@ -93,6 +95,7 @@ export async function getProjectByIdAction(projectId: string) {
     .order("created_at", { ascending: true });
 
   if (tasksError) {
+    // This console.error is helpful for future debugging if needed
     console.error("Error fetching tasks:", tasksError);
     return { error: "Could not fetch project tasks." };
   }
