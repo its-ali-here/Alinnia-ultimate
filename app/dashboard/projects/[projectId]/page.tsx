@@ -44,6 +44,7 @@ const getPriorityBadge = (priority: string) => {
 }
 
 export default function ProjectDetailPage({ params }: { params: { projectId: string } }) {
+    console.log("Project Detail Page is trying to load ID:", params.projectId);
     const { user, organizationId } = useAuth();
     const [project, setProject] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);

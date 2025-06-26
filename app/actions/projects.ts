@@ -56,7 +56,7 @@ export async function getProjectByIdAction(projectId: string) {
     .single();
 
   if (projectError || !projectData) {
-    console.error("Error fetching project:", projectError);
+    console.error("Error fetching project in server action:", JSON.stringify(projectError, null, 2));
     return { error: "Could not find the specified project." };
   }
 
