@@ -107,9 +107,7 @@ export default function LandingPage() {
       >
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
-              S
-            </div>
+            <Image src="/headerlogo.png" alt="Alinnia Logo" width={32} height={32} className="h-8 w-auto invert dark:invert-0" />
             <span>Alinnia</span>
           </div>
           <nav className="hidden md:flex gap-8">
@@ -820,9 +818,7 @@ export default function LandingPage() {
           <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2 font-bold">
-                <div className="size-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground">
-                  S
-                </div>
+                <Image src="/headerlogo.png" alt="Alinnia Logo" width={32} height={32} className="h-8 w-auto invert dark:invert-0"/>
                 <span>Alinnia</span>
               </div>
               <p className="text-sm text-muted-foreground">

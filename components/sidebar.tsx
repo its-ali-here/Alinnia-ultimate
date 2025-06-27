@@ -93,7 +93,7 @@ export function Sidebar() {
             <div className={cn("flex h-16 items-center gap-2 px-4", isCollapsed && "justify-center px-2")}>
               {!isCollapsed && (
                 <Link href="/dashboard" className="flex items-center font-semibold">
-                  <img src="/headerlogo.png" alt="Alinnia" className="h-8 w-auto mr-2" />
+                  <img src="/headerlogo.png" alt="Alinnia" className="h-8 w-auto mr-2 invert dark:invert-0" />
                   <span className="text-lg">Alinnia</span>
                 </Link>
               )}
