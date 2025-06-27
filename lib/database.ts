@@ -506,3 +506,40 @@ async function addUserToOrganization(userId: string, organizationId: string, rol
     throw new Error(`DB:addUserToOrganization - ${error.message} (Code: ${error.code})`)
   }
 }
+
+// Add these new functions to the end of lib/database.ts
+
+export async function inviteMember(organizationId: string, email: string, role: string, inviterId: string) {
+  // In a real application, you would generate a unique invite token,
+  // save it to an 'invites' table, and send an email with a special link.
+  // For now, we will simulate this by logging to the console.
+  console.log(`Simulating invite for ${email} to org ${organizationId} with role ${role} by user ${inviterId}`);
+  toast.info(`An invitation email would be sent to ${email}.`);
+  return { success: true };
+}
+
+export async function updateMemberRole(memberId: string, newRole: string) {
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
+  const { error } = await supabaseAdmin
+      .from("organization_members")
+      .update({ role: newRole })
+      .eq("id", memberId);
+
+  if (error) {
+      console.error("DB:updateMemberRole - Supabase error:", JSON.stringify(error, null, 2));
+      throw new Error(`DB:updateMemberRole - ${error.message}`);
+  }
+}
+
+export async function removeMember(memberId: string) {
+  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
+  const { error } = await supabaseAdmin
+      .from("organization_members")
+      .delete()
+      .eq("id", memberId);
+
+  if (error) {
+      console.error("DB:removeMember - Supabase error:", JSON.stringify(error, null, 2));
+      throw new Error(`DB:removeMember - ${error.message}`);
+  }
+}
