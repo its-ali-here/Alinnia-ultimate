@@ -1,8 +1,9 @@
 "use server"
 
 import { createSupabaseAdminClient } from "@/lib/supabase-server"
+import { revalidatePath } from "next/cache"
 
-// This server action calls the PostgreSQL function we just created.
+// This function is updated to include an 'is_owner' flag
 export async function getChannelsForUserAction(userId: string) {
   if (!userId) return [];
 
@@ -16,11 +17,64 @@ export async function getChannelsForUserAction(userId: string) {
     return [];
   }
 
-  return data;
+  // Add the is_owner flag to each channel object
+  return data.map(channel => ({
+    ...channel,
+    is_owner: channel.created_by === userId
+  }));
 }
 
-// ADD THIS NEW FUNCTION
-// This server action creates a new group channel and adds members to it.
+// --- ADD THE FOLLOWING NEW FUNCTIONS ---
+
+/**
+ * Allows a user to leave a group channel.
+ */
+export async function leaveGroupChannelAction(channelId: string, userId: string) {
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase
+        .from('channel_members')
+        .delete()
+        .match({ channel_id: channelId, user_id: userId });
+
+    if (error) {
+        console.error("Error leaving group:", error);
+        throw new Error("Could not leave the group.");
+    }
+    revalidatePath('/dashboard/chat');
+}
+
+/**
+ * Allows the creator of a group channel to delete it entirely.
+ */
+export async function deleteGroupChannelAction(channelId: string, userId: string) {
+    const supabase = createSupabaseAdminClient();
+
+    // First, verify the user is the owner before proceeding
+    const { data: channel, error: ownerCheckError } = await supabase
+        .from('channels')
+        .select('created_by')
+        .eq('id', channelId)
+        .single();
+
+    if (ownerCheckError || !channel || channel.created_by !== userId) {
+        throw new Error("You do not have permission to delete this group.");
+    }
+
+    // If ownership is confirmed, delete the channel.
+    // The database is set up with 'CASCADE DELETE', so deleting the channel
+    // will automatically delete all its messages and memberships.
+    const { error: deleteError } = await supabase
+        .from('channels')
+        .delete()
+        .eq('id', channelId);
+
+    if (deleteError) {
+        console.error("Error deleting group:", deleteError);
+        throw new Error("Could not delete the group.");
+    }
+    revalidatePath('/dashboard/chat');
+}
+
 export async function createGroupChannelAction({
   organizationId,
   creatorId,
@@ -75,9 +129,6 @@ export async function createGroupChannelAction({
   return channel;
 }
 
-// ADD THIS NEW FUNCTION TO app/actions/chat.ts
-
-// This action finds an existing DM channel between two users or creates a new one.
 export async function getOrCreateDmChannelAction({
   organizationId,
   currentUserId,
