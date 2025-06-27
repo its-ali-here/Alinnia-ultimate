@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Send, MessageCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { format } from "date-fns"
+import { toast } from "sonner"
 
 interface ConversationViewProps {
   channelId: string | null;
@@ -74,12 +75,21 @@ export function ConversationView({ channelId }: ConversationViewProps) {
   }, [messages])
 
   const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim() || !user || !channelId) return
+      e.preventDefault();
+      if (!newMessage.trim() || !user || !channelId) return;
 
-    await sendMessage(channelId, user.id, newMessage)
-    setNewMessage("")
-  }
+      const originalMessage = newMessage;
+      setNewMessage(""); // Clear the input optimistically
+
+      try {
+          await sendMessage(channelId, user.id, originalMessage);
+          // The realtime subscription will handle adding the message to the UI
+      } catch (error) {
+          console.error("Failed to send message:", error);
+          toast.error("Failed to send message. Please try again.");
+          setNewMessage(originalMessage); // Restore the input if it fails
+      }
+  };
   
   // Display a prompt if no channel is selected
   if (!channelId) {

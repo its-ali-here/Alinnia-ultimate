@@ -474,22 +474,28 @@ export async function getMessagesForChannel(channelId: string): Promise<Message[
   return (data as any) || [];
 }
 
-export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message | null> {
-  if (!isSupabaseConfigured()) return null;
+
+
+export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message> {
+  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
+
   const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      channel_id: channelId,
-      user_id: userId,
-      content: content,
-    })
-    .select()
-    .single();
+      .from('messages')
+      .insert({
+          channel_id: channelId,
+          user_id: userId,
+          content: content,
+      })
+      .select()
+      .single();
 
   if (error) {
-    console.error("Error sending message:", error);
-    return null;
+      console.error("Error sending message:", error);
+      // Throw an error instead of returning null
+      throw new Error(`Could not send message: ${error.message}`);
   }
+
+  // We are now guaranteed to have data if no error was thrown
   return data;
 }
 
