@@ -39,7 +39,7 @@ const navigation = [
 
 const bottomNavigation = [
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
-  { name: "Help", href: "/dashboard/help", icon: HelpCircle },
+  { name: "Help & Support", href: "/dashboard/help", icon: HelpCircle },
 ]
 
 export function Sidebar() {
@@ -84,7 +84,7 @@ export function Sidebar() {
         </button>
         <div
           className={cn(
-            "fixed inset-y-0 z-20 flex flex-col bg-background transition-all duration-300 ease-in-out lg:static",
+            "fixed inset-y-0 z-20 flex flex-col border-r bg-background transition-all duration-300 ease-in-out lg:static", // <-- Added border-r here
             isCollapsed ? "w-[72px]" : "w-72",
             isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}

@@ -34,8 +34,8 @@ export default function RootLayout({
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
-        <Analytics /> {/* 3. ADD THIS COMPONENT */}
-        <SpeedInsights /> {/* 4. ADD THIS COMPONENT */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
