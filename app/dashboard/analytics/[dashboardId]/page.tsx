@@ -122,12 +122,36 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         }
     };
     
-    const onLayoutChange = async (newLayout: ReactGridLayout.Layout[]) => {
-        if (dashboard && dashboard.layout && JSON.stringify(newLayout) !== JSON.stringify(dashboard.layout)) {
-            await updateDashboardLayoutAction({
-                dashboardId: dashboard.id,
-                layout: newLayout,
-            });
+    const onLayoutChange = async (newPositionalLayout: ReactGridLayout.Layout[]) => {
+        // Prevent saving on initial render or if dashboard data isn't loaded yet
+        if (!dashboard || !dashboard.layout || isLoading) {
+            return;
+        }
+    
+        // Merge the new positional data with our existing full widget configuration
+        const newFullLayout = newPositionalLayout.map(positionalItem => {
+            const existingWidgetConfig = dashboard.layout.find((w: any) => w.i === positionalItem.i);
+            return {
+                ...existingWidgetConfig, // Keep all our custom properties (title, query, etc.)
+                ...positionalItem,      // Overwrite with the new position and size
+            };
+        });
+    
+        // Only save if the layout has actually changed
+        if (JSON.stringify(newFullLayout) !== JSON.stringify(dashboard.layout)) {
+            try {
+                // Update the local state immediately for a responsive feel
+                setDashboard((prev: any) => ({ ...prev, layout: newFullLayout }));
+    
+                // Save the new, complete layout to the database
+                await updateDashboardLayoutAction({
+                    dashboardId: dashboard.id,
+                    layout: newFullLayout,
+                });
+                // We don't need a success toast here as it can be annoying
+            } catch (error) {
+                 toast.error("Could not save layout changes.");
+            }
         }
     };
 
