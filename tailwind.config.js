@@ -6,8 +6,9 @@ module.exports = {
     "./components/**/*.{ts,tsx,js,jsx,mdx}",
     "./app/**/*.{ts,tsx,js,jsx,mdx}",
     "./src/**/*.{ts,tsx}",
-      "*.{js,ts,jsx,tsx,mdx}"
-],
+    // Remove this line, it's likely causing issues as it's too broad and outside the array
+    // "*.{js,ts,jsx,tsx,mdx}" 
+  ],
   theme: {
     container: {
       center: true,
@@ -17,6 +18,22 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
+          '"Noto Sans"',
+          'sans-serif',
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"',
+        ],
+      }, // Close fontFamily
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
