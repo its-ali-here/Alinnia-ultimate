@@ -1,6 +1,7 @@
 "use server"
 
 import { createSupabaseAdminClient } from "@/lib/supabase-server"
+import { revalidatePath } from "next/cache";
 
 /**
  * Fetches all datasources that are ready for use.
@@ -132,4 +133,95 @@ export async function updateDashboardLayoutAction(args: {
 
     // No need to revalidate path here, as the page will refresh its own data
     return { data };
+}
+
+// Add these new functions to app/actions/analytics.ts
+
+/**
+ * Updates a single widget's configuration within a dashboard's layout array.
+ */
+export async function updateWidgetAction(args: {
+    dashboardId: string;
+    widget: any; // The full updated widget object
+}) {
+    const { dashboardId, widget } = args;
+    if (!dashboardId || !widget || !widget.i) {
+        return { error: "Dashboard ID and widget configuration are required." };
+    }
+
+    const supabase = createSupabaseAdminClient();
+
+    // Fetch the current dashboard layout
+    const { data: dashboard, error: fetchError } = await supabase
+        .from('dashboards')
+        .select('layout')
+        .eq('id', dashboardId)
+        .single();
+
+    if (fetchError || !dashboard) {
+        return { error: "Could not find the dashboard to update." };
+    }
+
+    // Find and replace the widget in the layout array
+    const newLayout = dashboard.layout.map((w: any) => (w.i === widget.i ? widget : w));
+
+    // Save the updated layout back to the database
+    const { data: updatedData, error: updateError } = await supabase
+        .from('dashboards')
+        .update({ layout: newLayout })
+        .eq('id', dashboardId)
+        .select()
+        .single();
+
+    if (updateError) {
+        console.error("Error updating widget:", updateError);
+        return { error: "Could not save the updated widget." };
+    }
+
+    revalidatePath(`/dashboard/analytics/${dashboardId}`);
+    return { data: updatedData };
+}
+
+
+/**
+ * Deletes a single widget from a dashboard's layout array.
+ */
+export async function deleteWidgetAction(args: {
+    dashboardId: string;
+    widgetId: string;
+}) {
+    const { dashboardId, widgetId } = args;
+    if (!dashboardId || !widgetId) {
+        return { error: "Dashboard ID and Widget ID are required." };
+    }
+
+    const supabase = createSupabaseAdminClient();
+
+    const { data: dashboard, error: fetchError } = await supabase
+        .from('dashboards')
+        .select('layout')
+        .eq('id', dashboardId)
+        .single();
+
+    if (fetchError || !dashboard) {
+        return { error: "Could not find the dashboard to update." };
+    }
+
+    // Filter out the widget to be deleted
+    const newLayout = dashboard.layout.filter((w: any) => w.i !== widgetId);
+
+    const { data: updatedData, error: updateError } = await supabase
+        .from('dashboards')
+        .update({ layout: newLayout })
+        .eq('id', dashboardId)
+        .select()
+        .single();
+
+    if (updateError) {
+        console.error("Error deleting widget:", updateError);
+        return { error: "Could not delete the widget." };
+    }
+
+    revalidatePath(`/dashboard/analytics/${dashboardId}`);
+    return { data: updatedData };
 }

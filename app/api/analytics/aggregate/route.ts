@@ -13,10 +13,18 @@ const performAggregation = (data: any[], columnName: string, aggregationType: 's
         case 'sum':
             return validNumbers.reduce((acc, val) => acc + val, 0);
         case 'count':
-            return data.length; // Count all rows where the column exists
+            return data.length;
         case 'average':
             const sum = validNumbers.reduce((acc, val) => acc + val, 0);
             return sum / validNumbers.length;
+        case 'median':
+            const sorted = validNumbers.sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        case 'min':
+            return Math.min(...validNumbers);
+        case 'max':
+            return Math.max(...validNumbers);
         default:
             return 0;
     }

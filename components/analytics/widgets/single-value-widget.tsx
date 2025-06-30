@@ -1,21 +1,42 @@
-// components/analytics/widgets/single-value-widget.tsx
 "use client"
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { TrendingUp } from 'lucide-react'; // Example icon
 
 interface SingleValueWidgetProps {
     widgetConfig: {
         title: string;
         query: {
             columnName: string;
-            aggregationType: 'sum' | 'average' | 'count';
+            aggregationType: 'sum' | 'average' | 'count' | 'median' | 'min' | 'max';
+            format?: 'number' | 'currency' | 'percent';
         };
     };
     datasourceId: string;
+    filters: any;
+}
+
+// Helper function to format the number, which remains very useful
+const formatValue = (value: number | null, formatType?: 'number' | 'currency' | 'percent') => {
+    if (value === null) return 'N/A';
+    
+    const options: Intl.NumberFormatOptions = {
+        maximumFractionDigits: 2,
+    };
+
+    switch (formatType) {
+        case 'currency':
+            options.style = 'currency';
+            options.currency = 'USD'; // This can be made dynamic later
+            break;
+        case 'percent':
+            options.style = 'percent';
+            options.maximumFractionDigits = 1;
+            break;
+    }
+
+    return new Intl.NumberFormat('en-US', options).format(value);
 }
 
 export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWidgetProps) {
@@ -26,12 +47,14 @@ export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWid
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch('/api/analytics/aggregate', {
+                // This fetching logic is correct and remains the same
+                const response = await fetch('/api/analytics/filtered-query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datasourceId,
                         ...widgetConfig.query,
+                        filters: {},
                     }),
                 });
                 if (!response.ok) throw new Error('Failed to fetch aggregate data.');
@@ -39,6 +62,7 @@ export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWid
                 setValue(data.result);
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
+                setValue(null); // Set value to null on error
             } finally {
                 setIsLoading(false);
             }
@@ -47,32 +71,25 @@ export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWid
     }, [widgetConfig, datasourceId]);
 
     if (isLoading) {
+        // The skeleton is now simpler because it doesn't need the card structure
         return (
-            <Card className="h-full w-full p-6">
-                <Skeleton className="h-6 w-3/4 mb-4" />
+            <div className="h-full w-full flex flex-col justify-center gap-2">
                 <Skeleton className="h-10 w-1/2" />
-            </Card>
+                <Skeleton className="h-4 w-3/4" />
+            </div>
         )
     }
 
-    const formattedValue = value?.toLocaleString(undefined, {
-        maximumFractionDigits: 2,
-    });
-
+    // --- THIS IS THE REFACTORED RETURN STATEMENT ---
+    // It no longer contains Card elements. It just returns the core content.
     return (
-        <Card className="h-full w-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{widgetConfig.title}</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-4xl font-bold">
-                    {formattedValue}
-                </div>
-                <p className="text-xs text-muted-foreground capitalize">
-                   {widgetConfig.query.aggregationType} of {widgetConfig.query.columnName}
-                </p>
-            </CardContent>
-        </Card>
+        <div className="flex flex-col justify-center h-full">
+            <div className="text-4xl font-bold">
+                {formatValue(value, widgetConfig.query.format)}
+            </div>
+            <p className="text-xs text-muted-foreground capitalize truncate">
+               {widgetConfig.query.aggregationType} of {widgetConfig.query.columnName}
+            </p>
+        </div>
     );
 }
