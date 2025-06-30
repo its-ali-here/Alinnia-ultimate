@@ -50,6 +50,9 @@ export function ChartWidget({ widgetConfig, datasourceId }: ChartWidgetProps) {
                     throw new Error(errorData.error || 'Failed to fetch widget data.');
                 }
                 const result = await response.json();
+                // --- ADDED LOG ---
+                console.log(`[Chart Widget: ${widgetConfig.title}] Data received from API:`, result);
+                // --- END OF LOG ---
                 setData(result);
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);

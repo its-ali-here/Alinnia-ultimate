@@ -38,20 +38,13 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
     // Form state
     const [widgetTitle, setWidgetTitle] = useState("");
     const [isSavingWidget, setIsSavingWidget] = useState(false);
+    
+    // Filter state
     const [filters, setFilters] = useState<any>({
-        dateRange: {
-            from: new Date(new Date().setMonth(new Date().getMonth() - 1)), // Default to last 30 days
-            to: new Date(),
-        },
-        dateColumn: 'OrderDate', // IMPORTANT: This must match a date column in your CSV
+        dateRange: { from: new Date(new Date().setMonth(new Date().getMonth() - 1)), to: new Date() },
+        dateColumn: 'OrderDate',
     });
 
-    const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
-        if (newDateRange) {
-            setFilters((prev: any) => ({ ...prev, dateRange: newDateRange }));
-        }
-    };
-    
     // Chart-specific state
     const [widgetChartType, setWidgetChartType] = useState("bar");
     const [widgetCategoryKey, setWidgetCategoryKey] = useState<string | undefined>();
@@ -143,6 +136,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
             }
             await loadDashboard();
             setIsConfigOpen(false);
+            resetFormState();
         } catch (error) {
             toast.error((error as Error).message);
         } finally {
@@ -163,7 +157,19 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         }
     };
     
-    const onLayoutChange = async (newLayout: ReactGridLayout.Layout[]) => { /* ... no change needed ... */ };
+    const onLayoutChange = async (newLayout: ReactGridLayout.Layout[]) => {
+        if (dashboard && dashboard.layout && JSON.stringify(newLayout) !== JSON.stringify(dashboard.layout)) {
+            const newFullLayout = newLayout.map(p => ({ ...dashboard.layout.find((w:any) => w.i === p.i), ...p }));
+            setDashboard((prev: any) => ({ ...prev, layout: newFullLayout }));
+            await updateDashboardLayoutAction({ dashboardId: dashboard.id, layout: newFullLayout });
+        }
+    };
+
+    const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
+        if (newDateRange) {
+            setFilters((prev: any) => ({ ...prev, dateRange: newDateRange }));
+        }
+    };
 
     if (isLoading) return <Skeleton className="h-[80vh] w-full" />;
     if (!dashboard) return <div className="p-8 font-semibold">Dashboard not found.</div>;
@@ -212,21 +218,23 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                     </DialogContent>
                 </Dialog>
             </div>
-
+            
             <div className="flex items-center gap-2 border-b pb-4">
-                <DateRangePicker />
-                <Button variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Filter
-                </Button>
+                <DateRangePicker date={filters.dateRange} onDateChange={handleDateRangeChange} />
+                <Button variant="outline" disabled><Plus className="mr-2 h-4 w-4" />Add Filter</Button>
             </div>
             
             {(dashboard.layout && dashboard.layout.length > 0) ? (
-                <ResponsiveGridLayout className="layout" layouts={{ lg: dashboard.layout }} onLayoutChange={onLayoutChange} {...{breakpoints: {lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0}, cols: {lg: 12, md: 10, sm: 6, xs: 4, xxs: 2}, rowHeight: 100}}>
+                <ResponsiveGridLayout
+                    className="layout" layouts={{ lg: dashboard.layout }}
+                    onLayoutChange={onLayoutChange}
+                    breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+                    cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }} rowHeight={100}
+                >
                     {(dashboard.layout).map((widgetConfig: any) => (
                         <div key={widgetConfig.i}>
                            <WidgetWrapper widgetConfig={widgetConfig} onEdit={() => handleOpenEditDialog(widgetConfig)} onDelete={() => setWidgetToDelete(widgetConfig)}>
-                                {widgetConfig.widgetType === 'summary-card' ? <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} /> : <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} />}
+                                {widgetConfig.widgetType === 'summary-card' ? <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={filters} /> : <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={filters} />}
                            </WidgetWrapper>
                         </div>
                     ))}
