@@ -42,7 +42,7 @@ export function ChartWidget({ widgetConfig, datasourceId }: ChartWidgetProps) {
                         datasourceId: datasourceId,
                         categoryKey: widgetConfig.query.categoryKey,
                         valueKey: widgetConfig.query.valueKey,
-                        filters: filters,
+                        filters: {},
                     }),
                 });
                 if (!response.ok) {
