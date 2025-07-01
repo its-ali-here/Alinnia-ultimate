@@ -5,6 +5,7 @@ import { OverviewTab } from "@/components/analytics/overview-tab";
 import { AnalyticsTab } from "@/components/analytics/analytics-tab";
 import { ReportsTab } from "@/components/analytics/reports-tab";
 import { NotificationsTab } from "@/components/analytics/notifications-tab";
+import { AskQuestion } from "@/components/analytics/ask-question"; // Import the component
 
 export default function AnalyticsPage() {
   return (
@@ -15,7 +16,8 @@ export default function AnalyticsPage() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="analytics">My Dashboards</TabsTrigger>
+          <TabsTrigger value="ask">Ask a Question</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -24,6 +26,9 @@ export default function AnalyticsPage() {
         </TabsContent>
         <TabsContent value="analytics" className="space-y-4">
           <AnalyticsTab />
+        </TabsContent>
+        <TabsContent value="ask" className="space-y-4">
+          <AskQuestion />
         </TabsContent>
         <TabsContent value="reports" className="space-y-4">
           <ReportsTab />

@@ -1,18 +1,25 @@
 "use server"
 
-import { revalidatePath } from "next/cache"; // <-- The missing import
+import { revalidatePath } from "next/cache"; 
 import { createSupabaseAdminClient } from "@/lib/supabase-server"
 
-// This function remains the same
+// --- THIS IS THE UPDATED FUNCTION ---
 export async function getReadyDatasourcesAction(organizationId: string) {
     if (!organizationId) return { error: "Organization ID is required." };
     const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase.from("datasources").select('id, file_name, row_count').eq("organization_id", organizationId).eq("status", "ready");
+    // We now select 'column_definitions' directly in this query
+    const { data, error } = await supabase
+        .from("datasources")
+        .select('id, file_name, row_count, column_definitions')
+        .eq("organization_id", organizationId)
+        .eq("status", "ready");
+        
     if (error) { return { error: "Could not fetch data sources." }; }
     return { data };
 }
 
-// This function remains the same
+// --- The rest of the file remains the same ---
+
 export async function getDashboardsForDatasourceAction(datasourceId: string) {
     if (!datasourceId) return { error: "Datasource ID is required." };
     const supabase = createSupabaseAdminClient();
@@ -21,7 +28,6 @@ export async function getDashboardsForDatasourceAction(datasourceId: string) {
     return { data };
 }
 
-// This function remains the same
 export async function getDashboardByIdAction(dashboardId: string) {
     if (!dashboardId) return { error: "Dashboard ID is required." };
     const supabase = createSupabaseAdminClient();
@@ -29,8 +35,6 @@ export async function getDashboardByIdAction(dashboardId: string) {
     if (error) { return { error: "Could not find the specified dashboard." }; }
     return { data };
 }
-
-// --- ADD THE FOLLOWING NEW AND CORRECTED FUNCTIONS ---
 
 export async function createDashboardAction(args: { name: string; description?: string; datasourceId: string; organizationId: string; userId: string; }) {
     const { name, description, datasourceId, organizationId, userId } = args;

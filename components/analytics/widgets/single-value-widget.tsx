@@ -19,7 +19,7 @@ interface SingleValueWidgetProps {
 
 // Helper function to format the number, which remains very useful
 const formatValue = (value: number | null, formatType?: 'number' | 'currency' | 'percent') => {
-    if (value === null) return 'N/A';
+    if (value === null || value === undefined) return 'N/A';
     
     const options: Intl.NumberFormatOptions = {
         maximumFractionDigits: 2,
@@ -39,7 +39,7 @@ const formatValue = (value: number | null, formatType?: 'number' | 'currency' | 
     return new Intl.NumberFormat('en-US', options).format(value);
 }
 
-export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWidgetProps) {
+export function SingleValueWidget({ widgetConfig, datasourceId, filters }: SingleValueWidgetProps) {
     const [value, setValue] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -47,21 +47,23 @@ export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWid
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // This fetching logic is correct and remains the same
-                const response = await fetch('/api/analytics/filtered-query', {
+                // *** THIS IS THE CORRECTED FETCH CALL ***
+                const response = await fetch('/api/analytics/aggregate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datasourceId,
-                        ...widgetConfig.query,
-                        filters: {},
+                        columnName: widgetConfig.query.columnName,
+                        aggregationType: widgetConfig.query.aggregationType,
+                        filters, // Pass the filters to the aggregate API
                     }),
                 });
-                if (!response.ok) throw new Error('Failed to fetch aggregate data.');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch aggregate data.');
+                }
                 const data = await response.json();
-                // --- ADDED LOG ---
                 console.log(`[Summary Card: ${widgetConfig.title}] Data received from API:`, data);
-                // --- END OF LOG ---
                 setValue(data.result);
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
@@ -71,10 +73,9 @@ export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWid
             }
         };
         fetchData();
-    }, [widgetConfig, datasourceId]);
+    }, [widgetConfig, datasourceId, filters]);
 
     if (isLoading) {
-        // The skeleton is now simpler because it doesn't need the card structure
         return (
             <div className="h-full w-full flex flex-col justify-center gap-2">
                 <Skeleton className="h-10 w-1/2" />
@@ -83,8 +84,6 @@ export function SingleValueWidget({ widgetConfig, datasourceId }: SingleValueWid
         )
     }
 
-    // --- THIS IS THE REFACTORED RETURN STATEMENT ---
-    // It no longer contains Card elements. It just returns the core content.
     return (
         <div className="flex flex-col justify-center h-full">
             <div className="text-4xl font-bold">

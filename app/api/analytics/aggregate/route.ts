@@ -2,16 +2,19 @@ import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase-server';
 import { parse, isWithinInterval, isValid } from 'date-fns';
 
-// --- We are adding this helper function to handle filters ---
-const applyFilters = (data: any[], filters: any) => {
+const applyFilters = (data: any[], filters: any, dateFormat: string) => {
+    if (!filters) return data;
     let filteredData = data;
-    if (filters?.dateRange && filters.dateColumn && filters.dateRange.from && filters.dateRange.to) {
+
+    if (filters.dateRange && filters.dateColumn && filters.dateRange.from && filters.dateRange.to) {
         const from = new Date(filters.dateRange.from);
         const to = new Date(filters.dateRange.to);
+
         if (isValid(from) && isValid(to)) {
             filteredData = filteredData.filter(row => {
                 if (!row[filters.dateColumn]) return false;
-                const rowDate = parse(row[filters.dateColumn], 'yyyy-MM-dd', new Date());
+                // Use the user-provided date format for accurate parsing
+                const rowDate = parse(row[filters.dateColumn], dateFormat, new Date());
                 return isValid(rowDate) && isWithinInterval(rowDate, { start: from, end: to });
             });
         }
@@ -36,21 +39,19 @@ const performAggregation = (data: any[], columnName: string, aggregationType: 's
 
 export async function POST(req: Request) {
     try {
-        // The body now includes an optional 'filters' object
         const { datasourceId, columnName, aggregationType, filters } = await req.json();
         if (!datasourceId || !columnName || !aggregationType) {
             return NextResponse.json({ error: 'Missing required parameters.' }, { status: 400 });
         }
 
         const supabaseAdmin = createSupabaseAdminClient();
-        const { data: datasource, error } = await supabaseAdmin.from('datasources').select('processed_data').eq('id', datasourceId).single();
+        const { data: datasource, error } = await supabaseAdmin.from('datasources').select('processed_data, date_format').eq('id', datasourceId).single();
         if (error || !datasource?.processed_data) {
             throw new Error(`Could not find data for datasource: ${datasourceId}`);
         }
 
-        // --- THIS IS THE KEY CHANGE ---
-        // We now filter the data *before* performing the aggregation
-        const filteredData = applyFilters(datasource.processed_data, filters);
+        const dateFormat = datasource.date_format || 'yyyy-MM-dd'; // Default format if none is saved
+        const filteredData = applyFilters(datasource.processed_data, filters, dateFormat);
         const result = performAggregation(filteredData, columnName, aggregationType);
 
         return NextResponse.json({ result });

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { CalendarIcon } from "@radix-ui/react-icons"
-import { addDays, format } from "date-fns"
+import { format } from "date-fns"
 import type { DateRange } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
@@ -10,12 +10,14 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivElement>) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: new Date(2023, 0, 20),
-    to: addDays(new Date(2023, 0, 20), 20),
-  })
+// The props now include the 'date' and a function 'onDateChange'
+interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
+  date: DateRange | undefined
+  onDateChange: (date: DateRange | undefined) => void
+  disabled?: boolean
+}
 
+export function DateRangePicker({ className, date, onDateChange, disabled }: DateRangePickerProps) {
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -24,6 +26,7 @@ export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivEleme
             id="date"
             variant={"outline"}
             className={cn("w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground")}
+            disabled={disabled} // The component can now be disabled
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {date?.from ? (
@@ -45,7 +48,7 @@ export function DateRangePicker({ className }: React.HTMLAttributes<HTMLDivEleme
             mode="range"
             defaultMonth={date?.from}
             selected={date}
-            onSelect={setDate}
+            onSelect={onDateChange} // This now calls the function passed from the parent page
             numberOfMonths={2}
           />
         </PopoverContent>

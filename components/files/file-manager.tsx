@@ -12,6 +12,8 @@ import { toast } from "sonner"
 import { UploadCloud, Trash2, FileText, RefreshCw, Loader2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface DataSourceFile {
   id: string;
@@ -23,11 +25,12 @@ interface DataSourceFile {
 }
 
 export function FileManager() {
-  const { user, organization } = useAuth() // Use the full organization object
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState<DataSourceFile[]>([])
-  const [isLoadingFiles, setIsLoadingFiles] = useState(true)
+  const { user, organization } = useAuth();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dateFormat, setDateFormat] = useState<string>("yyyy-MM-dd"); // State for date format
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<DataSourceFile[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
 
   const fetchFiles = useCallback(async () => {
     if (!organization?.id || !isSupabaseConfigured()) {
@@ -36,7 +39,6 @@ export function FileManager() {
     }
     setIsLoadingFiles(true);
     try {
-      // This query is now protected by the RLS policy we created
       const { data, error } = await supabase
         .from("datasources")
         .select('id, file_name, status, row_count, created_at, storage_path')
@@ -44,7 +46,6 @@ export function FileManager() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-
       setUploadedFiles(data || []);
     } catch (error) {
       toast.error("Failed to fetch files: " + (error as Error).message);
@@ -77,7 +78,8 @@ export function FileManager() {
           organization_id: organization.id,
           uploaded_by_user_id: user.id,
           status: 'uploading',
-          storage_path: 'pending' 
+          storage_path: 'pending',
+          date_format: dateFormat, // Save the selected date format
         })
         .select('id')
         .single();
@@ -85,22 +87,19 @@ export function FileManager() {
       if (dbError) throw dbError;
       datasourceId = datasourceRecord.id;
 
-      // Construct the correct file path as defined in your prompt
       const filePath = `${organization.id}/${datasourceId}/${selectedFile.name}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("files") // Correct bucket name
+        .from("files")
         .upload(filePath, selectedFile, { upsert: false });
 
       if (uploadError) throw uploadError;
 
-      // Update the datasource record with the final path and trigger processing
       await supabase
         .from('datasources')
         .update({ storage_path: filePath, status: 'processing' })
         .eq('id', datasourceId);
 
-      // Invoke the serverless function to process the CSV
       const { error: functionError } = await supabase.functions.invoke('process-csv', {
         body: { datasourceId },
       });
@@ -127,12 +126,9 @@ export function FileManager() {
     if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) return;
 
     try {
-      // The RLS policy allows deletion if the user is a member of the org
       const { error: storageError } = await supabase.storage.from("files").remove([file.storage_path]);
       if (storageError) throw storageError;
-
-      // We trust the server-side to delete the DB record via cascade delete or a function
-      // For now, let's just delete from the client perspective
+      
       await supabase.from('datasources').delete().eq('id', file.id);
 
       toast.success(`"${file.file_name}" deleted successfully.`);
@@ -156,7 +152,27 @@ export function FileManager() {
           <CardDescription>Upload CSV files to be processed for analytics.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input id="file-upload-input" type="file" onChange={handleFileChange} disabled={isUploading} accept=".csv" />
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="file-upload-input">CSV File</Label>
+                <Input id="file-upload-input" type="file" onChange={handleFileChange} disabled={isUploading} accept=".csv" />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="date-format-select">Date Format in your file</Label>
+                 <Select value={dateFormat} onValueChange={setDateFormat}>
+                    <SelectTrigger id="date-format-select">
+                        <SelectValue placeholder="Select date format..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="yyyy-MM-dd">YYYY-MM-DD (e.g., 2023-12-25)</SelectItem>
+                        <SelectItem value="MM/dd/yyyy">MM/DD/YYYY (e.g., 12/25/2023)</SelectItem>
+                        <SelectItem value="dd/MM/yyyy">DD/MM/YYYY (e.g., 25/12/2023)</SelectItem>
+                        <SelectItem value="MM-dd-yyyy">MM-DD-YYYY (e.g., 12-25-2023)</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+          </div>
+
           {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
           {isUploading && <Progress value={100} className="w-full animate-pulse" />}
           <Button onClick={handleFileUpload} disabled={!selectedFile || isUploading}>
@@ -197,7 +213,6 @@ export function FileManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {/* UPDATED: This now maps over our new datasource objects */}
                 {uploadedFiles.map((file) => (
                   <TableRow key={file.id}>
                     <TableCell className="font-medium">{file.file_name}</TableCell>
