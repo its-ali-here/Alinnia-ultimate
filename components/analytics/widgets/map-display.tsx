@@ -1,62 +1,64 @@
-"use client";
+'use client';
 
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
-import { LatLngExpression } from 'leaflet';
-import { Loader2 } from 'lucide-react'; // Keep loader for initial render
+import { useRef, useEffect } from 'react';
+import L from 'leaflet';
+
+// Define the structure for a single data point
+interface MapPoint {
+  lat: number;
+  lon: number;
+  [key: string]: any; // Allows for other data properties
+}
 
 interface MapDisplayProps {
-    data: any[];
-    locationKey: string;
-    valueKey: string;
+  data: MapPoint[];
 }
 
-export function MapDisplay({ data, locationKey, valueKey }: MapDisplayProps) {
-    if (!data) {
-        // This can happen while data is loading
-        return <div className="h-full w-full flex items-center justify-center"><Loader2 className="animate-spin text-muted-foreground"/></div>;
+export const MapDisplay = ({ data }: MapDisplayProps) => {
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mapContainerRef.current && !mapRef.current) {
+      mapRef.current = L.map(mapContainerRef.current).setView([20, 0], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(mapRef.current);
     }
+  }, []);
 
-    if (!locationKey || !valueKey) {
-        return <div className="text-center p-4 text-muted-foreground">Please select a location and value column.</div>;
-    }
-    
-    // The data now comes with latitude and longitude from the backend
-    const mapData = data.filter(item => 
-        item.latitude !== null && item.longitude !== null && !isNaN(item.latitude) && !isNaN(item.longitude)
-    );
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !data) return;
 
-    if (mapData.length === 0) {
-        return (
-            <div className="text-center p-4 text-muted-foreground">
-                <p>No valid geographical data found.</p>
-                <p className="text-xs mt-2">Ensure your data has location names that match the cities database.</p>
-            </div>
-        );
-    }
+    // Clear existing markers
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Marker) {
+        map.removeLayer(layer);
+      }
+    });
 
-    const maxValue = Math.max(...mapData.map(item => item[valueKey]), 0);
+    if (data.length === 0) return;
 
-    return (
-        <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%', borderRadius: 'var(--radius)' }}>
-            <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            {mapData.map((item, index) => (
-                <CircleMarker
-                    key={index}
-                    center={[item.latitude, item.longitude] as LatLngExpression}
-                    radius={5 + (item[valueKey] / maxValue) * 20}
-                    fillOpacity={0.7}
-                    stroke={false}
-                    color="hsl(var(--primary))"
-                    fillColor="hsl(var(--primary))"
-                >
-                    <Tooltip>
-                        {item[locationKey]}: {item[valueKey].toLocaleString()}
-                    </Tooltip>
-                </CircleMarker>
-            ))}
-        </MapContainer>
-    );
-}
+    const bounds = L.latLngBounds([]);
+    data.forEach((point) => {
+      const marker = L.marker([point.lat, point.lon]).addTo(map);
+
+      // Create a popup with all data for that point
+      let popupContent = '<div style="max-height: 150px; overflow-y: auto;">';
+      for (const key in point) {
+        popupContent += `<b>${key}:</b> ${point[key]}<br/>`;
+      }
+      popupContent += '</div>'
+      marker.bindPopup(popupContent);
+
+      bounds.extend([point.lat, point.lon]);
+    });
+
+    // Zoom the map to fit the data
+    map.fitBounds(bounds, { padding: [50, 50] });
+
+  }, [data]); // This effect re-runs whenever the data prop changes
+
+  return <div ref={mapContainerRef} style={{ height: '100%', width: '100%', minHeight: '300px' }} />;
+};

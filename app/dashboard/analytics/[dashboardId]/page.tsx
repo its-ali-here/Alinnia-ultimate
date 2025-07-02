@@ -20,6 +20,8 @@ import { SingleValueWidget } from '@/components/analytics/widgets/single-value-w
 import { WidgetWrapper } from '@/components/analytics/widgets/widget-wrapper';
 import { DateRangePicker } from "@/components/date-range-picker";
 import { type DateRange } from "react-day-picker";
+import 'leaflet/dist/leaflet.css';
+import { GeoWidget } from '@/components/analytics/widgets/geo-widget';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -62,6 +64,8 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
     const [widgetColumnName, setWidgetColumnName] = useState<string | undefined>();
     const [widgetAggregationType, setWidgetAggregationType] = useState('sum');
     const [widgetNumberFormat, setWidgetNumberFormat] = useState('number');
+    const [widgetLatKey, setWidgetLatKey] = useState<string | undefined>();
+    const [widgetLonKey, setWidgetLonKey] = useState<string | undefined>();
 
     const loadDashboard = useCallback(async () => {
         if (!params.dashboardId) return;
@@ -99,6 +103,8 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         setWidgetYAxisKey(undefined);
         setWidgetLocationKey(undefined);
         setWidgetMapValueKey(undefined);
+        setWidgetLatKey(undefined);
+        setWidgetLonKey(undefined);
         setWidgetColumnName(undefined);
         setWidgetAggregationType("sum");
         setWidgetNumberFormat('number');
@@ -127,7 +133,8 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                 setWidgetValueKey(widget.query.valueKey);
             }
         } else if (widget.widgetType === 'map') {
-            setWidgetLocationKey(widget.query.locationKey);
+            setWidgetLatKey(widget.query.latKey); // Add this
+            setWidgetLonKey(widget.query.lonKey); // Add this
             setWidgetMapValueKey(widget.query.valueKey);
         } else if (widget.widgetType === 'summary-card') {
             setWidgetColumnName(widget.query.columnName);
@@ -154,8 +161,16 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                 widgetData = { title: widgetTitle, chartType: widgetChartType, widgetType: 'chart', query: chartQuery };
                 break;
             case 'map':
-                if (!widgetLocationKey || !widgetMapValueKey) { toast.error("Please select columns for location and value."); setIsSavingWidget(false); return; }
-                const mapQuery = { locationKey: widgetLocationKey, valueKey: widgetMapValueKey };
+                if (!widgetLatKey || !widgetLonKey || !widgetMapValueKey) { // Update condition
+                    toast.error("Please select columns for latitude, longitude, and value."); 
+                    setIsSavingWidget(false); 
+                    return; 
+                }
+                const mapQuery = { 
+                    latKey: widgetLatKey, // Add this
+                    lonKey: widgetLonKey, // Add this
+                    valueKey: widgetMapValueKey 
+                };
                 widgetData = { title: widgetTitle, widgetType: 'map', query: mapQuery };
                 break;
             case 'summary-card':
@@ -273,8 +288,27 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
 
                         {widgetTypeToCreate === 'map' && (
                             <div className="space-y-4">
-                                <div className="space-y-2"><Label>Location Column</Label><Select value={widgetLocationKey} onValueChange={setWidgetLocationKey}><SelectTrigger><SelectValue placeholder="Select location data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                                <div className="space-y-2"><Label>Value Column (for marker size)</Label><Select value={widgetMapValueKey} onValueChange={setWidgetMapValueKey}><SelectTrigger><SelectValue placeholder="Select value data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                <div className="space-y-2">
+                                    <Label>Latitude Column</Label>
+                                    <Select value={widgetLatKey} onValueChange={setWidgetLatKey}>
+                                        <SelectTrigger><SelectValue placeholder="Select latitude..."/></SelectTrigger>
+                                        <SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Longitude Column</Label>
+                                    <Select value={widgetLonKey} onValueChange={setWidgetLonKey}>
+                                        <SelectTrigger><SelectValue placeholder="Select longitude..."/></SelectTrigger>
+                                        <SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Value Column (for popups)</Label>
+                                    <Select value={widgetMapValueKey} onValueChange={setWidgetMapValueKey}>
+                                        <SelectTrigger><SelectValue placeholder="Select value data..."/></SelectTrigger>
+                                        <SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         )}
 
@@ -311,13 +345,15 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                     {(dashboard.layout).map((widgetConfig: any) => (
                         <div key={widgetConfig.i}>
                            <WidgetWrapper widgetConfig={widgetConfig} onEdit={() => handleOpenEditDialog(widgetConfig)} onDelete={() => setWidgetToDelete(widgetConfig)}>
-                               {widgetConfig.widgetType === 'summary-card' ? 
-                                   <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
-                               widgetConfig.widgetType === 'map' ?
-                                   <ChartWidget widgetConfig={{...widgetConfig, chartType: 'map'}} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> : // Use ChartWidget to fetch data
-                                   <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} />
-                               }
-                           </WidgetWrapper>
+                                {widgetConfig.widgetType === 'summary-card' ? 
+                                    <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
+                                widgetConfig.widgetType === 'map' ?
+                                    <GeoWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
+                                widgetConfig.widgetType === 'chart' ?
+                                    <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
+                                <div>Unsupported Widget Type</div> // Optional: A fallback for safety
+                                }
+                            </WidgetWrapper>
                         </div>
                     ))}
                 </ResponsiveGridLayout>
