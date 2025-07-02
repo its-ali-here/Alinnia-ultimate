@@ -24,6 +24,7 @@ import { type DateRange } from "react-day-picker";
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
+// Dynamically import the MapDisplay component to avoid SSR issues with Leaflet
 const MapDisplay = dynamic(() => import('@/components/analytics/widgets/map-display').then(mod => mod.MapDisplay), {
   ssr: false,
   loading: () => <div className="h-full w-full flex items-center justify-center"><Loader2 className="animate-spin" /></div>
@@ -35,7 +36,6 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
     const [dashboard, setDashboard] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     
-    // --- UPDATED: State now handles 'map' as a separate widget type ---
     const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [editingWidget, setEditingWidget] = useState<any>(null);
@@ -84,7 +84,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         const filters: any = {};
         if (isDateFilterEnabled) {
             filters.dateRange = dateRange;
-            filters.dateColumn = 'OrderDate';
+            filters.dateColumn = 'OrderDate'; // You can make this dynamic later
         }
         return filters;
     };
@@ -242,18 +242,49 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                     <div className="space-y-4 py-4">
                         <div className="space-y-2"><Label>Widget Title</Label><Input value={widgetTitle} onChange={(e) => setWidgetTitle(e.target.value)} placeholder="e.g., Total Revenue" /></div>
                         
-                        {widgetTypeToCreate === 'chart' && (<>
-                            {/* ... (Chart config UI remains the same) ... */}
-                        </>)}
+                        {widgetTypeToCreate === 'chart' && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Chart Type</Label>
+                                    <Select value={widgetChartType} onValueChange={(v) => setWidgetChartType(v as any)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="bar">Bar Chart</SelectItem>
+                                            <SelectItem value="line">Line Chart</SelectItem>
+                                            <SelectItem value="pie">Donut Chart</SelectItem>
+                                            <SelectItem value="area">Area Chart</SelectItem>
+                                            <SelectItem value="scatter">Scatter Plot</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {widgetChartType === 'scatter' ? (
+                                    <>
+                                        <div className="space-y-2"><Label>X-Axis (Numeric)</Label><Select value={widgetXAxisKey} onValueChange={setWidgetXAxisKey}><SelectTrigger><SelectValue placeholder="Select X-axis data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                        <div className="space-y-2"><Label>Y-Axis (Numeric)</Label><Select value={widgetYAxisKey} onValueChange={setWidgetYAxisKey}><SelectTrigger><SelectValue placeholder="Select Y-axis data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2"><Label>Category (X-Axis / Labels)</Label><Select value={widgetCategoryKey} onValueChange={setWidgetCategoryKey}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                        <div className="space-y-2"><Label>Value (Y-Axis / Numbers)</Label><Select value={widgetValueKey} onValueChange={setWidgetValueKey}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                    </>
+                                )}
+                            </div>
+                        )}
 
-                        {widgetTypeToCreate === 'map' && (<>
-                            <div className="space-y-2"><Label>Location Column</Label><Select value={widgetLocationKey} onValueChange={setWidgetLocationKey}><SelectTrigger><SelectValue placeholder="Select location data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                            <div className="space-y-2"><Label>Value Column (for size)</Label><Select value={widgetMapValueKey} onValueChange={setWidgetMapValueKey}><SelectTrigger><SelectValue placeholder="Select value data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                        </>)}
+                        {widgetTypeToCreate === 'map' && (
+                            <div className="space-y-4">
+                                <div className="space-y-2"><Label>Location Column</Label><Select value={widgetLocationKey} onValueChange={setWidgetLocationKey}><SelectTrigger><SelectValue placeholder="Select location data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                <div className="space-y-2"><Label>Value Column (for marker size)</Label><Select value={widgetMapValueKey} onValueChange={setWidgetMapValueKey}><SelectTrigger><SelectValue placeholder="Select value data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                            </div>
+                        )}
 
-                        {widgetTypeToCreate === 'summary-card' && (<>
-                            {/* ... (Summary card config UI remains the same) ... */}
-                        </>)}
+                        {widgetTypeToCreate === 'summary-card' && (
+                           <div className="space-y-4">
+                                <div className="space-y-2"><Label>Data Column</Label><Select value={widgetColumnName} onValueChange={setWidgetColumnName}><SelectTrigger><SelectValue placeholder="Select a column..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                                <div className="space-y-2"><Label>Calculation</Label><Select value={widgetAggregationType} onValueChange={(v) => setWidgetAggregationType(v as any)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="sum">Sum</SelectItem><SelectItem value="average">Average</SelectItem><SelectItem value="count">Count</SelectItem><SelectItem value="median">Median</SelectItem><SelectItem value="min">Minimum</SelectItem><SelectItem value="max">Maximum</SelectItem></SelectContent></Select></div>
+                                <div className="space-y-2"><Label>Number Formatting</Label><Select value={widgetNumberFormat} onValueChange={(v) => setWidgetNumberFormat(v as any)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="number">Number</SelectItem><SelectItem value="currency">Currency ($)</SelectItem><SelectItem value="percent">Percent (%)</SelectItem></SelectContent></Select></div>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsConfigOpen(false)}>Cancel</Button>
@@ -283,7 +314,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                                {widgetConfig.widgetType === 'summary-card' ? 
                                    <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
                                widgetConfig.widgetType === 'map' ?
-                                   <MapDisplay data={[]} locationKey={widgetConfig.query.locationKey} valueKey={widgetConfig.query.valueKey} /> : // Placeholder data
+                                   <ChartWidget widgetConfig={{...widgetConfig, chartType: 'map'}} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> : // Use ChartWidget to fetch data
                                    <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} />
                                }
                            </WidgetWrapper>

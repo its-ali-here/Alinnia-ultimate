@@ -1,69 +1,90 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
-
-// This is our simple CSV parser from the project.
-// NOTE: For this to work, you MUST copy your `lib/csv-parser.ts` file
-// into the `supabase/functions/_shared/` directory and rename it to `csv-parser.ts`.
 import { parseCsv } from '../_shared/csv-parser.ts'
+// Note: These imports are now correctly recognized because of deno.jsonc
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'https://deno.land/std@0.224.0/path/mod.ts';
 
-console.log("process-csv function invoked");
+let cityData: any[] | null = null;
+function loadCityData() {
+    if (cityData) return cityData;
+    try {
+        const currentPath = dirname(import.meta.url);
+        const filePath = join(currentPath, '../_shared/worldcities.csv').replace(/^file:\/\//, '');
+        const fileContent = readFileSync(filePath, 'utf8');
+        
+        const rows = fileContent.split('\n').slice(1);
+        cityData = rows.map((row: string) => {
+            const columns = row.split('","').map(c => c.replace(/"/g, ''));
+            return {
+                city: columns[0],
+                lat: parseFloat(columns[2]),
+                lng: parseFloat(columns[3]),
+                country: columns[4]
+            };
+        }).filter(c => c.city && !isNaN(c.lat) && !isNaN(c.lng));
+    } catch (e) {
+        console.error("Fatal Error: Could not load city data from _shared/worldcities.csv.", e);
+        cityData = [];
+    }
+    return cityData;
+}
 
-Deno.serve(async (req) => {
-  // This is required for security and to handle pre-flight requests.
+const geocodeLocation = (locationName: string, cities: any[]): [number, number] | null => {
+    if (!locationName) return null;
+    const location = cities.find(c => c.city.toLowerCase() === locationName.toLowerCase().trim());
+    return location ? [location.lat, location.lng] : null;
+};
+
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
     const { datasourceId } = await req.json();
-    if (!datasourceId) {
-      throw new Error("datasourceId is required.");
-    }
+    if (!datasourceId) throw new Error("datasourceId is required.");
 
-    // Create a Supabase client with the Service Role Key for admin-level access.
-    // This is secure because this code only runs on Supabase servers.
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const cities = loadCityData();
 
-    // 1. Get the datasource record to find where the file is stored.
     const { data: datasource, error: fetchError } = await supabaseAdmin
       .from('datasources')
-      .select('storage_path, file_name')
+      .select('storage_path, file_name, column_definitions')
       .eq('id', datasourceId)
       .single();
-
     if (fetchError) throw new Error(`Failed to fetch datasource: ${fetchError.message}`);
 
-    // 2. Download the actual CSV file from Supabase Storage.
-    const { data: fileData, error: downloadError } = await supabaseAdmin
-      .storage
-      .from('files') // Make sure this matches your bucket name
-      .download(datasource.storage_path);
-
+    const { data: fileData, error: downloadError } = await supabaseAdmin.storage.from('files').download(datasource.storage_path);
     if (downloadError) throw new Error(`Failed to download file: ${downloadError.message}`);
 
-    // 3. Parse the CSV file text.
     const csvText = await fileData.text();
-    const { headers, rows, rowCount, error: parseError } = parseCsv(csvText);
-
+    const { rows, rowCount, error: parseError } = parseCsv(csvText);
     if (parseError) throw new Error(`CSV parsing error: ${parseError}`);
 
-    // 4. Update the datasource record with the results.
+    const locationColumn = datasource.column_definitions.find((c: string) => 
+        ['city', 'location', 'country', 'place'].includes(c.toLowerCase())
+    );
+
+    const processedRows = rows.map(row => {
+        const coords = locationColumn ? geocodeLocation(row[locationColumn], cities) : null;
+        return {
+            ...row,
+            latitude: coords ? coords[0] : null,
+            longitude: coords ? coords[1] : null,
+        };
+    });
+
     const { error: updateError } = await supabaseAdmin
       .from('datasources')
       .update({
         status: 'ready',
-        column_definitions: headers, // Storing the headers as column definitions
         row_count: rowCount,
-        processed_data: rows, // Save the actual parsed rows into our new column
+        processed_data: processedRows,
       })
       .eq('id', datasourceId);
-
     if (updateError) throw new Error(`Failed to update datasource: ${updateError.message}`);
 
-    // 5. Return a success message.
     return new Response(JSON.stringify({ message: `Successfully processed ${datasource.file_name}` }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
