@@ -63,7 +63,6 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
                     throw new Error(errorData.error || 'Failed to fetch aggregate data.');
                 }
                 const data = await response.json();
-                console.log(`[Summary Card: ${widgetConfig.title}] Data received from API:`, data);
                 setValue(data.result);
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);

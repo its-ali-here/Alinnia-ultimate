@@ -42,7 +42,15 @@ export const MapDisplay = ({ data }: MapDisplayProps) => {
 
     const bounds = L.latLngBounds([]);
     data.forEach((point) => {
-      const marker = L.marker([point.lat, point.lon]).addTo(map);
+      const marker = L.circleMarker([point.lat, point.lon], {
+        renderer: L.canvas(), // Use canvas renderer for better performance
+        radius: 6,
+        fillColor: '#3b82f6', // A nice blue color
+        color: '#ffffff',
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.7,
+      }).addTo(map);
 
       // Create a popup with all data for that point
       let popupContent = '<div style="max-height: 150px; overflow-y: auto;">';
@@ -60,5 +68,11 @@ export const MapDisplay = ({ data }: MapDisplayProps) => {
 
   }, [data]); // This effect re-runs whenever the data prop changes
 
-  return <div ref={mapContainerRef} style={{ height: '100%', width: '100%', minHeight: '300px' }} />;
+  return (
+    <div
+        ref={mapContainerRef}
+        className="react-grid-drag-handle-cancelled" // Add this class
+        style={{ height: '100%', width: '100%', minHeight: '300px' }}
+    />
+);
 };
