@@ -6,37 +6,64 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2 } from "lucide-react"
+import { Send, Bot, User, Loader2, PlusCircle } from "lucide-react"
 import { useChat } from "ai/react"
 
-interface Message {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  timestamp: Date
-}
-
 export function AlinniaChatInterface() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: "/api/chat",
-  })
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
+    // --- FIX 1: Add a unique ID for chat persistence ---
+    // This tells the hook to save the chat history to localStorage.
+    id: "alinnia-chat-session",
+    
+    // This function will run when the form is submitted.
+    // We add logging here to see what's happening.
+    onFinish: () => {
+      console.log("Chat submission finished.");
+    },
+    onError: (error) => {
+      console.error("Chat submission error:", error);
+    }
+  });
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [messages])
+  }, [messages]);
+
+  // --- FIX 2: Function to start a new chat ---
+  const handleNewChat = () => {
+    // Clear the messages from the component's state
+    setMessages([]);
+    // The `useChat` hook with an `id` automatically handles localStorage,
+    // so clearing the state is enough.
+    console.log("New chat started, history cleared.");
+  };
+  
+  // Wrapper for handleSubmit to add our own logs
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+      console.log("Form submitted. Sending messages:", messages);
+      handleSubmit(e);
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <Card className="flex-1 flex flex-col">
-        <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="border-b flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            Alinnia AI Assistant
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Your intelligent financial assistant powered by AI</p>
+            <div>
+                <CardTitle>Alinnia AI Assistant</CardTitle>
+                <p className="text-sm text-muted-foreground">Your intelligent financial assistant</p>
+            </div>
+          </div>
+           {/* --- FIX 2: "New Chat" button --- */}
+          <Button variant="outline" size="sm" onClick={handleNewChat}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            New Chat
+          </Button>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0">
@@ -97,7 +124,7 @@ export function AlinniaChatInterface() {
           </ScrollArea>
 
           <div className="border-t p-4">
-            <form onSubmit={handleSubmit} className="flex gap-2">
+            <form onSubmit={handleFormSubmit} className="flex gap-2">
               <Input
                 value={input}
                 onChange={handleInputChange}
