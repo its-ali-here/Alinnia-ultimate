@@ -130,14 +130,14 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "PKR 1,599",
+                    price: "$8",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
                   },
                   {
                     name: "Professional",
-                    price: "PKR 3,999",
+                    price: "$20",
                     description: "Ideal for growing businesses.",
                     features: [
                       "Up to 20 team members",
@@ -151,7 +151,7 @@ export function PricingSection() {
                   },
                   {
                     name: "Enterprise",
-                    price: "PKR 7,999",
+                    price: "$40",
                     description: "For large organizations with complex needs.",
                     features: [
                       "Unlimited team members",

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache"; 
 import { createSupabaseAdminClient } from "@/lib/supabase-server"
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { Database } from "@/lib/database.types";
 
-// --- THIS IS THE UPDATED FUNCTION ---
 export async function getReadyDatasourcesAction(organizationId: string) {
     if (!organizationId) return { error: "Organization ID is required." };
     const supabase = createSupabaseAdminClient();
@@ -17,8 +19,6 @@ export async function getReadyDatasourcesAction(organizationId: string) {
     if (error) { return { error: "Could not fetch data sources." }; }
     return { data };
 }
-
-// --- The rest of the file remains the same ---
 
 export async function getDashboardsForDatasourceAction(datasourceId: string) {
     if (!datasourceId) return { error: "Datasource ID is required." };
@@ -80,3 +80,74 @@ export async function deleteWidgetAction(args: { dashboardId: string; widgetId: 
     revalidatePath(`/dashboard/analytics/${dashboardId}`);
     return { data };
 }
+
+// --- CORRECTED: Action to add a comment to a dashboard ---
+export async function addCommentAction({ dashboardId, content }: { dashboardId: string; content: string }) {
+    const cookieStore = cookies();
+  
+    // --- FIX: Use the most robust pattern for creating the server client ---
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    );
+    
+    const { data: { user } } = await supabase.auth.getUser();
+  
+    if (!user) {
+      return { error: 'You must be logged in to comment.' };
+    }
+    if (!content.trim()) {
+      return { error: 'Comment cannot be empty.' };
+    }
+  
+    const { data, error } = await supabase
+      .from('dashboard_comments')
+      .insert({
+        dashboard_id: dashboardId,
+        user_id: user.id,
+        content: content,
+      })
+      .select()
+      .single();
+  
+    if (error) {
+      console.error('Error adding comment:', error);
+      return { error: 'Failed to add comment. Please try again.' };
+    }
+  
+    return { data };
+  }
+  
+  
+  // --- Action to get all comments for a dashboard ---
+  export async function getCommentsAction({ dashboardId }: { dashboardId:string }) {
+    const supabase = createSupabaseAdminClient();
+    
+    const { data, error } = await supabase
+      .from('dashboard_comments')
+      .select(`
+        id,
+        content,
+        created_at,
+        author:profiles (
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq('dashboard_id', dashboardId)
+      .order('created_at', { ascending: true });
+  
+    if (error) {
+      console.error('Error fetching comments:', error);
+      return { error: 'Failed to fetch comments.' };
+    }
+  
+    return { data };
+  }

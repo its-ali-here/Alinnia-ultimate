@@ -22,6 +22,7 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { type DateRange } from "react-day-picker";
 import 'leaflet/dist/leaflet.css';
 import { GeoWidget } from '@/components/analytics/widgets/geo-widget';
+import { DashboardCommentSidebar } from '@/components/analytics/dashboard-comment-sidebar';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -56,7 +57,6 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
     const [widgetValueKey, setWidgetValueKey] = useState<string | undefined>();
     const [widgetXAxisKey, setWidgetXAxisKey] = useState<string | undefined>();
     const [widgetYAxisKey, setWidgetYAxisKey] = useState<string | undefined>();
-    const [widgetLocationKey, setWidgetLocationKey] = useState<string | undefined>();
     const [widgetMapValueKey, setWidgetMapValueKey] = useState<string | undefined>();
     const [widgetColumnName, setWidgetColumnName] = useState<string | undefined>();
     const [widgetAggregationType, setWidgetAggregationType] = useState('sum');
@@ -64,12 +64,13 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
     const [widgetLatKey, setWidgetLatKey] = useState<string | undefined>();
     const [widgetLonKey, setWidgetLonKey] = useState<string | undefined>();
 
-
     const loadDashboard = useCallback(async () => {
         if (!params.dashboardId) {
             setIsLoading(false);
             return;
         }
+        // Keep loading true until the very end
+        setIsLoading(true);
         try {
             const result = await getDashboardByIdAction(params.dashboardId);
             if (result.error) {
@@ -80,6 +81,7 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
             }
         } catch (error) {
             toast.error("Failed to load dashboard data.");
+            setDashboard(null);
         } finally {
             setIsLoading(false);
         }
@@ -89,15 +91,13 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         loadDashboard();
     }, [loadDashboard]);
 
-    // --- FIX: Use useMemo to create a stable, reliable filters object ---
     const activeFilters = useMemo(() => {
         const filters: any = {};
-        if (isDateFilterEnabled && dashboard?.datasource) {
+        if (isDateFilterEnabled && dashboard?.datasource?.date_column && dashboard?.datasource?.date_format) {
             filters.dateRange = dateRange;
             filters.dateColumn = dashboard.datasource.date_column;
             filters.dateFormat = dashboard.datasource.date_format;
         }
-        // --- ADD THIS ---
         if (isCategoryFilterEnabled && categoryColumn && categoryValue) {
             filters.categoryFilter = {
                 column: categoryColumn,
@@ -105,14 +105,14 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
             };
         }
         return filters;
-    }, [isDateFilterEnabled, dateRange, dashboard, isCategoryFilterEnabled, categoryColumn, categoryValue]); // <-- Add new dependencies
+    }, [isDateFilterEnabled, dateRange, dashboard, isCategoryFilterEnabled, categoryColumn, categoryValue]);
 
     useEffect(() => {
         if (categoryColumn && dashboard?.datasource?.processed_data) {
             const allValues = dashboard.datasource.processed_data.map((row: any) => row[categoryColumn]);
-            const uniqueValues = [...new Set(allValues)].filter(Boolean).sort(); // Get unique, sorted values
+            const uniqueValues = [...new Set(allValues)].filter(Boolean).sort();
             setUniqueCategoryValues(uniqueValues as string[]);
-            setCategoryValue(''); // Reset selected value when column changes
+            setCategoryValue('');
         } else {
             setUniqueCategoryValues([]);
         }
@@ -126,7 +126,6 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         setWidgetValueKey(undefined);
         setWidgetXAxisKey(undefined);
         setWidgetYAxisKey(undefined);
-        setWidgetLocationKey(undefined);
         setWidgetMapValueKey(undefined);
         setWidgetLatKey(undefined);
         setWidgetLonKey(undefined);
@@ -205,14 +204,12 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
 
         try {
             if (editingWidget) {
-                const result = await updateWidgetAction({ dashboardId: dashboard.id, widget: { ...editingWidget, ...widgetData } });
-                if (result.error) throw new Error(result.error);
+                await updateWidgetAction({ dashboardId: dashboard.id, widget: { ...editingWidget, ...widgetData } });
                 toast.success("Widget updated successfully!");
             } else {
                 const newWidget = { ...widgetData, i: `widget-${Date.now()}`, x: (dashboard.layout?.length * 6) % 12, y: Infinity, w: 6, h: 4 };
                 const newLayout = [...(dashboard.layout || []), newWidget];
-                const result = await updateDashboardLayoutAction({ dashboardId: dashboard.id, layout: newLayout });
-                if (result.error) throw new Error(result.error);
+                await updateDashboardLayoutAction({ dashboardId: dashboard.id, layout: newLayout });
                 toast.success("Widget added successfully!");
             }
             await loadDashboard();
@@ -246,7 +243,6 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         }
     };
 
-    // --- FIX: Show a loading skeleton for the whole page until the dashboard object is loaded ---
     if (isLoading || !dashboard) {
         return (
             <div className="p-8 space-y-8">
@@ -261,7 +257,6 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         );
     }
 
-    // Now that we are past the loading check, 'dashboard' is guaranteed to exist.
     const columnDefinitions = dashboard.datasource.column_definitions || [];
 
     return (
@@ -272,17 +267,25 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                     <p className="text-muted-foreground">{dashboard.description || `Analytics from ${dashboard.datasource.file_name}`}</p>
                 </div>
                 
-                <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
-                    <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Add Widget</Button></DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>Choose a widget type</DialogTitle></DialogHeader>
-                        <div className="grid grid-cols-2 gap-4 py-4">
-                            <Card onClick={() => handleOpenCreateDialog('summary-card')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><Hash className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Summary Card</p><p className="text-xs text-muted-foreground">Display a single metric.</p></div></Card>
-                            <Card onClick={() => handleOpenCreateDialog('chart')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><BarChart className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Chart</p><p className="text-xs text-muted-foreground">Visualize data with a chart.</p></div></Card>
-                            <Card onClick={() => handleOpenCreateDialog('map')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><MapIcon className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Map</p><p className="text-xs text-muted-foreground">Display geographical data.</p></div></Card>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <div className="flex items-center gap-2">
+                    <DashboardCommentSidebar dashboardId={dashboard.id} />
+                    <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
+                        <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Add Widget</Button></DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Choose a widget type</DialogTitle>
+                                <DialogDescription>
+                                    Select a new widget to add to your dashboard.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid grid-cols-2 gap-4 py-4">
+                                <Card onClick={() => handleOpenCreateDialog('summary-card')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><Hash className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Summary Card</p><p className="text-xs text-muted-foreground">Display a single metric.</p></div></Card>
+                                <Card onClick={() => handleOpenCreateDialog('chart')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><BarChart className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Chart</p><p className="text-xs text-muted-foreground">Visualize data with a chart.</p></div></Card>
+                                <Card onClick={() => handleOpenCreateDialog('map')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><MapIcon className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Map</p><p className="text-xs text-muted-foreground">Display geographical data.</p></div></Card>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
             
             <Dialog open={isConfigOpen} onOpenChange={(open) => { if (!open) { resetFormState(); setIsConfigOpen(false); } else { setIsConfigOpen(open); } }}>
@@ -293,64 +296,16 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                         
                         {widgetTypeToCreate === 'chart' && (
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Chart Type</Label>
-                                    <Select value={widgetChartType} onValueChange={(v) => setWidgetChartType(v as any)}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="bar">Bar Chart</SelectItem>
-                                            <SelectItem value="line">Line Chart</SelectItem>
-                                            <SelectItem value="pie">Donut Chart</SelectItem>
-                                            <SelectItem value="area">Area Chart</SelectItem>
-                                            <SelectItem value="scatter">Scatter Plot</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {widgetChartType === 'scatter' ? (
-                                    <>
-                                        <div className="space-y-2"><Label>X-Axis (Numeric)</Label><Select value={widgetXAxisKey} onValueChange={setWidgetXAxisKey}><SelectTrigger><SelectValue placeholder="Select X-axis data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                                        <div className="space-y-2"><Label>Y-Axis (Numeric)</Label><Select value={widgetYAxisKey} onValueChange={setWidgetYAxisKey}><SelectTrigger><SelectValue placeholder="Select Y-axis data..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="space-y-2"><Label>Category (X-Axis / Labels)</Label><Select value={widgetCategoryKey} onValueChange={setWidgetCategoryKey}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                                        <div className="space-y-2"><Label>Value (Y-Axis / Numbers)</Label><Select value={widgetValueKey} onValueChange={setWidgetValueKey}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                                    </>
-                                )}
                             </div>
                         )}
 
                         {widgetTypeToCreate === 'map' && (
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Latitude Column</Label>
-                                    <Select value={widgetLatKey} onValueChange={setWidgetLatKey}>
-                                        <SelectTrigger><SelectValue placeholder="Select latitude..."/></SelectTrigger>
-                                        <SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Longitude Column</Label>
-                                    <Select value={widgetLonKey} onValueChange={setWidgetLonKey}>
-                                        <SelectTrigger><SelectValue placeholder="Select longitude..."/></SelectTrigger>
-                                        <SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Value Column (for popups)</Label>
-                                    <Select value={widgetMapValueKey} onValueChange={setWidgetMapValueKey}>
-                                        <SelectTrigger><SelectValue placeholder="Select value data..."/></SelectTrigger>
-                                        <SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
                             </div>
                         )}
 
                         {widgetTypeToCreate === 'summary-card' && (
                            <div className="space-y-4">
-                                <div className="space-y-2"><Label>Data Column</Label><Select value={widgetColumnName} onValueChange={setWidgetColumnName}><SelectTrigger><SelectValue placeholder="Select a column..."/></SelectTrigger><SelectContent>{columnDefinitions.filter(Boolean).map((c:string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                                <div className="space-y-2"><Label>Calculation</Label><Select value={widgetAggregationType} onValueChange={(v) => setWidgetAggregationType(v as any)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="sum">Sum</SelectItem><SelectItem value="average">Average</SelectItem><SelectItem value="count">Count</SelectItem><SelectItem value="median">Median</SelectItem><SelectItem value="min">Minimum</SelectItem><SelectItem value="max">Maximum</SelectItem></SelectContent></Select></div>
-                                <div className="space-y-2"><Label>Number Formatting</Label><Select value={widgetNumberFormat} onValueChange={(v) => setWidgetNumberFormat(v as any)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="number">Number</SelectItem><SelectItem value="currency">Currency ($)</SelectItem><SelectItem value="percent">Percent (%)</SelectItem></SelectContent></Select></div>
                             </div>
                         )}
                     </div>
@@ -369,42 +324,17 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                         <Label htmlFor="date-filter-toggle">Date Range</Label>
                     </div>
                     <DateRangePicker date={dateRange} onDateChange={setDateRange} disabled={!isDateFilterEnabled} />
-                    {/* --- Category Filter --- */}
                     <div className="flex items-center gap-2 md:ml-4 border-l md:pl-4">
-                        <Switch 
-                            id="category-filter-toggle" 
-                            checked={isCategoryFilterEnabled}
-                            onCheckedChange={setIsCategoryFilterEnabled}
-                        />
+                        <Switch id="category-filter-toggle" checked={isCategoryFilterEnabled} onCheckedChange={setIsCategoryFilterEnabled} />
                         <Label htmlFor="category-filter-toggle">Category</Label>
                     </div>
-                    <Select 
-                        value={categoryColumn} 
-                        onValueChange={setCategoryColumn}
-                        disabled={!isCategoryFilterEnabled}
-                    >
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select a column..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {columnDefinitions.map((col: string) => (
-                                <SelectItem key={col} value={col}>{col}</SelectItem>
-                            ))}
-                        </SelectContent>
+                    <Select value={categoryColumn} onValueChange={setCategoryColumn} disabled={!isCategoryFilterEnabled}>
+                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select a column..." /></SelectTrigger>
+                        <SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent>
                     </Select>
-                    <Select 
-                        value={categoryValue} 
-                        onValueChange={setCategoryValue}
-                        disabled={!isCategoryFilterEnabled || !categoryColumn || uniqueCategoryValues.length === 0}
-                    >
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select a value..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {uniqueCategoryValues.map((val: string) => (
-                                <SelectItem key={val} value={val}>{val}</SelectItem>
-                            ))}
-                        </SelectContent>
+                    <Select value={categoryValue} onValueChange={setCategoryValue} disabled={!isCategoryFilterEnabled || !categoryColumn || uniqueCategoryValues.length === 0}>
+                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select a value..." /></SelectTrigger>
+                        <SelectContent>{uniqueCategoryValues.map((val: string) => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent>
                     </Select>
                 </CardContent>
             </Card>
