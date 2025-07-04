@@ -296,7 +296,7 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
         );
     }
 
-    const columnDefinitions = dashboard.datasource.column_definitions || [];
+    const columnDefinitions: string[] = dashboard.datasource.column_definitions || [];
 
     return (
         <div className="space-y-4">
@@ -335,16 +335,218 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
                         
                         {widgetTypeToCreate === 'chart' && (
                             <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Chart Type</Label>
+                                    <Select
+                                        value={widgetChartType}
+                                        onValueChange={(value) => setWidgetChartType(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select chart type..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="bar">Bar</SelectItem>
+                                            <SelectItem value="line">Line</SelectItem>
+                                            <SelectItem value="pie">Pie</SelectItem>
+                                            <SelectItem value="area">Area</SelectItem>
+                                            <SelectItem value="scatter">Scatter</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {widgetChartType === 'scatter' ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>X-Axis Key</Label>
+                                            <Select
+                                                value={widgetXAxisKey}
+                                                onValueChange={(value) => setWidgetXAxisKey(value)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select X-axis column..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {columnDefinitions.map((col: string) => (
+                                                        <SelectItem key={col} value={col}>
+                                                            {col}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Y-Axis Key</Label>
+                                            <Select
+                                                value={widgetYAxisKey}
+                                                onValueChange={(value) => setWidgetYAxisKey(value)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Y-axis column..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {columnDefinitions.map((col: string) => (
+                                                        <SelectItem key={col} value={col}>
+                                                            {col}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>Category Key</Label>
+                                            <Select
+                                                value={widgetCategoryKey}
+                                                onValueChange={(value) => setWidgetCategoryKey(value)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select category column..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {columnDefinitions.map((col: string) => (
+                                                        <SelectItem key={col} value={col}>
+                                                            {col}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Value Key</Label>
+                                            <Select
+                                                value={widgetValueKey}
+                                                onValueChange={(value) => setWidgetValueKey(value)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select value column..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {columnDefinitions.map((col: string) => (
+                                                        <SelectItem key={col} value={col}>
+                                                            {col}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
                         {widgetTypeToCreate === 'map' && (
                             <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Latitude Key</Label>
+                                    <Select
+                                        value={widgetLatKey}
+                                        onValueChange={(value) => setWidgetLatKey(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select latitude column..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {columnDefinitions.map((col: string) => (
+                                                <SelectItem key={col} value={col}>
+                                                    {col}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Longitude Key</Label>
+                                    <Select
+                                        value={widgetLonKey}
+                                        onValueChange={(value) => setWidgetLonKey(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select longitude column..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {columnDefinitions.map((col: string) => (
+                                                <SelectItem key={col} value={col}>
+                                                    {col}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Value Key</Label>
+                                    <Select
+                                        value={widgetMapValueKey}
+                                        onValueChange={(value) => setWidgetMapValueKey(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select value column..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {columnDefinitions.map((col: string) => (
+                                                <SelectItem key={col} value={col}>
+                                                    {col}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         )}
 
                         {widgetTypeToCreate === 'summary-card' && (
                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Column Name</Label>
+                                    <Select
+                                        value={widgetColumnName}
+                                        onValueChange={(value) => setWidgetColumnName(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select column..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {columnDefinitions.map((col: string) => (
+                                                <SelectItem key={col} value={col}>
+                                                    {col}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Aggregation Type</Label>
+                                    <Select
+                                        value={widgetAggregationType}
+                                        onValueChange={(value) => setWidgetAggregationType(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select aggregation type..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="sum">Sum</SelectItem>
+                                            <SelectItem value="average">Average</SelectItem>
+                                            <SelectItem value="count">Count</SelectItem>
+                                            <SelectItem value="count_distinct">Count Distinct</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Number Format</Label>
+                                    <Select
+                                        value={widgetNumberFormat}
+                                        onValueChange={(value) => setWidgetNumberFormat(value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select format..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="number">Number</SelectItem>
+                                            <SelectItem value="currency">Currency</SelectItem>
+                                            <SelectItem value="percentage">Percentage</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         )}
                     </div>
