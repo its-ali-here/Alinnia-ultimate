@@ -10,6 +10,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import 'leaflet/dist/leaflet.css';
+import { GlobalDateRangeProvider } from "@/context/GlobalDateRangeContext"
 
 export const metadata: Metadata = {
   title: "Alinnia - Business Intelligence",
@@ -28,7 +29,11 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <SettingsProvider>
-              <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
+              <TooltipProvider delayDuration={0}>
+                <GlobalDateRangeProvider>
+                  {children}
+                </GlobalDateRangeProvider>
+              </TooltipProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

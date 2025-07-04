@@ -50,6 +50,12 @@ export async function POST(req: Request) {
     try {
         const { datasourceId, query, filters } = await req.json();
 
+        // Inject global date range into filters if not already provided
+        const globalDateRange = filters?.globalDateRange || { from: null, to: null };
+        if (!filters.dateRange) {
+            filters.dateRange = globalDateRange;
+        }
+
         if (!datasourceId || !query || !query.categoryKey || !query.valueKey) {
             return NextResponse.json({ error: 'Missing required query parameters.' }, { status: 400 });
         }
