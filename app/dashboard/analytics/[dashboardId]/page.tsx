@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react'; // Import useMemo
 import dynamic from 'next/dynamic';
 import { getDashboardByIdAction, updateDashboardLayoutAction, updateWidgetAction, deleteWidgetAction } from '@/app/actions/analytics';
 import { Button } from '@/components/ui/button';
@@ -26,12 +26,6 @@ import { GeoWidget } from '@/components/analytics/widgets/geo-widget';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
-// Dynamically import the MapDisplay component to avoid SSR issues with Leaflet
-const MapDisplay = dynamic(() => import('@/components/analytics/widgets/map-display').then(mod => mod.MapDisplay), {
-  ssr: false,
-  loading: () => <div className="h-full w-full flex items-center justify-center"><Loader2 className="animate-spin" /></div>
-});
-
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function DashboardViewPage({ params }: { params: { dashboardId: string } }) {
@@ -52,8 +46,11 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
         to: new Date(),
     });
+    const [isCategoryFilterEnabled, setIsCategoryFilterEnabled] = useState(false);
+    const [categoryColumn, setCategoryColumn] = useState<string>('');
+    const [categoryValue, setCategoryValue] = useState<string>('');
+    const [uniqueCategoryValues, setUniqueCategoryValues] = useState<string[]>([]);
 
-    // State for different widget types
     const [widgetChartType, setWidgetChartType] = useState("bar");
     const [widgetCategoryKey, setWidgetCategoryKey] = useState<string | undefined>();
     const [widgetValueKey, setWidgetValueKey] = useState<string | undefined>();
@@ -67,31 +64,59 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
     const [widgetLatKey, setWidgetLatKey] = useState<string | undefined>();
     const [widgetLonKey, setWidgetLonKey] = useState<string | undefined>();
 
+
     const loadDashboard = useCallback(async () => {
-        if (!params.dashboardId) return;
-        const result = await getDashboardByIdAction(params.dashboardId);
-        if (result.error) {
-            toast.error(result.error);
-            setDashboard(null);
-        } else {
-            setDashboard(result.data);
+        if (!params.dashboardId) {
+            setIsLoading(false);
+            return;
         }
-        setIsLoading(false);
+        try {
+            const result = await getDashboardByIdAction(params.dashboardId);
+            if (result.error) {
+                toast.error(result.error);
+                setDashboard(null);
+            } else {
+                setDashboard(result.data);
+            }
+        } catch (error) {
+            toast.error("Failed to load dashboard data.");
+        } finally {
+            setIsLoading(false);
+        }
     }, [params.dashboardId]);
 
     useEffect(() => {
-        setIsLoading(true);
         loadDashboard();
     }, [loadDashboard]);
 
-    const getActiveFilters = () => {
+    // --- FIX: Use useMemo to create a stable, reliable filters object ---
+    const activeFilters = useMemo(() => {
         const filters: any = {};
-        if (isDateFilterEnabled) {
+        if (isDateFilterEnabled && dashboard?.datasource) {
             filters.dateRange = dateRange;
-            filters.dateColumn = 'OrderDate'; // You can make this dynamic later
+            filters.dateColumn = dashboard.datasource.date_column;
+            filters.dateFormat = dashboard.datasource.date_format;
+        }
+        // --- ADD THIS ---
+        if (isCategoryFilterEnabled && categoryColumn && categoryValue) {
+            filters.categoryFilter = {
+                column: categoryColumn,
+                value: categoryValue
+            };
         }
         return filters;
-    };
+    }, [isDateFilterEnabled, dateRange, dashboard, isCategoryFilterEnabled, categoryColumn, categoryValue]); // <-- Add new dependencies
+
+    useEffect(() => {
+        if (categoryColumn && dashboard?.datasource?.processed_data) {
+            const allValues = dashboard.datasource.processed_data.map((row: any) => row[categoryColumn]);
+            const uniqueValues = [...new Set(allValues)].filter(Boolean).sort(); // Get unique, sorted values
+            setUniqueCategoryValues(uniqueValues as string[]);
+            setCategoryValue(''); // Reset selected value when column changes
+        } else {
+            setUniqueCategoryValues([]);
+        }
+    }, [categoryColumn, dashboard?.datasource?.processed_data]);
 
     const resetFormState = () => {
         setEditingWidget(null);
@@ -133,8 +158,8 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                 setWidgetValueKey(widget.query.valueKey);
             }
         } else if (widget.widgetType === 'map') {
-            setWidgetLatKey(widget.query.latKey); // Add this
-            setWidgetLonKey(widget.query.lonKey); // Add this
+            setWidgetLatKey(widget.query.latKey);
+            setWidgetLonKey(widget.query.lonKey);
             setWidgetMapValueKey(widget.query.valueKey);
         } else if (widget.widgetType === 'summary-card') {
             setWidgetColumnName(widget.query.columnName);
@@ -161,16 +186,12 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                 widgetData = { title: widgetTitle, chartType: widgetChartType, widgetType: 'chart', query: chartQuery };
                 break;
             case 'map':
-                if (!widgetLatKey || !widgetLonKey || !widgetMapValueKey) { // Update condition
+                if (!widgetLatKey || !widgetLonKey || !widgetMapValueKey) {
                     toast.error("Please select columns for latitude, longitude, and value."); 
                     setIsSavingWidget(false); 
                     return; 
                 }
-                const mapQuery = { 
-                    latKey: widgetLatKey, // Add this
-                    lonKey: widgetLonKey, // Add this
-                    valueKey: widgetMapValueKey 
-                };
+                const mapQuery = { latKey: widgetLatKey, lonKey: widgetLonKey, valueKey: widgetMapValueKey };
                 widgetData = { title: widgetTitle, widgetType: 'map', query: mapQuery };
                 break;
             case 'summary-card':
@@ -225,9 +246,22 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
         }
     };
 
-    if (isLoading) return <Skeleton className="h-[80vh] w-full" />;
-    if (!dashboard) return <div className="p-8 font-semibold">Dashboard not found.</div>;
+    // --- FIX: Show a loading skeleton for the whole page until the dashboard object is loaded ---
+    if (isLoading || !dashboard) {
+        return (
+            <div className="p-8 space-y-8">
+                <Skeleton className="h-10 w-1/3" />
+                <Skeleton className="h-20 w-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        );
+    }
 
+    // Now that we are past the loading check, 'dashboard' is guaranteed to exist.
     const columnDefinitions = dashboard.datasource.column_definitions || [];
 
     return (
@@ -327,33 +361,73 @@ export default function DashboardViewPage({ params }: { params: { dashboardId: s
                 </DialogContent>
             </Dialog>
 
-            <div className="flex items-center gap-4 border-b pb-4">
-                <div className="flex items-center gap-2">
-                    <Switch id="date-filter-toggle" checked={isDateFilterEnabled} onCheckedChange={setIsDateFilterEnabled}/>
-                    <Label htmlFor="date-filter-toggle">Filter by Date</Label>
-                </div>
-                <DateRangePicker date={dateRange} onDateChange={setDateRange} disabled={!isDateFilterEnabled}/>
-            </div>
+            <Card>
+                <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+                    <h3 className="text-md font-semibold mr-4">Filters</h3>
+                    <div className="flex items-center gap-2">
+                        <Switch id="date-filter-toggle" checked={isDateFilterEnabled} onCheckedChange={setIsDateFilterEnabled} />
+                        <Label htmlFor="date-filter-toggle">Date Range</Label>
+                    </div>
+                    <DateRangePicker date={dateRange} onDateChange={setDateRange} disabled={!isDateFilterEnabled} />
+                    {/* --- Category Filter --- */}
+                    <div className="flex items-center gap-2 md:ml-4 border-l md:pl-4">
+                        <Switch 
+                            id="category-filter-toggle" 
+                            checked={isCategoryFilterEnabled}
+                            onCheckedChange={setIsCategoryFilterEnabled}
+                        />
+                        <Label htmlFor="category-filter-toggle">Category</Label>
+                    </div>
+                    <Select 
+                        value={categoryColumn} 
+                        onValueChange={setCategoryColumn}
+                        disabled={!isCategoryFilterEnabled}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select a column..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {columnDefinitions.map((col: string) => (
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select 
+                        value={categoryValue} 
+                        onValueChange={setCategoryValue}
+                        disabled={!isCategoryFilterEnabled || !categoryColumn || uniqueCategoryValues.length === 0}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select a value..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {uniqueCategoryValues.map((val: string) => (
+                                <SelectItem key={val} value={val}>{val}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
             
-            {(dashboard.layout && dashboard.layout.length > 0) ? (
+            {dashboard.layout && dashboard.layout.length > 0 ? (
                 <ResponsiveGridLayout
                     className="layout" layouts={{ lg: dashboard.layout }}
                     onLayoutChange={onLayoutChange}
                     breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                     cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }} rowHeight={100}
                 >
-                    {(dashboard.layout).map((widgetConfig: any) => (
+                    {dashboard.layout.map((widgetConfig: any) => (
                         <div key={widgetConfig.i}>
                            <WidgetWrapper widgetConfig={widgetConfig} onEdit={() => handleOpenEditDialog(widgetConfig)} onDelete={() => setWidgetToDelete(widgetConfig)}>
-                                {widgetConfig.widgetType === 'summary-card' ? 
-                                    <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
-                                widgetConfig.widgetType === 'map' ?
-                                    <GeoWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
-                                widgetConfig.widgetType === 'chart' ?
-                                    <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={getActiveFilters()} /> :
-                                <div>Unsupported Widget Type</div> // Optional: A fallback for safety
-                                }
-                            </WidgetWrapper>
+                               {widgetConfig.widgetType === 'summary-card' ? 
+                                   <SingleValueWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={activeFilters} /> :
+                               widgetConfig.widgetType === 'map' ?
+                                   <GeoWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={activeFilters} /> :
+                               widgetConfig.widgetType === 'chart' ?
+                                   <ChartWidget widgetConfig={widgetConfig} datasourceId={dashboard.datasource.id} filters={activeFilters} /> :
+                                <div>Unsupported Widget Type</div>
+                               }
+                           </WidgetWrapper>
                         </div>
                     ))}
                 </ResponsiveGridLayout>
