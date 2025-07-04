@@ -14,7 +14,15 @@ import { toast } from 'sonner';
 import { addCommentAction, getCommentsAction } from '@/app/actions/analytics';
 
 // Define the type for a comment, derived from our server action's return type
-type Comment = Awaited<ReturnType<typeof getCommentsAction>>['data'][number];
+type Comment = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: {
+    full_name: string;
+    avatar_url: string;
+  };
+};
 
 export function DashboardCommentSidebar({ dashboardId }: { dashboardId: string }) {
   const [comments, setComments] = useState<Comment[]>([]);
@@ -28,7 +36,7 @@ export function DashboardCommentSidebar({ dashboardId }: { dashboardId: string }
     if (result.error) {
       toast.error(result.error);
     } else {
-      setComments(result.data || []);
+      setComments(result.data as Comment[]); // FIX: Explicitly cast the data to `Comment[]`
     }
     setIsLoading(false);
   }, [dashboardId]);

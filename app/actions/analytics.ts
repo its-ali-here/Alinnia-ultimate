@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase-server"
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { Database } from "@/lib/database.types";
+import { Database } from "@/lib/database-types";
 
 export async function getReadyDatasourcesAction(organizationId: string) {
     if (!organizationId) return { error: "Organization ID is required." };
@@ -83,71 +83,69 @@ export async function deleteWidgetAction(args: { dashboardId: string; widgetId: 
 
 // --- CORRECTED: Action to add a comment to a dashboard ---
 export async function addCommentAction({ dashboardId, content }: { dashboardId: string; content: string }) {
-    const cookieStore = cookies();
-  
-    // --- FIX: Use the most robust pattern for creating the server client ---
+    const cookieStore = await cookies(); // FIX: Await the cookies promise
+
     const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-        },
-      }
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return cookieStore.get(name)?.value; // FIX: Correctly access cookies
+                },
+            },
+        }
     );
-    
-    const { data: { user } } = await supabase.auth.getUser();
-  
-    if (!user) {
-      return { error: 'You must be logged in to comment.' };
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(); // FIX: Handle user fetching errors
+    if (userError || !userData?.user) {
+        return { error: 'You must be logged in to comment.' };
     }
+
     if (!content.trim()) {
-      return { error: 'Comment cannot be empty.' };
+        return { error: 'Comment cannot be empty.' };
     }
-  
+
     const { data, error } = await supabase
-      .from('dashboard_comments')
-      .insert({
-        dashboard_id: dashboardId,
-        user_id: user.id,
-        content: content,
-      })
-      .select()
-      .single();
-  
+        .from('dashboard_comments')
+        .insert({
+            dashboard_id: dashboardId,
+            user_id: userData.user.id,
+            content: content,
+        })
+        .select()
+        .single();
+
     if (error) {
-      console.error('Error adding comment:', error);
-      return { error: 'Failed to add comment. Please try again.' };
+        console.error('Error adding comment:', error);
+        return { error: 'Failed to add comment. Please try again.' };
     }
-  
+
     return { data };
-  }
-  
-  
-  // --- Action to get all comments for a dashboard ---
-  export async function getCommentsAction({ dashboardId }: { dashboardId:string }) {
+}
+
+// --- Action to get all comments for a dashboard ---
+export async function getCommentsAction({ dashboardId }: { dashboardId: string }) {
     const supabase = createSupabaseAdminClient();
-    
+
     const { data, error } = await supabase
-      .from('dashboard_comments')
-      .select(`
-        id,
-        content,
-        created_at,
-        author:profiles (
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('dashboard_id', dashboardId)
-      .order('created_at', { ascending: true });
-  
+        .from('dashboard_comments')
+        .select(`
+            id,
+            content,
+            created_at,
+            author:profiles!dashboard_comments_user_id_fkey (
+                full_name,
+                avatar_url
+            )
+        `) // FIX: Use the correct foreign key relationship
+        .eq('dashboard_id', dashboardId)
+        .order('created_at', { ascending: true });
+
     if (error) {
-      console.error('Error fetching comments:', error);
-      return { error: 'Failed to fetch comments.' };
+        console.error('Error fetching comments:', error);
+        return { error: 'Failed to fetch comments.' };
     }
-  
+
     return { data };
-  }
+}
