@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { use } from 'react'; // Import `use` from React
 import dynamic from 'next/dynamic';
-import { getDashboardByIdAction, updateDashboardLayoutAction, updateWidgetAction, deleteWidgetAction, addCommentAction, getCommentsAction } from '@/app/actions/analytics';
+import { getDashboardByIdAction, updateDashboardLayoutAction, updateWidgetAction, deleteWidgetAction } from '@/app/actions/analytics';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -66,9 +66,7 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
     const [widgetLatKey, setWidgetLatKey] = useState<string | undefined>();
     const [widgetLonKey, setWidgetLonKey] = useState<string | undefined>();
 
-    const [comments, setComments] = useState<any[]>([]);
-    const [newComment, setNewComment] = useState('');
-    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
 
     const loadDashboard = useCallback(async () => {
         if (!params.dashboardId) {
@@ -93,19 +91,11 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
         }
     }, [params.dashboardId]);
 
-    const loadComments = useCallback(async () => {
-        const result = await getCommentsAction({ dashboardId: params.dashboardId });
-        if (result.error) {
-            toast.error(result.error);
-        } else {
-            setComments(result.data || []); // FIX: Ensure `data` is always an array
-        }
-    }, [params.dashboardId]);
+
 
     useEffect(() => {
         loadDashboard();
-        loadComments();
-    }, [loadDashboard, loadComments]);
+    }, [loadDashboard]);
 
     const activeFilters = useMemo(() => {
         const filters: any = {};
@@ -251,28 +241,7 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
         }
     };
     
-    const handleAddComment = async () => {
-        if (!newComment.trim()) {
-            toast.error('Comment cannot be empty.');
-            return;
-        }
 
-        setIsSubmittingComment(true);
-        try {
-            const result = await addCommentAction({ dashboardId: params.dashboardId, content: newComment });
-            if (result.error) {
-                toast.error(result.error);
-            } else {
-                toast.success('Comment added successfully!');
-                setNewComment('');
-                await loadComments();
-            }
-        } catch (error) {
-            toast.error('Failed to add comment. Please try again.');
-        } finally {
-            setIsSubmittingComment(false);
-        }
-    };
 
     const onLayoutChange = async (newLayout: ReactGridLayout.Layout[]) => {
         if (dashboard && dashboard.layout && JSON.stringify(newLayout) !== JSON.stringify(dashboard.layout)) {
@@ -612,34 +581,7 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
                 </div>
             )}
 
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold">Comments</h2>
-                <div className="space-y-4">
-                    {comments.map((comment) => (
-                        <div key={comment.id} className="p-4 border rounded">
-                            <p className="font-semibold">{comment.author.full_name}</p>
-                            <p>{comment.content}</p>
-                            <p className="text-sm text-muted-foreground">{new Date(comment.created_at).toLocaleString()}</p>
-                        </div>
-                    ))}
-                </div>
-                <div className="mt-4 flex items-center gap-2">
-                    <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Write a comment..."
-                        className="flex-1 p-2 border rounded"
-                    />
-                    <button
-                        onClick={handleAddComment}
-                        disabled={isSubmittingComment}
-                        className="p-2 bg-primary text-white rounded"
-                    >
-                        {isSubmittingComment ? 'Submitting...' : 'Submit'}
-                    </button>
-                </div>
-            </div>
+
 
             <AlertDialog open={!!widgetToDelete} onOpenChange={() => setWidgetToDelete(null)}>
                 <AlertDialogContent>

@@ -12,6 +12,7 @@ import { MessageSquare, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { addCommentAction, getCommentsAction } from '@/app/actions/analytics';
+import { useAuth } from '@/contexts/auth-context';
 
 // Define the type for a comment, derived from our server action's return type
 type Comment = {
@@ -25,6 +26,7 @@ type Comment = {
 };
 
 export function DashboardCommentSidebar({ dashboardId }: { dashboardId: string }) {
+  const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,10 +34,14 @@ export function DashboardCommentSidebar({ dashboardId }: { dashboardId: string }
 
   const fetchComments = useCallback(async () => {
     setIsLoading(true);
+    console.log("Fetching comments for dashboard:", dashboardId);
     const result = await getCommentsAction({ dashboardId });
+    console.log("Comments fetch result:", result);
     if (result.error) {
+      console.error("Error fetching comments:", result.error);
       toast.error(result.error);
     } else {
+      console.log("Comments fetched successfully:", result.data);
       setComments(result.data as Comment[]); // FIX: Explicitly cast the data to `Comment[]`
     }
     setIsLoading(false);
@@ -51,12 +57,22 @@ export function DashboardCommentSidebar({ dashboardId }: { dashboardId: string }
     e.preventDefault();
     if (!newComment.trim()) return;
 
+    if (!user) {
+      toast.error("You must be logged in to comment.");
+      return;
+    }
+
+    console.log("Submitting comment:", { dashboardId, content: newComment, userId: user.id });
     setIsSubmitting(true);
-    const result = await addCommentAction({ dashboardId, content: newComment });
-    
+    const result = await addCommentAction({ dashboardId, content: newComment, userId: user.id });
+    console.log("Comment submission result:", result);
+
     if (result.error) {
+      console.error("Error submitting comment:", result.error);
       toast.error(result.error);
     } else {
+      console.log("Comment submitted successfully");
+      toast.success("Comment added successfully!");
       setNewComment('');
       // Re-fetch comments to show the new one
       await fetchComments();

@@ -460,17 +460,61 @@ export async function getChannelsForUser(userId: string): Promise<Channel[]> {
 
 export async function getMessagesForChannel(channelId: string): Promise<Message[]> {
   if (!isSupabaseConfigured()) return [];
-  
+
+  console.log("Fetching messages for channel:", channelId);
+
+  // First, try the query with the join using explicit column reference
   const { data, error } = await supabase
     .from('messages')
-    .select('*, author:profiles!user_id(id, full_name, avatar_url)')
+    .select(`
+      *,
+      author:profiles!user_id (
+        id,
+        full_name,
+        avatar_url
+      )
+    `)
     .eq('channel_id', channelId)
     .order('created_at', { ascending: true });
-    
+
   if (error) {
-    console.error("Error fetching messages:", error);
-    return [];
+    // Expected error due to foreign key relationship issues - using fallback
+
+    // Fallback: try without the join
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: true });
+
+    if (fallbackError) {
+      console.error("Fallback query also failed:", fallbackError);
+      return [];
+    }
+
+    console.log("Fallback query succeeded, fetching user profiles separately");
+
+    // Manually fetch user profiles for each message
+    const messagesWithProfiles = await Promise.all(
+      (fallbackData || []).map(async (message) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .eq('id', message.user_id)
+          .single();
+
+        return {
+          ...message,
+          author: profile || { id: message.user_id, full_name: 'Unknown User', avatar_url: null }
+        };
+      })
+    );
+
+    console.log("Messages with profiles:", messagesWithProfiles);
+    return messagesWithProfiles;
   }
+
+  console.log("Messages fetched successfully:", data);
   return (data as any) || [];
 }
 
@@ -478,6 +522,8 @@ export async function getMessagesForChannel(channelId: string): Promise<Message[
 
 export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message> {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
+
+  console.log("Sending message:", { channelId, userId, content });
 
   const { data, error } = await supabase
       .from('messages')
@@ -495,8 +541,84 @@ export async function sendMessage(channelId: string, userId: string, content: st
       throw new Error(`Could not send message: ${error.message}`);
   }
 
+  console.log("Message sent successfully:", data);
   // We are now guaranteed to have data if no error was thrown
   return data;
+}
+
+// Function to get channel members with their profiles
+export async function getChannelMembers(channelId: string): Promise<Profile[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  // First try with explicit foreign key reference
+  const { data, error } = await supabase
+    .from('channel_members')
+    .select(`
+      user_id,
+      profiles!user_id (
+        id,
+        full_name,
+        avatar_url,
+        email
+      )
+    `)
+    .eq('channel_id', channelId);
+
+  if (error) {
+    // Expected error due to foreign key relationship issues - using fallback
+    const { data: memberIds, error: memberIdsError } = await supabase
+      .from('channel_members')
+      .select('user_id')
+      .eq('channel_id', channelId);
+
+    if (memberIdsError) {
+      console.error("Error fetching channel members:", memberIdsError);
+      return [];
+    }
+
+    // Fetch profiles for each user ID
+    const profiles = await Promise.all(
+      (memberIds || []).map(async (member) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, email')
+          .eq('id', member.user_id)
+          .single();
+        return profile;
+      })
+    );
+
+    return profiles.filter(Boolean) as Profile[];
+  }
+
+  return (data || []).map(item => item.profiles).filter(Boolean) as Profile[];
+}
+
+// Function to get channel details with members
+export async function getChannelWithMembers(channelId: string): Promise<Channel & { members?: Profile[] }> {
+  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
+
+  console.log("Fetching channel with members for:", channelId);
+
+  // Get channel details
+  const { data: channelData, error: channelError } = await supabase
+    .from('channels')
+    .select('*')
+    .eq('id', channelId)
+    .single();
+
+  if (channelError) {
+    console.error("Error fetching channel:", channelError);
+    throw new Error("Could not fetch channel details");
+  }
+
+  // Get channel members
+  const members = await getChannelMembers(channelId);
+
+  return {
+    ...channelData,
+    members
+  };
 }
 
 // Helper function

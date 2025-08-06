@@ -32,11 +32,36 @@ export async function getProjectsForOrganizationAction(organizationId: string) {
     return { error: "Organization ID is required." };
   }
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase.from("projects").select(`id, name, description, status, due_date, project_members ( profiles ( id, full_name, avatar_url ) )`).eq("organization_id", organizationId).order("created_at", { ascending: false });
+
+  // First, let's try a simpler query to debug
+  console.log("Fetching projects for organization:", organizationId);
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select(`
+      id,
+      name,
+      description,
+      status,
+      due_date,
+      created_at,
+      project_members (
+        profiles (
+          id,
+          full_name,
+          avatar_url
+        )
+      )
+    `)
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
   if (error) {
     console.error("Error fetching projects:", error);
     return { error: "Could not fetch projects." };
   }
+
+  console.log("Projects fetched successfully:", data);
   const projectsWithProgress = data.map(p => ({ ...p, progress: Math.floor(Math.random() * 100) }));
   return { data: projectsWithProgress };
 }

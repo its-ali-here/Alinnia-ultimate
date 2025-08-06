@@ -42,12 +42,19 @@ export default function ProjectsPage() {
   const [isCreating, setIsCreating] = useState(false)
 
   const loadProjects = useCallback(async () => {
-    if (!organizationId) return;
+    if (!organizationId) {
+      console.log("No organizationId available");
+      return;
+    }
+    console.log("Loading projects for organization:", organizationId);
     setIsLoading(true);
     const result = await getProjectsForOrganizationAction(organizationId);
+    console.log("Projects result:", result);
     if (result.error) {
+        console.error("Error loading projects:", result.error);
         toast.error(result.error);
     } else {
+        console.log("Projects loaded successfully:", result.data);
         setProjects(result.data || []);
     }
     setIsLoading(false);

@@ -82,70 +82,119 @@ export async function deleteWidgetAction(args: { dashboardId: string; widgetId: 
 }
 
 // --- CORRECTED: Action to add a comment to a dashboard ---
-export async function addCommentAction({ dashboardId, content }: { dashboardId: string; content: string }) {
-    const cookieStore = await cookies(); // FIX: Await the cookies promise
+export async function addCommentAction({ dashboardId, content, userId }: { dashboardId: string; content: string; userId: string }) {
+    console.log("Adding comment:", { dashboardId, content, userId });
 
-    const supabase = createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookieStore.get(name)?.value; // FIX: Correctly access cookies
-                },
-            },
-        }
-    );
-
-    const { data: userData, error: userError } = await supabase.auth.getUser(); // FIX: Handle user fetching errors
-    if (userError || !userData?.user) {
-        return { error: 'You must be logged in to comment.' };
+    if (!userId) {
+        return { error: 'User ID is required.' };
     }
 
     if (!content.trim()) {
         return { error: 'Comment cannot be empty.' };
     }
 
-    const { data, error } = await supabase
-        .from('dashboard_comments')
-        .insert({
-            dashboard_id: dashboardId,
-            user_id: userData.user.id,
-            content: content,
-        })
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error adding comment:', error);
-        return { error: 'Failed to add comment. Please try again.' };
+    if (!dashboardId) {
+        return { error: 'Dashboard ID is required.' };
     }
 
-    return { data };
+    try {
+        const supabase = createSupabaseAdminClient();
+
+        console.log("Inserting comment with data:", {
+            dashboard_id: dashboardId,
+            user_id: userId,
+            content: content,
+        });
+
+        const { data, error } = await supabase
+            .from('dashboard_comments')
+            .insert({
+                dashboard_id: dashboardId,
+                user_id: userId,
+                content: content,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error adding comment:', error);
+            return { error: 'Failed to add comment. Please try again.' };
+        }
+
+        console.log("Comment added successfully:", data);
+        revalidatePath(`/dashboard/analytics/${dashboardId}`);
+        return { data };
+    } catch (error) {
+        console.error('Unexpected error in addCommentAction:', error);
+        return { error: 'An unexpected error occurred. Please try again.' };
+    }
 }
 
 // --- Action to get all comments for a dashboard ---
 export async function getCommentsAction({ dashboardId }: { dashboardId: string }) {
     const supabase = createSupabaseAdminClient();
 
+    console.log("Fetching comments for dashboard:", dashboardId);
+
+    // First, let's try a simpler query to debug
     const { data, error } = await supabase
         .from('dashboard_comments')
         .select(`
             id,
             content,
             created_at,
-            author:profiles!dashboard_comments_user_id_fkey (
+            user_id,
+            profiles!dashboard_comments_user_id_fkey (
                 full_name,
                 avatar_url
             )
-        `) // FIX: Use the correct foreign key relationship
+        `)
         .eq('dashboard_id', dashboardId)
         .order('created_at', { ascending: true });
 
     if (error) {
         console.error('Error fetching comments:', error);
-        return { error: 'Failed to fetch comments.' };
+
+        // Try a fallback query without the join
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from('dashboard_comments')
+            .select('*')
+            .eq('dashboard_id', dashboardId)
+            .order('created_at', { ascending: true });
+
+        if (fallbackError) {
+            console.error('Fallback query also failed:', fallbackError);
+            return { error: 'Failed to fetch comments.' };
+        }
+
+        console.log("Fallback query succeeded:", fallbackData);
+
+        // Manually fetch user profiles for each comment
+        const commentsWithProfiles = await Promise.all(
+            fallbackData.map(async (comment) => {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name, avatar_url')
+                    .eq('id', comment.user_id)
+                    .single();
+
+                return {
+                    ...comment,
+                    author: profile || { full_name: 'Unknown User', avatar_url: null }
+                };
+            })
+        );
+
+        return { data: commentsWithProfiles };
     }
 
-    return { data };
+    console.log("Comments fetched successfully:", data);
+
+    // Transform the data to match expected format
+    const transformedData = data.map(comment => ({
+        ...comment,
+        author: comment.profiles || { full_name: 'Unknown User', avatar_url: null }
+    }));
+
+    return { data: transformedData };
 }

@@ -20,6 +20,7 @@ import {
 interface AuthContextType {
   user: User | null
   organization: any | null
+  organizationId: string | null
   userRole: string | null
   loading: boolean
   isSupabaseConfigured: boolean
@@ -147,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         organization,
+        organizationId: organization?.id || null,
         userRole,
         loading,
         isSupabaseConfigured: isSupabaseConfigured(),

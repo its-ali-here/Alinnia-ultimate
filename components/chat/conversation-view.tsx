@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 // --- FIX: Correctly import all necessary functions and types ---
-import { getMessagesForChannel, sendMessage, type Message } from "@/lib/database" 
+import { getMessagesForChannel, sendMessage, type Message, type Profile } from "@/lib/database"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,9 @@ interface ConversationViewProps {
 
 type Channel = {
   id: string;
-  name: string;
+  name?: string;
+  type: 'dm' | 'group' | 'organization';
+  other_member?: Profile;
 };
 
 export function ConversationView({ channelId }: ConversationViewProps) {
@@ -48,31 +50,123 @@ export function ConversationView({ channelId }: ConversationViewProps) {
 
     const loadConversation = async () => {
       setIsLoading(true);
+      console.log("Loading conversation for channel:", channelId);
 
-      const { data: channelData } = await supabase
-        .from('channels')
-        .select('*')
-        .eq('id', channelId)
-        .single();
-      
-      setActiveChannel(channelData);
+      try {
+        // Fetch channel data with additional info for DMs
+        const { data: channelData, error: channelError } = await supabase
+          .from('channels')
+          .select('*')
+          .eq('id', channelId)
+          .single();
 
-      const messagesData = await getMessagesForChannel(channelId);
-      setMessages(messagesData);
-      
-      setIsLoading(false);
-      setTimeout(scrollToBottom, 0);
+        if (channelError) {
+          console.error("Error fetching channel data:", channelError);
+        } else {
+          console.log("Channel data fetched:", channelData);
+
+          // If it's a DM, fetch the other member's info
+          if (channelData.type === 'dm' && user) {
+            // First try with explicit foreign key
+            let { data: members, error: membersError } = await supabase
+              .from('channel_members')
+              .select(`
+                user_id,
+                profiles!user_id (
+                  id,
+                  full_name,
+                  avatar_url,
+                  email
+                )
+              `)
+              .eq('channel_id', channelId)
+              .neq('user_id', user.id);
+
+            if (membersError) {
+              // Fallback: get user ID and fetch profile separately
+              const { data: memberIds } = await supabase
+                .from('channel_members')
+                .select('user_id')
+                .eq('channel_id', channelId)
+                .neq('user_id', user.id);
+
+              if (memberIds && memberIds.length > 0) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('id, full_name, avatar_url, email')
+                  .eq('id', memberIds[0].user_id)
+                  .single();
+
+                setActiveChannel({
+                  ...channelData,
+                  other_member: profile
+                });
+              } else {
+                setActiveChannel(channelData);
+              }
+            } else {
+              const otherMember = members?.[0]?.profiles;
+              setActiveChannel({
+                ...channelData,
+                other_member: otherMember
+              });
+            }
+          } else {
+            setActiveChannel(channelData);
+          }
+        }
+
+        console.log("Fetching messages for channel:", channelId);
+        const messagesData = await getMessagesForChannel(channelId);
+        console.log("Messages received in component:", messagesData);
+        setMessages(messagesData);
+
+        setIsLoading(false);
+        setTimeout(scrollToBottom, 0);
+      } catch (error) {
+        console.error("Error in loadConversation:", error);
+        setIsLoading(false);
+      }
     };
 
     loadConversation();
 
+    console.log("Setting up real-time subscription for channel:", channelId);
     const subscription = supabase
       .channel(`messages_for_${channelId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` },
-        (payload: RealtimePostgresChangesPayload<Message>) => {
-          setMessages((currentMessages) => [...currentMessages, payload.new as Message]);
+        async (payload: RealtimePostgresChangesPayload<Message>) => {
+          console.log("New message received via real-time:", payload.new);
+
+          // Check if we already have this message (to prevent duplicates)
+          setMessages((currentMessages) => {
+            const messageExists = currentMessages.some(msg => msg.id === payload.new.id);
+            if (messageExists) {
+              console.log("Message already exists, skipping duplicate");
+              return currentMessages;
+            }
+
+            // Add the message without author first (will be updated below)
+            return [...currentMessages, payload.new as Message];
+          });
+
+          // Fetch the author profile for the new message
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .eq('id', payload.new.user_id)
+            .single();
+
+          // Update the message with author info
+          setMessages((currentMessages) =>
+            currentMessages.map(msg =>
+              msg.id === payload.new.id
+                ? { ...msg, author: profile || { id: payload.new.user_id, full_name: 'Unknown User', avatar_url: null } }
+                : msg
+            )
+          );
         }
       )
       .subscribe();
@@ -89,10 +183,24 @@ export function ConversationView({ channelId }: ConversationViewProps) {
       if (!newMessage.trim() || !user || !channelId) return;
 
       const originalMessage = newMessage;
-      setNewMessage(""); 
+      setNewMessage("");
 
       try {
-          await sendMessage(channelId, user.id, originalMessage);
+          const sentMessage = await sendMessage(channelId, user.id, originalMessage);
+          console.log("Message sent, adding to local state:", sentMessage);
+
+          // Add the message immediately to local state with author info
+          const messageWithAuthor = {
+            ...sentMessage,
+            author: {
+              id: user.id,
+              full_name: user.user_metadata?.full_name || user.email || 'You',
+              avatar_url: user.user_metadata?.avatar_url || null
+            }
+          };
+
+          setMessages((currentMessages) => [...currentMessages, messageWithAuthor]);
+          setTimeout(scrollToBottom, 0);
       } catch (error) {
           console.error("Failed to send message:", error);
           toast.error("Failed to send message. Please try again.");
