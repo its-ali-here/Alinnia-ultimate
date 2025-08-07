@@ -10,12 +10,14 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="min-h-screen flex">
+      <div className="h-screen flex overflow-hidden">
         <Sidebar />
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <TopNav />
-          <div className="container mx-auto p-6 max-w-7xl">
-            <main className="w-full">{children}</main>
+          <div className="flex-1 overflow-y-auto">
+            <div className="container mx-auto p-6 max-w-7xl">
+              <main className="w-full">{children}</main>
+            </div>
           </div>
         </div>
       </div>
