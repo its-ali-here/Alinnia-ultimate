@@ -47,14 +47,14 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "$10",
+                    price: "$20",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
                   },
                   {
                     name: "Professional",
-                    price: "$25",
+                    price: "$50",
                     description: "Ideal for growing businesses.",
                     features: [
                       "Up to 20 team members",
@@ -68,7 +68,7 @@ export function PricingSection() {
                   },
                   {
                     name: "Enterprise",
-                    price: "$50",
+                    price: "$100",
                     description: "For large organizations with complex needs.",
                     features: [
                       "Unlimited team members",
@@ -130,14 +130,14 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "$8",
+                    price: "$16",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
                   },
                   {
                     name: "Professional",
-                    price: "$20",
+                    price: "$40",
                     description: "Ideal for growing businesses.",
                     features: [
                       "Up to 20 team members",
@@ -151,7 +151,7 @@ export function PricingSection() {
                   },
                   {
                     name: "Enterprise",
-                    price: "$40",
+                    price: "$80",
                     description: "For large organizations with complex needs.",
                     features: [
                       "Unlimited team members",

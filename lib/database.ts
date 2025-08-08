@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from "./supabase"
-import { supabaseAdmin } from "./supabase-server"
+import { createSupabaseAdminClient } from "./supabase-server"
 
 // NOTE: This file interacts with tables in your Supabase 'public' schema.
 // Ensure the table names here (e.g., "users", "organizations") match your database exactly.
@@ -177,6 +177,7 @@ export async function createOrganization(
   orgName: string,
 ): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  const supabaseAdmin = createSupabaseAdminClient()
   const { data: org, error: orgError } = await supabaseAdmin
     .from("organizations")
     .insert({ name: orgName, owner_id: ownerId })
@@ -227,6 +228,7 @@ export async function createOrganizationAndLinkUser(userId: string, orgName: str
 export async function joinOrganizationAndLinkUser(userId: string, orgCode: string): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("Supabase not configured.")
 
+  const supabaseAdmin = createSupabaseAdminClient()
   const { data: org, error: orgErr } = await supabaseAdmin.from("organizations").select("*").eq("id", orgCode).single()
 
   if (orgErr || !org) throw new Error("Organization not found.")
@@ -624,6 +626,7 @@ export async function getChannelWithMembers(channelId: string): Promise<Channel 
 // Helper function
 async function addUserToOrganization(userId: string, organizationId: string, role: string): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
+  const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin.from("organization_members").insert({
     user_id: userId,
     organization_id: organizationId,
@@ -648,6 +651,7 @@ export async function inviteMember(organizationId: string, email: string, role: 
 
 export async function updateMemberRole(memberId: string, newRole: string) {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
+  const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin
       .from("organization_members")
       .update({ role: newRole })
@@ -661,6 +665,7 @@ export async function updateMemberRole(memberId: string, newRole: string) {
 
 export async function removeMember(memberId: string) {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
+  const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin
       .from("organization_members")
       .delete()

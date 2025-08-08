@@ -86,31 +86,26 @@ const dataAccessTool = tool({
     console.log("[TOOL] Executing data access:", { dataType, query });
 
     try {
-      // Simple mock data for now to test tool execution
-      const mockData = {
-        financial_summary: {
-          organization: { name: "Alinnia Business Intelligence", industry: "Technology" },
-          totalDatasources: 2,
-          summary: "Organization Overview: Alinnia Business Intelligence in the Technology industry with 2 active data sources."
-        },
-        dashboard_metrics: {
-          totalDashboards: 1,
-          totalWidgets: 3,
-          summary: "Analytics Infrastructure: 1 active dashboard with 3 visualization widgets configured."
-        },
-        recent_transactions: {
-          count: 2,
-          summary: "Data Activity: 2 files uploaded including sales data and payment records."
-        },
-        cash_flow: {
-          teamSize: 1,
-          summary: "Business Intelligence: 1 team member managing data analytics capabilities."
-        }
-      };
+      // Make actual API call to get real data
+      const response = await fetch(`http://localhost:3001/api/ai/data-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataType, query, organizationId: 'current' }),
+      });
 
-      const result = mockData[dataType] || { summary: "Data not available for this request." };
-      console.log("[TOOL] Returning result:", result);
-      return result;
+      if (!response.ok) {
+        console.error("[TOOL] API response not ok:", response.status);
+        return { error: "Unable to access data at this time", summary: "Data access temporarily unavailable." };
+      }
+
+      const result = await response.json();
+      console.log("[TOOL] API result:", result);
+
+      if (result.success && result.summary) {
+        return { summary: result.summary, data: result.data };
+      } else {
+        return { error: "No data available", summary: "No data found for this request." };
+      }
 
     } catch (error) {
       console.error("[TOOL] Error:", error);
@@ -150,14 +145,33 @@ export async function POST(req: Request) {
     console.log("[CHAT_API] Generation completed");
     console.log("[CHAT_API] Text length:", result.text?.length || 0);
     console.log("[CHAT_API] Tool calls:", result.toolCalls?.length || 0);
+    console.log("[CHAT_API] Tool results:", result.toolResults?.length || 0);
 
-    // Handle tool calls if present
+    // Handle tool calls and results
     let finalText = result.text;
+
     if (result.toolCalls && result.toolCalls.length > 0) {
       console.log("[CHAT_API] Processing tool calls...");
-      // The AI SDK should have already executed the tools and included results
-      // If we have tool calls but no text, provide a fallback
-      if (!finalText || finalText.trim() === '') {
+
+      // If we have tool results, use them to generate a response
+      if (result.toolResults && result.toolResults.length > 0) {
+        console.log("[CHAT_API] Tool results found, processing...");
+
+        const toolResult = result.toolResults[0];
+        console.log("[CHAT_API] First tool result:", toolResult);
+
+        if (toolResult.result && !(toolResult.result as any).error) {
+          // Generate a response based on the tool result
+          const data = toolResult.result;
+          if (data.summary) {
+            finalText = `📊 **Data Analysis Results**\n\n${data.summary}\n\n## Key Insights:\n✅ Your data has been successfully analyzed\n💡 This information is based on your current setup\n🎯 Ready to provide more specific insights if needed`;
+          } else {
+            finalText = `📊 **Your Business Data**\n\nI've accessed your data and here's what I found:\n\n${JSON.stringify(data, null, 2)}\n\nWould you like me to analyze any specific aspect in more detail?`;
+          }
+        } else {
+          finalText = "I encountered an issue accessing your data. Let me help you with general guidance instead. What would you like to know?";
+        }
+      } else if (!finalText || finalText.trim() === '') {
         finalText = "I'm analyzing your data to provide insights. Let me gather the information...";
       }
     }

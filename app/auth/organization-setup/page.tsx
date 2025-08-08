@@ -56,6 +56,9 @@ export default function OrganizationSetupPage() {
           return
         }
         await createOrganizationAndLinkUser(user.id, orgName)
+        await refreshOrganization() // Refresh the organization ID in context
+        // Redirect to business onboarding for new organizations
+        router.push("/onboarding")
       } else {
         if (!orgCode.trim()) {
           setError("Organization ID cannot be empty.")
@@ -63,9 +66,10 @@ export default function OrganizationSetupPage() {
           return
         }
         await joinOrganizationAndLinkUser(user.id, orgCode)
+        await refreshOrganization() // Refresh the organization ID in context
+        // For existing organizations, go directly to dashboard
+        router.push("/dashboard")
       }
-      await refreshOrganization() // Refresh the organization ID in context
-      // Redirection will be handled by the useEffect after organizationId is updated
     } catch (err) {
       console.error("Error setting up organization:", err)
       setError((err as Error).message || "Failed to set up organization.")
@@ -88,7 +92,7 @@ export default function OrganizationSetupPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Set Up Your Organization</CardTitle>
-          <CardDescription>Create a new organization or join an existing one to continue.</CardDescription>
+          <CardDescription>Create a new organization with business setup, or join an existing one.</CardDescription>
         </CardHeader>
         <CardContent>
           {!isSupabaseConfigured && (
@@ -106,19 +110,29 @@ export default function OrganizationSetupPage() {
             </Alert>
           )}
           <form onSubmit={handleOrganizationAction} className="space-y-6">
-            <RadioGroup value={orgType} onValueChange={(v) => setOrgType(v as any)} className="space-y-2">
-              <Label className="flex items-center space-x-2 p-3 border rounded-lg has-[input:checked]:border-primary">
-                <RadioGroupItem value="new" id="new" />
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  <span>Create a new organization</span>
+            <RadioGroup value={orgType} onValueChange={(v) => setOrgType(v as any)} className="space-y-3">
+              <Label className="flex items-start space-x-3 p-4 border rounded-lg has-[input:checked]:border-primary cursor-pointer">
+                <RadioGroupItem value="new" id="new" className="mt-1" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Building2 className="h-5 w-5" />
+                    <span className="font-semibold">Create a new organization</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Set up your business with custom analytics and KPI tracking
+                  </p>
                 </div>
               </Label>
-              <Label className="flex items-center space-x-2 p-3 border rounded-lg has-[input:checked]:border-primary">
-                <RadioGroupItem value="existing" id="existing" />
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  <span>Join an existing organization</span>
+              <Label className="flex items-start space-x-3 p-4 border rounded-lg has-[input:checked]:border-primary cursor-pointer">
+                <RadioGroupItem value="existing" id="existing" className="mt-1" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="h-5 w-5" />
+                    <span className="font-semibold">Join an existing organization</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Connect to an organization that's already set up
+                  </p>
                 </div>
               </Label>
             </RadioGroup>
@@ -157,7 +171,7 @@ export default function OrganizationSetupPage() {
                   {orgType === "new" ? "Creating Organization..." : "Joining Organization..."}
                 </>
               ) : orgType === "new" ? (
-                "Create Organization"
+                "Create Organization & Set Up Business"
               ) : (
                 "Join Organization"
               )}
