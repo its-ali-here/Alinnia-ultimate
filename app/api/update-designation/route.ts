@@ -6,11 +6,18 @@ export async function POST(request: NextRequest) {
     const supabase = createSupabaseAdminClient()
 
     // Parse request body
-    const { userId, designation } = await request.json()
+    const { userId, organizationId, designation } = await request.json()
 
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
         { status: 400 }
       )
     }
@@ -27,6 +34,7 @@ export async function POST(request: NextRequest) {
       .from('organization_members')
       .update({ designation: designation.trim() })
       .eq('user_id', userId)
+      .eq('organization_id', organizationId)
       .select()
 
     if (error) {

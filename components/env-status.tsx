@@ -58,7 +58,7 @@ export function EnvStatus() {
   const allGood = status.isSupabasePublicConfigured && status.isGroqConfigured
 
   return (
-    <Alert variant={allGood ? "default" : "warning"}>
+    <Alert variant={allGood ? "default" : "destructive"}>
       {allGood ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
       <AlertTitle>{allGood ? "System Configured" : "Configuration Incomplete"}</AlertTitle>
       <AlertDescription>

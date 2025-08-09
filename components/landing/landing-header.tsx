@@ -6,13 +6,23 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sun, Moon, ChevronRight } from 'lucide-react';
+import { Menu, X, Sun, Moon, ChevronRight, CircleUser, LogOut, Settings, HelpCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function LandingHeader() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { user, signOut, loading: authLoading } = useAuth();
 
     useEffect(() => {
         setMounted(true);
@@ -22,6 +32,10 @@ export function LandingHeader() {
     }, []);
 
     const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+
+    const handleLogout = async () => {
+        await signOut();
+    };
 
     return (
         <header className={`sticky top-0 z-50 w-full backdrop-blur-lg transition-all duration-300 ${isScrolled ? "bg-background/80 shadow-sm" : "bg-transparent"}`}>
@@ -41,8 +55,60 @@ export function LandingHeader() {
                         {mounted && theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
                         <span className="sr-only">Toggle theme</span>
                     </Button>
-                    <Link href="/auth/login"><Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Log in</Button></Link>
-                    <Link href="/auth/signup"><Button className="rounded-full">Get Started <ChevronRight className="ml-1 size-4" /></Button></Link>
+                    {!authLoading && user ? (
+                        // Authenticated user - show Dashboard button and avatar dropdown
+                        <>
+                            <Link href="/dashboard">
+                                <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                                    Dashboard
+                                </Button>
+                            </Link>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="secondary" size="icon" className="rounded-full">
+                                        <CircleUser className="h-5 w-5" />
+                                        <span className="sr-only">Toggle user menu</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/settings">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            Settings
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                        <HelpCircle className="mr-2 h-4 w-4" />
+                                        Support
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={handleLogout}
+                                        className="cursor-pointer bg-red-500 text-white hover:bg-red-600 focus:bg-red-600"
+                                    >
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        Logout
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </>
+                    ) : (
+                        // Unauthenticated user - show login and signup buttons
+                        <>
+                            <Link href="/auth/login">
+                                <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                                    Log in
+                                </Button>
+                            </Link>
+                            <Link href="/auth/signup">
+                                <Button className="rounded-full">
+                                    Get Started <ChevronRight className="ml-1 size-4" />
+                                </Button>
+                            </Link>
+                        </>
+                    )}
                 </div>
                 <div className="flex items-center gap-4 md:hidden">
                     <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">{mounted && theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}</Button>
@@ -57,8 +123,36 @@ export function LandingHeader() {
                         <Link href="#pricing" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
                         <Link href="#faq" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>FAQ</Link>
                         <div className="flex flex-col gap-2 pt-2 border-t">
-                            <Link href="/auth/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-                            <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}><Button className="w-full rounded-full">Get Started</Button></Link>
+                            {!authLoading && user ? (
+                                // Authenticated user - show Dashboard and user options
+                                <>
+                                    <Link href="/dashboard" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                        Dashboard
+                                    </Link>
+                                    <Link href="/dashboard/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                        Settings
+                                    </Link>
+                                    <button
+                                        className="py-2 text-sm font-medium text-left text-red-600"
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            handleLogout();
+                                        }}
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                // Unauthenticated user - show login and signup
+                                <>
+                                    <Link href="/auth/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                        Log in
+                                    </Link>
+                                    <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                                        <Button className="w-full rounded-full">Get Started</Button>
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                 </motion.div>

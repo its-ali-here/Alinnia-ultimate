@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "./supabase"
 import { createSupabaseAdminClient } from "./supabase-server"
+import { toast } from "sonner"
 
 // NOTE: This file interacts with tables in your Supabase 'public' schema.
 // Ensure the table names here (e.g., "users", "organizations") match your database exactly.
@@ -23,11 +24,18 @@ export interface Profile {
   full_name: string
   avatar_url?: string
   phone?: string
-  role: string
-  organization_id?: string
   created_at: string
   updated_at: string
   timezone?: string
+}
+
+export interface OrganizationMember {
+  id: string
+  organization_id: string
+  user_id: string
+  role: string
+  designation?: string
+  joined_at: string
 }
 
 export interface Account {
@@ -102,13 +110,26 @@ export interface UserPermissionItem {
   can_delete: boolean
 }
 
+export interface UploadedFile {
+  id: string
+  organization_id: string
+  file_name: string
+  file_size: number
+  file_type: string
+  upload_path: string
+  status: "uploading" | "ready" | "processing" | "error"
+  uploaded_by: string
+  created_at: string
+  updated_at: string
+}
+
 // Profile functions
 export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
 
   const { data, error } = await supabase
     .from("profiles")
-    .insert({ id: userId, email: email, full_name: fullName, role: "member" })
+    .insert({ id: userId, email: email, full_name: fullName })
     .select()
     .single()
 
@@ -131,7 +152,6 @@ export async function getProfile(userId: string): Promise<Profile | null> {
       id: userId,
       email: "demo@example.com",
       full_name: "Demo User",
-      role: "member",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -374,6 +394,22 @@ export async function updateAccountBalance(accountId: string, newBalance: number
   return data
 }
 
+// Bills functions
+export async function getUserBills(userId: string): Promise<Bill[]> {
+  if (!isSupabaseConfigured()) return []
+  const { data, error } = await supabase
+    .from("bills")
+    .select("*")
+    .eq("user_id", userId)
+    .order("due_date", { ascending: true })
+
+  if (error) {
+    console.error("DB:getUserBills - Supabase error:", JSON.stringify(error, null, 2))
+    return []
+  }
+  return data || []
+}
+
 // Mark bill as paid function
 export async function markBillAsPaid(billId: string): Promise<Bill | null> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
@@ -391,6 +427,23 @@ export async function markBillAsPaid(billId: string): Promise<Bill | null> {
   return data
 }
 
+// Savings goals functions
+export async function getUserSavingsGoals(userId: string): Promise<SavingsGoal[]> {
+  if (!isSupabaseConfigured()) return []
+  const { data, error } = await supabase
+    .from("savings_goals")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_completed", false)
+    .order("target_date", { ascending: true })
+
+  if (error) {
+    console.error("DB:getUserSavingsGoals - Supabase error:", JSON.stringify(error, null, 2))
+    return []
+  }
+  return data || []
+}
+
 // Organization members functions
 export async function getOrganizationMembers(
   organizationId: string,
@@ -402,12 +455,12 @@ export async function getOrganizationMembers(
     .select(`
       id,
       role,
+      designation,
       joined_at,
       profiles (
         id,
         full_name,
-        avatar_url,
-        designation
+        avatar_url
       )
     `)
     .eq("organization_id", organizationId)
@@ -417,9 +470,34 @@ export async function getOrganizationMembers(
     console.error("DB:getOrganizationMembers - Supabase error:", JSON.stringify(error, null, 2));
     return [];
   }
-  
+
   // This filter is important: it removes any members whose profiles couldn't be found.
   return (data || []).filter(member => member.profiles);
+}
+
+export async function updateOrganizationMemberDesignation(
+  userId: string,
+  organizationId: string,
+  designation: string
+): Promise<OrganizationMember | null> {
+  if (!isSupabaseConfigured()) {
+    console.warn("DB:updateOrganizationMemberDesignation - Supabase not configured.");
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("organization_members")
+    .update({ designation: designation })
+    .eq("user_id", userId)
+    .eq("organization_id", organizationId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("DB:updateOrganizationMemberDesignation - Supabase error:", JSON.stringify(error, null, 2));
+    throw error;
+  }
+  return data;
 }
 
 // ... other organization functions ...
@@ -594,6 +672,22 @@ export async function getChannelMembers(channelId: string): Promise<Profile[]> {
   }
 
   return (data || []).map(item => item.profiles).filter(Boolean) as Profile[];
+}
+
+// Uploaded files functions
+export async function getUploadedFilesForOrganization(organizationId: string): Promise<UploadedFile[]> {
+  if (!isSupabaseConfigured()) return []
+  const { data, error } = await supabase
+    .from("uploaded_files")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("DB:getUploadedFilesForOrganization - Supabase error:", JSON.stringify(error, null, 2))
+    return []
+  }
+  return data || []
 }
 
 // Function to get channel details with members

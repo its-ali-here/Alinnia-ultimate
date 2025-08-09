@@ -16,18 +16,17 @@ import { Progress } from "@/components/ui/progress"
 
 export function SignupForm() {
   const router = useRouter()
-  const { signUp, isSupabaseConfigured } = useAuth()
-  
-  const [step, setStep] = useState(1)
+  const { isSupabaseConfigured } = useAuth()
+
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
 
   const [formData, setFormData] = useState({
-    fullName: "", email: "", password: "", confirmPassword: "",
-    designation: "",
-    orgType: "new", orgName: "", orgCode: "", orgEmail: "", 
-    orgIndustry: "", orgCity: "", orgCountry: "",
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +86,7 @@ export function SignupForm() {
         <Card className="w-full max-w-md mx-auto"><CardContent className="pt-8 text-center">
             <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
             <h2 className="text-2xl font-bold mb-2">Registration Successful!</h2>
-            <p className="text-muted-foreground mb-6">A verification link has been sent to your email. Please verify your account before logging in.</p>
+            <p className="text-muted-foreground mb-6">Your account has been created successfully. You can now log in and start using Alinnia.</p>
             <Button asChild className="w-full"><Link href="/auth/login">Proceed to Login</Link></Button>
         </CardContent></Card>
     )

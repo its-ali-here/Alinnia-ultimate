@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export function DateRangePicker({ className, disabled }: React.HTMLAttributes<HTMLDivElement>) {
+interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
+  disabled?: boolean
+}
+
+export function DateRangePicker({ className, disabled }: DateRangePickerProps) {
   const { date, setDate } = useGlobalDateRange() // Use global date range context
 
   return (

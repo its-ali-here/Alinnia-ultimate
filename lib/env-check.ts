@@ -6,6 +6,7 @@ export const getServerSideEnvStatus = () => {
   const allVars = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     // Add other server-only keys here if needed for a comprehensive check
   }
@@ -16,6 +17,7 @@ export const getServerSideEnvStatus = () => {
 
   return {
     isSupabasePublicConfigured: !!allVars.NEXT_PUBLIC_SUPABASE_URL && !!allVars.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    isSupabaseFullyConfigured: !!allVars.NEXT_PUBLIC_SUPABASE_URL && !!allVars.NEXT_PUBLIC_SUPABASE_ANON_KEY && !!allVars.SUPABASE_SERVICE_ROLE_KEY,
     isGroqConfigured: !!allVars.GROQ_API_KEY,
     allRequiredServerVarsConfigured: missing.length === 0,
     missingServerVars: missing, // Be cautious about exposing this list directly to the client

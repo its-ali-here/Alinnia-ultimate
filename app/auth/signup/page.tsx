@@ -1,9 +1,9 @@
-import { SignupForm } from "@/components/auth/signup-form"
+import { SimpleSignupForm } from "@/components/auth/simple-signup-form"
 import Link from "next/link"
 import { Suspense } from "react"
 
 function SignupFormWrapper() {
-  return <SignupForm />
+  return <SimpleSignupForm />
 }
 
 export default function SignupPage() {

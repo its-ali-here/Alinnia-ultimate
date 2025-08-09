@@ -5,7 +5,6 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { createOrganizationAndLinkUser, joinOrganizationAndLinkUser } from "@/lib/database"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +19,7 @@ export default function OrganizationSetupPage() {
   const [orgType, setOrgType] = useState<"new" | "existing">("new")
   const [orgName, setOrgName] = useState("")
   const [orgCode, setOrgCode] = useState("")
+  const [designation, setDesignation] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,7 +55,21 @@ export default function OrganizationSetupPage() {
           setLoading(false)
           return
         }
-        await createOrganizationAndLinkUser(user.id, orgName)
+        // Create organization via API
+        const response = await fetch("/api/organization/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            orgName: orgName,
+          }),
+        })
+
+        const result = await response.json()
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to create organization.")
+        }
+
         await refreshOrganization() // Refresh the organization ID in context
         // Redirect to business onboarding for new organizations
         router.push("/onboarding")
@@ -65,7 +79,22 @@ export default function OrganizationSetupPage() {
           setLoading(false)
           return
         }
-        await joinOrganizationAndLinkUser(user.id, orgCode)
+        // Join organization via API
+        const response = await fetch("/api/organization/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            orgCode: orgCode,
+            designation: designation,
+          }),
+        })
+
+        const result = await response.json()
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to join organization.")
+        }
+
         await refreshOrganization() // Refresh the organization ID in context
         // For existing organizations, go directly to dashboard
         router.push("/dashboard")
@@ -151,18 +180,35 @@ export default function OrganizationSetupPage() {
                 />
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label htmlFor="organizationId">Organization ID</Label>
-                <Input
-                  id="organizationId"
-                  type="text"
-                  placeholder="Enter 6-digit organization code here"
-                  value={orgCode}
-                  onChange={(e) => setOrgCode(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="organizationId">Organization ID</Label>
+                  <Input
+                    id="organizationId"
+                    type="text"
+                    placeholder="Enter 6-digit organization code here"
+                    value={orgCode}
+                    onChange={(e) => setOrgCode(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="designation">Your Designation</Label>
+                  <Input
+                    id="designation"
+                    type="text"
+                    placeholder="e.g., Manager, Analyst, Team Lead"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your role or job title in this organization
+                  </p>
+                </div>
+              </>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
