@@ -8,14 +8,18 @@ import { useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, organizationId, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login")
+    if (!loading) {
+      if (!user) {
+        router.push("/auth/login")
+      } else if (!organizationId) {
+        router.push("/onboarding")
+      }
     }
-  }, [user, loading, router])
+  }, [user, organizationId, loading, router])
 
   if (loading) {
     return (
@@ -45,7 +49,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user) {
+  if (!user || !organizationId) {
     return null
   }
 

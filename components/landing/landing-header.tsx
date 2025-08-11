@@ -22,7 +22,7 @@ export function LandingHeader() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
-    const { user, signOut, loading: authLoading } = useAuth();
+    const { user, organizationId, signOut, loading: authLoading } = useAuth();
 
     useEffect(() => {
         setMounted(true);
@@ -56,11 +56,11 @@ export function LandingHeader() {
                         <span className="sr-only">Toggle theme</span>
                     </Button>
                     {!authLoading && user ? (
-                        // Authenticated user - show Dashboard button and avatar dropdown
+                        // Authenticated user - show Dashboard or Organization setup button
                         <>
-                            <Link href="/dashboard">
+                            <Link href={organizationId ? "/dashboard" : "/onboarding"}>
                                 <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                                    Dashboard
+                                    {organizationId ? "Dashboard" : "Create/Join Organization"}
                                 </Button>
                             </Link>
                             <DropdownMenu>
@@ -124,10 +124,10 @@ export function LandingHeader() {
                         <Link href="#faq" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>FAQ</Link>
                         <div className="flex flex-col gap-2 pt-2 border-t">
                             {!authLoading && user ? (
-                                // Authenticated user - show Dashboard and user options
+                                // Authenticated user - show Dashboard or Organization setup
                                 <>
-                                    <Link href="/dashboard" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                                        Dashboard
+                                    <Link href={organizationId ? "/dashboard" : "/onboarding"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                        {organizationId ? "Dashboard" : "Create/Join Organization"}
                                     </Link>
                                     <Link href="/dashboard/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Settings

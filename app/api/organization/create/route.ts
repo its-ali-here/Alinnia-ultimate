@@ -37,7 +37,21 @@ async function generateUniqueOrgCode(maxAttempts = 5): Promise<string> {
 export async function POST(req: Request) {
   try {
     const supabaseAdmin = createSupabaseAdminClient()
-    const { userId, orgName } = await req.json()
+    const {
+      userId,
+      orgName,
+      designation,
+      phone,
+      email,
+      companySize,
+      city,
+      country,
+      industry,
+      niche,
+      goals,
+      selectedDashboards,
+      wantsDataSource
+    } = await req.json()
 
     if (!userId || !orgName) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 })
@@ -78,41 +92,76 @@ export async function POST(req: Request) {
     // Generate unique organization code
     const orgCode = await generateUniqueOrgCode()
 
-    // Create the organization (without owner_id to avoid foreign key constraint)
+    // Create the organization with owner_id
+    console.log("🏗️ Creating organization with data:", {
+      name: orgName,
+      owner_id: userId,
+      organization_code: orgCode
+    })
+
     const { data: org, error: orgError } = await supabaseAdmin
       .from("organizations")
       .insert({
         name: orgName,
+        owner_id: userId,
         organization_code: orgCode,
-        email: "", // Will be filled during onboarding
-        industry: "", // Will be filled during onboarding
-        city: "", // Will be filled during onboarding
-        country: "", // Will be filled during onboarding
+        phone: phone || null,
+        email: email || "",
+        industry: industry || "",
+        city: city || "",
+        country: country || "",
+        business_type: niche || null,
+        business_description: `${industry} - ${niche}` || null,
+        business_metrics: {
+          companySize,
+          goals: goals || [],
+          selectedDashboards: selectedDashboards || [],
+          wantsDataSource: wantsDataSource || false
+        },
+        onboarding_completed: true
       })
       .select()
       .single()
 
     if (orgError) {
-      console.error("Error creating organization:", orgError)
-      return NextResponse.json({ error: "Failed to create organization." }, { status: 500 })
+      console.error("❌ Error creating organization:", orgError)
+      console.error("❌ Error details:", JSON.stringify(orgError, null, 2))
+      return NextResponse.json({
+        error: `Failed to create organization: ${orgError.message}`,
+        details: orgError
+      }, { status: 500 })
     }
 
+    console.log("✅ Organization created in database:", org)
+
     // Add user to organization as owner
+    console.log("👤 Adding user to organization as owner:", {
+      organization_id: org.id,
+      user_id: userId,
+      role: "owner"
+    })
+
     const { error: memberError } = await supabaseAdmin
       .from("organization_members")
       .insert({
         organization_id: org.id,
         user_id: userId,
         role: "owner",
-        designation: "Owner", // Default designation for organization owner
+        designation: designation || "Owner", // Use provided designation or default to Owner
       })
 
     if (memberError) {
-      console.error("Error adding user to organization:", memberError)
+      console.error("❌ Error adding user to organization:", memberError)
+      console.error("❌ Member error details:", JSON.stringify(memberError, null, 2))
       // Clean up the organization if member creation fails
       await supabaseAdmin.from("organizations").delete().eq("id", org.id)
-      return NextResponse.json({ error: "Failed to add user to organization." }, { status: 500 })
+      return NextResponse.json({
+        error: `Failed to add user to organization: ${memberError.message}`,
+        details: memberError
+      }, { status: 500 })
     }
+
+    console.log("✅ User added to organization successfully")
 
     return NextResponse.json({
       message: "Organization created successfully!",

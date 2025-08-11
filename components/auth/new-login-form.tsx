@@ -46,8 +46,8 @@ export function NewLoginForm() {
 
       if (error && error.code !== 'PGRST116') {
         console.error("Error checking organization:", error)
-        // If there's an error, assume no organization and go to organization setup
-        router.push("/auth/organization-setup")
+        // If there's an error, assume no organization and go to onboarding
+        router.push("/onboarding")
         return
       }
 
@@ -55,12 +55,12 @@ export function NewLoginForm() {
         // User has an organization, go to dashboard
         router.push("/dashboard")
       } else {
-        // User has no organization, go to organization setup
-        router.push("/auth/organization-setup")
+        // User has no organization, go to onboarding
+        router.push("/onboarding")
       }
     } catch (error) {
       console.error("Error checking organization:", error)
-      router.push("/auth/organization-setup")
+      router.push("/onboarding")
     } finally {
       setCheckingOrganization(false)
     }
