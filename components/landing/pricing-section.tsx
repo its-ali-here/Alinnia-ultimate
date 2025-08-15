@@ -47,7 +47,7 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "$19",
+                    price: "$24",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
@@ -130,7 +130,7 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "$15",
+                    price: "$19",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
