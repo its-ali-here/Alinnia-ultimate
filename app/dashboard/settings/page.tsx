@@ -19,6 +19,9 @@ import { Laptop, Smartphone, Tablet, Upload, AlertCircle } from "lucide-react"
 import { getProfile, updateProfile } from "@/lib/database"
 import { supabase } from "@/lib/supabase"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { GoogleSheetsIntegration } from "@/components/settings/google-sheets-integration"
+import { GoogleSheetsSync } from "@/components/settings/google-sheets-sync"
+import { MicrosoftExcelIntegration } from "@/components/settings/microsoft-excel-integration"
 
 const defaultAvatars = [
   "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/9439775.jpg-4JVJWOjPksd3DtnBYJXoWHA5lc1DU9.jpeg",
@@ -158,7 +161,7 @@ export default function SettingsPage() {
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="privacy">Privacy</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account">
@@ -532,84 +535,17 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="privacy">
+        <TabsContent value="integrations">
           <Card>
             <CardHeader>
-              <CardTitle>Privacy Settings</CardTitle>
-              <CardDescription>Manage your privacy and data settings</CardDescription>
+              <CardTitle>Integrations</CardTitle>
+              <CardDescription>Manage your connected services and data sources</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Data Sharing</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="analytics-sharing">Share analytics data</Label>
-                      <Switch id="analytics-sharing" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="personalized-ads">Allow personalized ads</Label>
-                      <Switch id="personalized-ads" />
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Account Visibility</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <RadioGroup defaultValue="private">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="public" id="visibility-public" />
-                        <Label htmlFor="visibility-public">Public</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="private" id="visibility-private" />
-                        <Label htmlFor="visibility-private">Private</Label>
-                      </div>
-                    </RadioGroup>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Data Retention</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Select defaultValue="1-year">
-                      <SelectTrigger id="data-retention">
-                        <SelectValue placeholder="Select Data Retention Period" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="6-months">6 Months</SelectItem>
-                        <SelectItem value="1-year">1 Year</SelectItem>
-                        <SelectItem value="2-years">2 Years</SelectItem>
-                        <SelectItem value="indefinite">Indefinite</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Third-Party Integrations</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Connected: Google Analytics, Facebook Pixel</p>
-                    <Button variant="outline">Manage Integrations</Button>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="flex justify-between">
-                <Button variant="outline">Download Your Data</Button>
-                <Button variant="destructive">Delete My Account</Button>
-              </div>
+              <GoogleSheetsIntegration />
+              <GoogleSheetsSync />
+              <MicrosoftExcelIntegration />
             </CardContent>
-            <CardFooter>
-              <Button>Save Privacy Settings</Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

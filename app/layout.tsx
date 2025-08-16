@@ -11,6 +11,7 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import 'leaflet/dist/leaflet.css';
 import { GlobalDateRangeProvider } from "@/context/GlobalDateRangeContext"
+import { NextAuthSessionProvider } from "@/components/providers/session-provider"
 
 export const metadata: Metadata = {
   title: "Alinnia - Business Intelligence",
@@ -27,15 +28,17 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <SettingsProvider>
-              <TooltipProvider delayDuration={0}>
-                <GlobalDateRangeProvider>
-                  {children}
-                </GlobalDateRangeProvider>
-              </TooltipProvider>
-            </SettingsProvider>
-          </AuthProvider>
+          <NextAuthSessionProvider>
+            <AuthProvider>
+              <SettingsProvider>
+                <TooltipProvider delayDuration={0}>
+                  <GlobalDateRangeProvider>
+                    {children}
+                  </GlobalDateRangeProvider>
+                </TooltipProvider>
+              </SettingsProvider>
+            </AuthProvider>
+          </NextAuthSessionProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

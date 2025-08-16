@@ -3,205 +3,191 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
-import { getReadyDatasourcesAction, getDashboardsForDatasourceAction, createDashboardAction } from "@/app/actions/analytics"
+import { getAllDashboardsAction } from "@/app/actions/analytics"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { FileText, LayoutDashboard, Plus, Database, Loader2 } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { LayoutDashboard, FileText, FileSpreadsheet, Calendar, Plus, RefreshCw } from "lucide-react"
+import { CreateDashboardDialog } from "./create-dashboard-dialog"
+import { EditDashboardDialog } from "./edit-dashboard-dialog"
 
 // Type definitions
-interface Dashboard { id: string; name: string; description: string | null; }
-interface DataSourceWithDashboards { id: string; file_name: string; row_count: number | null; dashboards: Dashboard[]; }
-
-function NewDashboardDialog({ source, organizationId, userId, onDashboardCreated }: any) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
-    const [isCreating, setIsCreating] = useState(false);
-
-    const handleCreate = async () => {
-        if (!name.trim()) {
-            toast.error("Dashboard name is required.");
-            return;
-        }
-        setIsCreating(true);
-        try {
-            const result = await createDashboardAction({
-                name,
-                description,
-                datasourceId: source.id,
-                organizationId,
-                userId,
-            });
-            if (result.error) throw new Error(result.error);
-            toast.success(`Dashboard "${name}" created successfully!`);
-            onDashboardCreated();
-            setIsOpen(false);
-        } catch (error) {
-            toast.error((error as Error).message);
-        } finally {
-            setIsCreating(false);
-        }
+interface Dashboard {
+    id: string;
+    name: string;
+    description: string | null;
+    created_at: string;
+    dataSources: {
+        csv: Array<{ id: string; file_name: string; status: string }>;
+        googleSheets: string[];
     };
+}
+
+function DashboardCard({ dashboard, onDashboardUpdated }: { dashboard: Dashboard; onDashboardUpdated: () => void }) {
+    const totalDataSources = dashboard.dataSources.csv.length + dashboard.dataSources.googleSheets.length;
+
+    const getSourceIcon = (type: 'csv' | 'googleSheets') => {
+        return type === 'csv'
+            ? <FileText className="h-3 w-3 text-blue-600" />
+            : <FileSpreadsheet className="h-3 w-3 text-green-600" />
+    }
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline"><Plus className="mr-2 h-4 w-4" /> New Dashboard</Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>New Dashboard for {source.file_name}</DialogTitle>
-                    <DialogDescription>Give your new dashboard a name and optional description.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Dashboard Name</Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Q2 Sales Insights" />
+        <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                        <LayoutDashboard className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg">{dashboard.name}</CardTitle>
                     </div>
+                    <Badge variant="secondary" className="text-xs">
+                        {totalDataSources} source{totalDataSources !== 1 ? 's' : ''}
+                    </Badge>
+                </div>
+                {dashboard.description && (
+                    <CardDescription className="text-sm">
+                        {dashboard.description}
+                    </CardDescription>
+                )}
+            </CardHeader>
+            <CardContent className="pt-0">
+                <div className="space-y-3">
+                    {/* Data Sources Summary */}
                     <div className="space-y-2">
-                        <Label htmlFor="description">Description (Optional)</Label>
-                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="A brief summary of this dashboard's purpose." />
+                        {dashboard.dataSources.csv.length > 0 && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {getSourceIcon('csv')}
+                                <span>{dashboard.dataSources.csv.length} CSV file{dashboard.dataSources.csv.length !== 1 ? 's' : ''}</span>
+                            </div>
+                        )}
+                        {dashboard.dataSources.googleSheets.length > 0 && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {getSourceIcon('googleSheets')}
+                                <span>{dashboard.dataSources.googleSheets.length} Google Sheet{dashboard.dataSources.googleSheets.length !== 1 ? 's' : ''}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Created Date */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>Created {new Date(dashboard.created_at).toLocaleDateString()}</span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 space-y-2">
+                        <Button asChild className="w-full">
+                            <Link href={`/dashboard/analytics/${dashboard.id}`}>
+                                Open Dashboard
+                            </Link>
+                        </Button>
+                        <EditDashboardDialog
+                            dashboard={dashboard}
+                            onDashboardUpdated={onDashboardUpdated}
+                            onDashboardDeleted={onDashboardUpdated}
+                        />
                     </div>
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreate} disabled={isCreating}>
-                        {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create Dashboard
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </CardContent>
+        </Card>
     )
 }
 
 export function AnalyticsTab() {
     const { user, organization } = useAuth();
-    const [dataSources, setDataSources] = useState<DataSourceWithDashboards[]>([]);
+    const [dashboards, setDashboards] = useState<Dashboard[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const loadAnalyticsData = useCallback(async () => {
+    const loadDashboards = useCallback(async () => {
         if (!organization?.id) {
-            setIsLoading(false);
-            return;
-        };
-
-        setIsLoading(true);
-        const dsResult = await getReadyDatasourcesAction(organization.id);
-
-        if (dsResult.error) {
-            toast.error(dsResult.error);
             setIsLoading(false);
             return;
         }
 
-        const sources = dsResult.data || [];
-        const sourcesWithDashboards = await Promise.all(
-            sources.map(async (source) => {
-                const dashResult = await getDashboardsForDatasourceAction(source.id);
-                return {
-                    ...source,
-                    dashboards: dashResult.data || [],
-                };
-            })
-        );
+        setIsLoading(true);
+        try {
+            const result = await getAllDashboardsAction(organization.id);
 
-        setDataSources(sourcesWithDashboards);
-        setIsLoading(false);
+            if (result.error) {
+                toast.error(result.error);
+                setDashboards([]);
+            } else {
+                setDashboards(result.data || []);
+            }
+        } catch (error) {
+            toast.error("Failed to load dashboards");
+            setDashboards([]);
+        } finally {
+            setIsLoading(false);
+        }
     }, [organization?.id]);
 
     useEffect(() => {
-        loadAnalyticsData();
-    }, [loadAnalyticsData]);
+        loadDashboards();
+    }, [loadDashboards]);
 
     if (isLoading) {
         return (
             <div className="space-y-6">
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-bold">My Dashboards</h2>
+                        <p className="text-muted-foreground">Create and manage your analytics dashboards</p>
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                </div>
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Our Analytics</CardTitle>
-                    <CardDescription>
-                        Create and manage dashboards from your available data sources. Only files with a "ready" status will appear here.
-                    </CardDescription>
-                </CardHeader>
-            </Card>
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold">My Dashboards</h2>
+                    <p className="text-muted-foreground">
+                        Create and manage your analytics dashboards using data from CSV files and Google Sheets
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={loadDashboards}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh
+                    </Button>
+                    <CreateDashboardDialog onDashboardCreated={loadDashboards} />
+                </div>
+            </div>
 
-            {dataSources.length === 0 ? (
+            {/* Dashboard Grid */}
+            {dashboards.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center h-[40vh]">
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-                        <Database className="h-10 w-10 text-muted-foreground" />
+                        <LayoutDashboard className="h-10 w-10 text-muted-foreground" />
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold">No Ready Data Sources Found</h3>
+                    <h3 className="mt-4 text-lg font-semibold">No Dashboards Yet</h3>
                     <p className="mb-4 mt-2 text-sm text-muted-foreground">
-                        Please go to the "Files" page to upload a CSV or check the status of your existing files.
+                        Create your first dashboard by selecting data sources from CSV files or Google Sheets.
                     </p>
-                    <Link href="/dashboard/files">
-                        <Button>Go to Files</Button>
-                    </Link>
+                    <CreateDashboardDialog onDashboardCreated={loadDashboards} />
                 </div>
             ) : (
-                dataSources.map((source) => (
-                    <Card key={source.id}>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <FileText className="h-6 w-6 text-primary" />
-                                    <div>
-                                        <CardTitle>{source.file_name}</CardTitle>
-                                        <CardDescription>{source.row_count?.toLocaleString() ?? 0} rows processed</CardDescription>
-                                    </div>
-                                </div>
-                                <NewDashboardDialog 
-                                    source={source}
-                                    organizationId={organization?.id}
-                                    userId={user?.id}
-                                    onDashboardCreated={loadAnalyticsData}
-                                />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {source.dashboards.length > 0 ? (
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    {source.dashboards.map((dashboard) => (
-                                        <Link key={dashboard.id} href={`/dashboard/analytics/${dashboard.id}`} className="block">
-                                           <Card className="hover:border-primary hover:bg-accent transition-colors h-full">
-                                               <CardHeader>
-                                                   <CardTitle className="text-base flex items-center gap-2">
-                                                       <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                                                       {dashboard.name}
-                                                   </CardTitle>
-                                               </CardHeader>
-                                               <CardContent>
-                                                   <p className="text-sm text-muted-foreground line-clamp-2 h-[40px]">
-                                                       {dashboard.description || "No description."}
-                                                   </p>
-                                               </CardContent>
-                                           </Card>
-                                        </Link>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center text-muted-foreground border-2 border-dashed rounded-lg p-8">
-                                    <p>No dashboards have been created for this data source yet.</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {dashboards.map((dashboard) => (
+                        <DashboardCard
+                            key={dashboard.id}
+                            dashboard={dashboard}
+                            onDashboardUpdated={loadDashboards}
+                        />
+                    ))}
+                </div>
             )}
         </div>
     );

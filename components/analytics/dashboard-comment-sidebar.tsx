@@ -33,22 +33,34 @@ export function DashboardCommentSidebar({ dashboardId }: { dashboardId: string }
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchComments = useCallback(async () => {
+    if (!dashboardId) return;
+
     setIsLoading(true);
-    console.log("Fetching comments for dashboard:", dashboardId);
-    const result = await getCommentsAction({ dashboardId });
-    console.log("Comments fetch result:", result);
-    if (result.error) {
-      console.error("Error fetching comments:", result.error);
-      toast.error(result.error);
-    } else {
-      console.log("Comments fetched successfully:", result.data);
-      setComments(result.data as Comment[]); // FIX: Explicitly cast the data to `Comment[]`
+    try {
+      console.log("Fetching comments for dashboard:", dashboardId);
+      const result = await getCommentsAction({ dashboardId });
+      console.log("Comments fetch result:", result);
+      if (result.error) {
+        console.error("Error fetching comments:", result.error);
+        // Only show toast error if it's not a session/auth related error
+        if (!result.error.includes('session') && !result.error.includes('token')) {
+          toast.error(result.error);
+        }
+      } else {
+        console.log("Comments fetched successfully:", result.data);
+        setComments(result.data as Comment[]); // FIX: Explicitly cast the data to `Comment[]`
+      }
+    } catch (error) {
+      console.error("Unexpected error fetching comments:", error);
+      // Don't show toast for unexpected errors during OAuth flow
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [dashboardId]);
 
   useEffect(() => {
-    if (dashboardId) {
+    // Only fetch comments if we're actually on a dashboard page and not during OAuth flow
+    if (dashboardId && !window.location.href.includes('code=') && !window.location.href.includes('state=')) {
       fetchComments();
     }
   }, [dashboardId, fetchComments]);

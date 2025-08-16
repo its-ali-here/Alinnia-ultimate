@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
+import { DataSourceSetup } from "@/components/onboarding/data-source-setup"
 
 export default function OnboardingPage() {
     const { user, organizationId, loading: authLoading, refreshOrganization } = useAuth()
@@ -49,7 +50,8 @@ export default function OnboardingPage() {
     const [selectedDashboards, setSelectedDashboards] = useState<string[]>([])
 
     // Data source state
-    const [wantsDataSource, setWantsDataSource] = useState<boolean | null>(null)
+    const [wantsDataSource, setWantsDataSource] = useState<string | null>(null)
+    const [dataSourceConnected, setDataSourceConnected] = useState(false)
 
     // Industry data
     const industries = [
@@ -154,7 +156,7 @@ export default function OnboardingPage() {
             case 5: // AI recommendations
                 return selectedDashboards.length > 0
             case 6: // Data source
-                return wantsDataSource !== null
+                return wantsDataSource !== null && (wantsDataSource === "skip" || dataSourceConnected)
             default:
                 return false
         }
@@ -602,37 +604,79 @@ export default function OnboardingPage() {
                 <div className="text-center">
                     <Database className="h-12 w-12 mx-auto mb-4 text-primary" />
                     <h2 className="text-2xl font-bold">Connect your data</h2>
-                    <p className="text-muted-foreground">Would you like to connect a data source to get started with real insights?</p>
+                    <p className="text-muted-foreground">Choose how you'd like to get started with your business data</p>
                 </div>
 
                 <div className="space-y-4">
-                    <Label>Choose an option</Label>
-                    <div className="space-y-3">
+                    <Label>Choose your preferred data source</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Label
-                            className={`flex items-start space-x-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                                wantsDataSource === true ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                            className={`flex flex-col items-center space-y-3 p-6 border rounded-lg cursor-pointer transition-colors ${
+                                wantsDataSource === "google-sheets" ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
                             }`}
-                            onClick={() => setWantsDataSource(true)}
+                            onClick={() => setWantsDataSource("google-sheets")}
                         >
-                            <div className="flex-1">
-                                <div className="font-medium">Yes, I'll connect a data source</div>
-                                <p className="text-sm text-muted-foreground">Upload a CSV file or connect to your existing systems</p>
+                            <div className="text-4xl">📊</div>
+                            <div className="text-center">
+                                <div className="font-medium">Connect Google Sheets</div>
+                                <p className="text-sm text-muted-foreground">Import data directly from your Google Sheets</p>
                             </div>
                         </Label>
 
                         <Label
-                            className={`flex items-start space-x-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                                wantsDataSource === false ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                            className={`flex flex-col items-center space-y-3 p-6 border rounded-lg cursor-pointer transition-colors ${
+                                wantsDataSource === "csv-upload" ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
                             }`}
-                            onClick={() => setWantsDataSource(false)}
+                            onClick={() => setWantsDataSource("csv-upload")}
                         >
-                            <div className="flex-1">
+                            <div className="text-4xl">📁</div>
+                            <div className="text-center">
+                                <div className="font-medium">Upload CSV File</div>
+                                <p className="text-sm text-muted-foreground">Upload your business data as a CSV file</p>
+                            </div>
+                        </Label>
+
+                        <Label
+                            className={`flex flex-col items-center space-y-3 p-6 border rounded-lg cursor-pointer transition-colors ${
+                                wantsDataSource === "manual-entry" ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                            }`}
+                            onClick={() => setWantsDataSource("manual-entry")}
+                        >
+                            <div className="text-4xl">✏️</div>
+                            <div className="text-center">
+                                <div className="font-medium">Manual Entry</div>
+                                <p className="text-sm text-muted-foreground">Start with sample data and add your own later</p>
+                            </div>
+                        </Label>
+
+                        <Label
+                            className={`flex flex-col items-center space-y-3 p-6 border rounded-lg cursor-pointer transition-colors ${
+                                wantsDataSource === "skip" ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                            }`}
+                            onClick={() => setWantsDataSource("skip")}
+                        >
+                            <div className="text-4xl">⏭️</div>
+                            <div className="text-center">
                                 <div className="font-medium">Skip for now</div>
-                                <p className="text-sm text-muted-foreground">I'll set up data sources later from the dashboard</p>
+                                <p className="text-sm text-muted-foreground">Set up data sources later from the dashboard</p>
                             </div>
                         </Label>
                     </div>
                 </div>
+
+                {wantsDataSource && (
+                    <div className="mt-6">
+                        <DataSourceSetup
+                            selectedSource={wantsDataSource}
+                            onSourceConnected={(source, connected) => {
+                                setDataSourceConnected(connected)
+                                if (connected) {
+                                    toast.success(`${source} setup complete!`)
+                                }
+                            }}
+                        />
+                    </div>
+                )}
             </div>
         )
     }
