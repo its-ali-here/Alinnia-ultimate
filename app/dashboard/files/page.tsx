@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { useSession, signIn } from "next-auth/react"
 import { useDataSources } from "@/hooks/use-data-sources"
+import { useAuth } from "@/contexts/auth-context"
+import { GoogleSheetsBrowser } from "@/components/files/google-sheets-browser"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,9 +16,11 @@ import { toast } from "sonner"
 
 export default function FilesPage() {
   const { data: session } = useSession()
+  const { organization } = useAuth()
   const { dataSources, loading, error, refreshDataSources } = useDataSources()
   const [dateFormat, setDateFormat] = useState("")
   const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+
 
   const handleCSVUpload = () => {
     if (!dateFormat) {
@@ -43,6 +47,8 @@ export default function FilesPage() {
       })
     }
   }
+
+
 
   const handleExcelConnect = () => {
     toast.info("Microsoft Excel integration coming soon!")
@@ -174,30 +180,35 @@ export default function FilesPage() {
         </Dialog>
 
         {/* Google Sheets Card */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleGoogleSheetsConnect}>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="text-center">
             <div className="mx-auto w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-2">
               <FileSpreadsheet className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="text-lg">Connect Google Sheets</CardTitle>
+            <CardTitle className="text-lg">Google Sheets</CardTitle>
             <CardDescription>
-              Import data directly from your Google Sheets
+              Import specific Google Sheets for use in dashboards
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button className="w-full" variant={session?.accessToken ? "secondary" : "default"}>
-              {session?.accessToken ? (
-                <>
+          <CardContent className="space-y-2">
+            {session?.accessToken ? (
+              <>
+                <GoogleSheetsBrowser onSheetsImported={refreshDataSources} />
+                <Button
+                  onClick={handleGoogleSheetsConnect}
+                  variant="outline"
+                  className="w-full"
+                >
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Manage Sheets
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Connect Google
-                </>
-              )}
-            </Button>
+                  Manage Connection
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleGoogleSheetsConnect} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Connect Google
+              </Button>
+            )}
           </CardContent>
         </Card>
 
