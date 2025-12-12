@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useSession, signIn } from "next-auth/react"
+import { useState, useEffect } from "react"
 import { useDataSources } from "@/hooks/use-data-sources"
 import { useAuth } from "@/contexts/auth-context"
 import { GoogleSheetsBrowser } from "@/components/files/google-sheets-browser"
@@ -15,12 +14,29 @@ import { FileSpreadsheet, Upload, Plus, Calendar, FileText, Database, RefreshCw,
 import { toast } from "sonner"
 
 export default function FilesPage() {
-  const { data: session } = useSession()
   const { organization } = useAuth()
   const { dataSources, loading, error, refreshDataSources } = useDataSources()
   const [dateFormat, setDateFormat] = useState("")
   const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false)
+  const [checkingConnection, setCheckingConnection] = useState(true)
 
+  // Check Google integration status
+  useEffect(() => {
+    const checkGoogleStatus = async () => {
+      try {
+        const response = await fetch('/api/integrations/google/status')
+        const data = await response.json()
+        setIsGoogleConnected(data.connected)
+      } catch (error) {
+        console.error('Error checking Google status:', error)
+        setIsGoogleConnected(false)
+      } finally {
+        setCheckingConnection(false)
+      }
+    }
+    checkGoogleStatus()
+  }, [])
 
   const handleCSVUpload = () => {
     if (!dateFormat) {
@@ -35,16 +51,23 @@ export default function FilesPage() {
     }, 1000)
   }
 
-  const handleGoogleSheetsConnect = () => {
-    if (session?.accessToken) {
-      // Already connected, redirect to settings to sync
+  const handleGoogleSheetsConnect = async () => {
+    if (isGoogleConnected) {
+      // Already connected, redirect to settings to manage
       window.location.href = '/dashboard/settings?tab=integrations'
     } else {
-      // Need to connect first
-      signIn('google', {
-        callbackUrl: '/dashboard/settings?tab=integrations',
-        redirect: true
-      })
+      // Need to connect first - redirect to Google OAuth
+      try {
+        const response = await fetch('/api/integrations/google/connect')
+        const data = await response.json()
+        if (data.url) {
+          window.location.href = data.url
+        } else {
+          toast.error('Failed to initiate Google connection')
+        }
+      } catch (error) {
+        toast.error('Failed to connect to Google')
+      }
     }
   }
 
@@ -191,7 +214,12 @@ export default function FilesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {session?.accessToken ? (
+            {checkingConnection ? (
+              <Button disabled className="w-full">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Checking...
+              </Button>
+            ) : isGoogleConnected ? (
               <>
                 <GoogleSheetsBrowser onSheetsImported={refreshDataSources} />
                 <Button

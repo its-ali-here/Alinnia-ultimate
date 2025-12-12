@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Google Sheets import endpoint called')
-    const session = await getServerSession(authOptions)
-    
-    if (!session) {
+
+    // Get user from Supabase session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -23,15 +38,15 @@ export async function POST(request: NextRequest) {
     })
 
     if (!googleSheetId || !name || !organizationId || !userId) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: googleSheetId, name, organizationId, userId' 
+      return NextResponse.json({
+        error: 'Missing required fields: googleSheetId, name, organizationId, userId'
       }, { status: 400 })
     }
 
-    const supabase = createSupabaseAdminClient()
+    const supabaseAdmin = createSupabaseAdminClient()
 
     // Check if sheet already exists for this organization
-    const { data: existingSheet } = await supabase
+    const { data: existingSheet } = await supabaseAdmin
       .from('google_sheets')
       .select('id')
       .eq('google_sheet_id', googleSheetId)
@@ -40,14 +55,14 @@ export async function POST(request: NextRequest) {
 
     if (existingSheet) {
       console.log('Sheet already exists:', googleSheetId)
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Sheet already imported',
-        alreadyExists: true 
+        alreadyExists: true
       })
     }
 
     // Insert the new Google Sheet
-    const { data: newSheet, error: insertError } = await supabase
+    const { data: newSheet, error: insertError } = await supabaseAdmin
       .from('google_sheets')
       .insert({
         google_sheet_id: googleSheetId,

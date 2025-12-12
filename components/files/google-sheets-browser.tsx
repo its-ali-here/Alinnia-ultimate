@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { useSession } from 'next-auth/react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, FileSpreadsheet, ExternalLink, Plus, AlertCircle } from 'lucide-react'
+import { Loader2, FileSpreadsheet, ExternalLink, Plus, AlertCircle, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface GoogleSheet {
@@ -22,21 +21,41 @@ interface GoogleSheetsBrowserProps {
   onSheetsImported: () => void
 }
 
+interface IntegrationStatus {
+  connected: boolean
+  email: string | null
+  needsConnection?: boolean
+}
+
 export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserProps) {
-  const { organization } = useAuth()
-  const { data: session } = useSession()
+  const { user, organization } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [connecting, setConnecting] = useState(false)
   const [availableSheets, setAvailableSheets] = useState<GoogleSheet[]>([])
   const [selectedSheets, setSelectedSheets] = useState<string[]>([])
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(false)
+
+  const checkIntegrationStatus = async () => {
+    if (!user) return
+
+    setCheckingStatus(true)
+    try {
+      const response = await fetch('/api/integrations/google/status')
+      const data = await response.json()
+      setIntegration(data)
+      return data.connected
+    } catch (err) {
+      console.error('Failed to check integration status:', err)
+      return false
+    } finally {
+      setCheckingStatus(false)
+    }
+  }
 
   const fetchAvailableSheets = async () => {
-    if (!session?.accessToken) {
-      toast.error('Google access token missing')
-      return
-    }
-
     setLoading(true)
     try {
       console.log('Fetching available Google Sheets...')
@@ -44,6 +63,10 @@ export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserPro
       const data = await response.json()
 
       if (!response.ok) {
+        if (data.needsConnection) {
+          setIntegration({ connected: false, email: null, needsConnection: true })
+          return
+        }
         throw new Error(data.error || 'Failed to fetch Google Sheets')
       }
 
@@ -58,11 +81,28 @@ export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserPro
   }
 
   const handleSheetToggle = (sheetId: string) => {
-    setSelectedSheets(prev => 
-      prev.includes(sheetId) 
+    setSelectedSheets(prev =>
+      prev.includes(sheetId)
         ? prev.filter(id => id !== sheetId)
         : [...prev, sheetId]
     )
+  }
+
+  const handleConnectGoogle = async () => {
+    setConnecting(true)
+    try {
+      const response = await fetch('/api/integrations/google/connect')
+      const data = await response.json()
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl
+      } else {
+        throw new Error('Failed to get auth URL')
+      }
+    } catch (err) {
+      toast.error('Failed to initiate Google connection')
+      setConnecting(false)
+    }
   }
 
   const handleImportSelected = async () => {
@@ -71,7 +111,7 @@ export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserPro
       return
     }
 
-    if (!organization?.id || !session?.user?.id) {
+    if (!organization?.id || !user?.id) {
       toast.error('Organization or user information missing')
       return
     }
@@ -95,7 +135,7 @@ export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserPro
             webViewLink: sheet.webViewLink,
             lastModified: sheet.modifiedTime,
             organizationId: organization.id,
-            userId: session.user.id
+            userId: user.id
           })
         })
 
@@ -127,12 +167,18 @@ export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserPro
   }
 
   useEffect(() => {
-    if (isOpen && session?.accessToken) {
-      fetchAvailableSheets()
+    const loadSheets = async () => {
+      if (isOpen && user) {
+        const isConnected = await checkIntegrationStatus()
+        if (isConnected) {
+          fetchAvailableSheets()
+        }
+      }
     }
-  }, [isOpen, session?.accessToken])
+    loadSheets()
+  }, [isOpen, user])
 
-  if (!session?.accessToken) {
+  if (!user) {
     return null
   }
 
@@ -153,10 +199,31 @@ export function GoogleSheetsBrowser({ onSheetsImported }: GoogleSheetsBrowserPro
         </DialogHeader>
 
         <div className="space-y-4">
-          {loading ? (
+          {checkingStatus || loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
-              <span>Loading your Google Sheets...</span>
+              <span>{checkingStatus ? 'Checking connection...' : 'Loading your Google Sheets...'}</span>
+            </div>
+          ) : !integration?.connected ? (
+            <div className="text-center py-8">
+              <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Connect Google Sheets</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Connect your Google account to import spreadsheets.
+              </p>
+              <Button onClick={handleConnectGoogle} disabled={connecting}>
+                {connecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Connect Google Account
+                  </>
+                )}
+              </Button>
             </div>
           ) : availableSheets.length === 0 ? (
             <div className="text-center py-8">

@@ -1,24 +1,50 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, FileSpreadsheet, CheckCircle, AlertCircle, ExternalLink, Unlink } from 'lucide-react'
+import { Loader2, FileSpreadsheet, CheckCircle, AlertCircle, ExternalLink, Unlink, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+interface IntegrationStatus {
+  connected: boolean
+  email: string | null
+  connectedAt: string | null
+  tokenExpired?: boolean
+  scopes?: string[]
+}
+
 export function GoogleSheetsIntegration() {
-  const { data: session, status } = useSession()
+  const { user, loading: authLoading } = useAuth()
   const [sheets, setSheets] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(true)
 
-  const isConnected = !!session?.accessToken
+  const checkIntegrationStatus = async () => {
+    if (!user) return
+
+    try {
+      const response = await fetch('/api/integrations/google/status')
+      const data = await response.json()
+      setIntegration(data)
+
+      if (data.connected && !data.tokenExpired) {
+        fetchSheets()
+      }
+    } catch (err) {
+      console.error('Failed to check integration status:', err)
+    } finally {
+      setCheckingStatus(false)
+    }
+  }
 
   const fetchSheets = async () => {
-    if (!session) return
-
     setLoading(true)
     setError(null)
 
@@ -27,10 +53,14 @@ export function GoogleSheetsIntegration() {
       const data = await response.json()
 
       if (!response.ok) {
+        if (data.needsConnection) {
+          setIntegration({ connected: false, email: null, connectedAt: null })
+          return
+        }
         throw new Error(data.error || 'Failed to fetch sheets')
       }
 
-      setSheets(data.sheets.slice(0, 3)) // Show only first 3 sheets
+      setSheets(data.sheets.slice(0, 3))
     } catch (err) {
       const errorMessage = (err as Error).message
       setError(errorMessage)
@@ -40,26 +70,47 @@ export function GoogleSheetsIntegration() {
   }
 
   useEffect(() => {
-    if (session) {
-      fetchSheets()
+    if (user) {
+      checkIntegrationStatus()
     }
-  }, [session])
+  }, [user])
 
-  const handleConnect = () => {
-    signIn('google', {
-      callbackUrl: window.location.href,
-      redirect: true
-    })
+  const handleConnect = async () => {
+    setConnecting(true)
+    try {
+      const response = await fetch('/api/integrations/google/connect')
+      const data = await response.json()
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl
+      } else {
+        throw new Error('Failed to get auth URL')
+      }
+    } catch (err) {
+      toast.error('Failed to initiate Google connection')
+      setConnecting(false)
+    }
   }
 
   const handleDisconnect = async () => {
+    setDisconnecting(true)
     try {
-      await signOut({ redirect: false })
-      setSheets([])
-      setError(null)
-      toast.success('Google Sheets disconnected successfully')
+      const response = await fetch('/api/integrations/google/disconnect', {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        setIntegration({ connected: false, email: null, connectedAt: null })
+        setSheets([])
+        setError(null)
+        toast.success('Google Sheets disconnected successfully')
+      } else {
+        throw new Error('Failed to disconnect')
+      }
     } catch (err) {
       toast.error('Failed to disconnect Google Sheets')
+    } finally {
+      setDisconnecting(false)
     }
   }
 
@@ -68,7 +119,7 @@ export function GoogleSheetsIntegration() {
     toast.success('Testing connection...')
   }
 
-  if (status === 'loading') {
+  if (authLoading || checkingStatus) {
     return (
       <div className="flex items-center gap-3 p-4 border rounded-lg">
         <Loader2 className="h-5 w-5 animate-spin" />
@@ -76,6 +127,8 @@ export function GoogleSheetsIntegration() {
       </div>
     )
   }
+
+  const isConnected = integration?.connected && !integration?.tokenExpired
 
   return (
     <div className="space-y-4">
@@ -89,7 +142,7 @@ export function GoogleSheetsIntegration() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {isConnected ? (
             <>
@@ -100,9 +153,15 @@ export function GoogleSheetsIntegration() {
               <Button variant="outline" size="sm" onClick={handleTestConnection} disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test'}
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDisconnect}>
-                <Unlink className="h-4 w-4 mr-1" />
-                Disconnect
+              <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={disconnecting}>
+                {disconnecting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Unlink className="h-4 w-4 mr-1" />
+                    Disconnect
+                  </>
+                )}
               </Button>
             </>
           ) : (
@@ -110,7 +169,12 @@ export function GoogleSheetsIntegration() {
               <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
                 Not Connected
               </Badge>
-              <Button size="sm" onClick={handleConnect}>
+              <Button size="sm" onClick={handleConnect} disabled={connecting}>
+                {connecting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Link2 className="h-4 w-4 mr-1" />
+                )}
                 Connect
               </Button>
             </>
@@ -129,7 +193,7 @@ export function GoogleSheetsIntegration() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h5 className="text-sm font-medium">Connected Account</h5>
-            <span className="text-sm text-muted-foreground">{session?.user?.email}</span>
+            <span className="text-sm text-muted-foreground">{integration?.email}</span>
           </div>
 
           {sheets.length > 0 && (

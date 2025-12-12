@@ -1,7 +1,7 @@
 "use server"
 
 import { createSupabaseAdminClient } from "@/lib/supabase-server"
-import { listGoogleSheets, getSheetMetadata } from "@/lib/google-sheets"
+import { listGoogleSheets } from "@/lib/google-sheets"
 
 export async function syncGoogleSheetsAction(organizationId: string, userId: string) {
   if (!organizationId || !userId) {
@@ -11,10 +11,10 @@ export async function syncGoogleSheetsAction(organizationId: string, userId: str
   const supabase = createSupabaseAdminClient()
 
   try {
-    console.log('Syncing Google Sheets for organization:', organizationId)
-    
-    // Get current Google Sheets from Google API
-    const googleSheets = await listGoogleSheets()
+    console.log('Syncing Google Sheets for organization:', organizationId, 'user:', userId)
+
+    // Get current Google Sheets from Google API (using userId for token lookup)
+    const googleSheets = await listGoogleSheets(userId)
     console.log('Found Google Sheets:', googleSheets.length)
 
     // Get existing sheets in our database for this organization
@@ -114,9 +114,9 @@ export async function getGoogleSheetsAction(organizationId: string) {
   }
 }
 
-export async function refreshSheetCacheAction(googleSheetId: string) {
-  if (!googleSheetId) {
-    return { error: "Google Sheet ID is required." }
+export async function refreshSheetCacheAction(googleSheetId: string, userId: string) {
+  if (!googleSheetId || !userId) {
+    return { error: "Google Sheet ID and User ID are required." }
   }
 
   const supabase = createSupabaseAdminClient()
@@ -128,12 +128,10 @@ export async function refreshSheetCacheAction(googleSheetId: string) {
       .delete()
       .eq('google_sheet_id', googleSheetId)
 
-    // Update the sheet's last_modified time to force fresh fetch
-    const metadata = await getSheetMetadata(googleSheetId)
+    // Update the sheet's updated_at timestamp
     await supabase
       .from('google_sheets')
-      .update({ 
-        last_modified: metadata.modifiedTime ? new Date(metadata.modifiedTime).toISOString() : null,
+      .update({
         updated_at: new Date().toISOString()
       })
       .eq('google_sheet_id', googleSheetId)

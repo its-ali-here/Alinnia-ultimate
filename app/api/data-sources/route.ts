@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
-import { listGoogleSheets } from '@/lib/google-sheets'
+import { getGoogleIntegration } from '@/lib/google-sheets'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Get user from Supabase session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+        },
+      }
+    )
 
-    if (!session) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -19,11 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organization ID required' }, { status: 400 })
     }
 
-    console.log('Data sources API - Session:', {
-      hasSession: !!session,
-      hasAccessToken: !!session.accessToken,
-      userEmail: session.user?.email
-    })
+    console.log('Data sources API - User:', user.email)
 
     const supabaseAdmin = createSupabaseAdminClient()
     const allDataSources = []
@@ -84,13 +94,15 @@ export async function GET(request: NextRequest) {
       console.error('Error processing CSV files:', error)
     }
 
-    // Fetch Google Sheets from our database (with auto-sync if needed)
-    if (session?.accessToken) {
+    // Check if user has Google integration and fetch sheets
+    const integration = await getGoogleIntegration(user.id)
+
+    if (integration) {
       try {
         console.log('Fetching Google Sheets from database for organization:', organizationId)
 
-        // First, check if we have any Google Sheets in the database
-        const { data: existingSheets, error: sheetsError } = await supabase
+        // Fetch Google Sheets from the database
+        const { data: existingSheets, error: sheetsError } = await supabaseAdmin
           .from('google_sheets')
           .select('*')
           .eq('organization_id', organizationId)
@@ -99,60 +111,73 @@ export async function GET(request: NextRequest) {
         if (sheetsError) {
           console.error('Error fetching Google Sheets from database:', sheetsError)
         } else {
-          console.log('Google Sheets fetched from database:', existingSheets.length)
+          console.log('Google Sheets fetched from database:', existingSheets?.length || 0)
 
-          // If no sheets in database but user has access token, try to sync
-          if (existingSheets.length === 0) {
+          // If no sheets in database but user has integration, try to sync
+          if (!existingSheets || existingSheets.length === 0) {
             console.log('No Google Sheets in database, attempting auto-sync...')
             try {
-              // Import the sync function and try to sync
               const { syncGoogleSheetsAction } = await import('@/app/actions/google-sheets')
-              const syncResult = await syncGoogleSheetsAction(organizationId, session.user?.id || '')
+              const syncResult = await syncGoogleSheetsAction(organizationId, user.id)
 
               if (!syncResult.error && syncResult.data) {
                 console.log('Auto-sync completed:', syncResult.summary)
                 // Re-fetch the sheets after sync
-                const { data: syncedSheets } = await supabase
+                const { data: syncedSheets } = await supabaseAdmin
                   .from('google_sheets')
                   .select('*')
                   .eq('organization_id', organizationId)
                   .order('updated_at', { ascending: false })
 
                 if (syncedSheets) {
-                  existingSheets.push(...syncedSheets)
+                  // Transform Google Sheets to unified format
+                  const sheetsDataSources = syncedSheets.map((sheet: any) => ({
+                    id: sheet.google_sheet_id,
+                    name: sheet.name,
+                    source: 'Google Sheets' as const,
+                    size: 'Google Sheet',
+                    uploadedAt: sheet.created_at,
+                    status: 'ready' as const,
+                    rowCount: null,
+                    metadata: {
+                      webViewLink: sheet.web_view_link,
+                      googleSheetId: sheet.google_sheet_id,
+                      lastModified: sheet.last_modified,
+                      internalId: sheet.id
+                    }
+                  }))
+                  allDataSources.push(...sheetsDataSources)
                 }
               }
             } catch (syncError) {
               console.error('Auto-sync failed:', syncError)
-              // Continue without failing
             }
+          } else {
+            // Transform existing Google Sheets to unified format
+            const sheetsDataSources = existingSheets.map((sheet: any) => ({
+              id: sheet.google_sheet_id,
+              name: sheet.name,
+              source: 'Google Sheets' as const,
+              size: 'Google Sheet',
+              uploadedAt: sheet.created_at,
+              status: 'ready' as const,
+              rowCount: null,
+              metadata: {
+                webViewLink: sheet.web_view_link,
+                googleSheetId: sheet.google_sheet_id,
+                lastModified: sheet.last_modified,
+                internalId: sheet.id
+              }
+            }))
+            allDataSources.push(...sheetsDataSources)
+            console.log('Added Google Sheets to data sources:', sheetsDataSources.length)
           }
-
-          // Transform Google Sheets to unified format
-          const sheetsDataSources = existingSheets.map(sheet => ({
-            id: sheet.google_sheet_id, // Use the Google Sheets ID for consistency
-            name: sheet.name,
-            source: 'Google Sheets' as const,
-            size: 'Google Sheet',
-            uploadedAt: sheet.created_at,
-            status: 'ready' as const,
-            rowCount: null, // Could be fetched from cache if needed
-            metadata: {
-              webViewLink: sheet.web_view_link,
-              googleSheetId: sheet.google_sheet_id,
-              lastModified: sheet.last_modified,
-              internalId: sheet.id // Keep track of our internal ID
-            }
-          }))
-          allDataSources.push(...sheetsDataSources)
-          console.log('Added Google Sheets to data sources:', sheetsDataSources.length)
         }
       } catch (error) {
         console.error('Error fetching Google Sheets:', error)
-        // Don't fail the entire request if Google Sheets fails
       }
     } else {
-      console.log('No Google access token, skipping Google Sheets')
+      console.log('No Google integration, skipping Google Sheets')
     }
 
     // Sort all data sources by upload date (most recent first)

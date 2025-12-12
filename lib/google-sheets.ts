@@ -1,45 +1,104 @@
 import { google } from 'googleapis'
-import { getServerSession } from 'next-auth'
-import { authOptions } from './auth'
+import { createSupabaseAdminClient } from './supabase-server'
 
-export async function getGoogleSheetsClient() {
-  const session = await getServerSession(authOptions)
+// Helper to refresh Google access token
+async function refreshGoogleToken(userId: string, refreshToken: string): Promise<string | null> {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
 
-  console.log('Getting Google Sheets client - Session check:', {
-    hasSession: !!session,
-    hasAccessToken: !!session?.accessToken,
-    hasRefreshToken: !!session?.refreshToken,
-    userEmail: session?.user?.email
-  })
+    const tokens = await response.json()
 
-  if (!session) {
-    throw new Error('No session found')
+    if (!response.ok) {
+      console.error('Failed to refresh Google token:', tokens)
+      return null
+    }
+
+    // Update the token in database
+    const supabase = createSupabaseAdminClient()
+    await supabase
+      .from('user_integrations')
+      .update({
+        access_token: tokens.access_token,
+        token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('provider', 'google')
+
+    return tokens.access_token
+  } catch (error) {
+    console.error('Error refreshing Google token:', error)
+    return null
+  }
+}
+
+// Get Google integration for a user
+export async function getGoogleIntegration(userId: string) {
+  const supabase = createSupabaseAdminClient()
+
+  const { data: integration, error } = await supabase
+    .from('user_integrations')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('provider', 'google')
+    .single()
+
+  if (error || !integration) {
+    return null
   }
 
-  if (!session.accessToken) {
-    throw new Error('No access token available in session')
+  // Check if token is expired and refresh if needed
+  const isExpired = integration.token_expires_at
+    ? new Date(integration.token_expires_at) < new Date()
+    : false
+
+  if (isExpired && integration.refresh_token) {
+    const newAccessToken = await refreshGoogleToken(userId, integration.refresh_token)
+    if (newAccessToken) {
+      integration.access_token = newAccessToken
+    } else {
+      return null // Token refresh failed
+    }
   }
 
-  console.log('Creating OAuth2 client with credentials')
+  return integration
+}
+
+export async function getGoogleSheetsClient(userId: string) {
+  const integration = await getGoogleIntegration(userId)
+
+  if (!integration) {
+    throw new Error('Google Sheets not connected. Please connect your Google account in Settings.')
+  }
+
+  console.log('Creating OAuth2 client with credentials for user:', userId)
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET
   )
 
   auth.setCredentials({
-    access_token: session.accessToken,
-    refresh_token: session.refreshToken,
+    access_token: integration.access_token,
+    refresh_token: integration.refresh_token,
   })
 
   console.log('OAuth2 client created, returning sheets client')
   return google.sheets({ version: 'v4', auth })
 }
 
-export async function getGoogleDriveClient() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.accessToken) {
-    throw new Error('No access token available')
+export async function getGoogleDriveClient(userId: string) {
+  const integration = await getGoogleIntegration(userId)
+
+  if (!integration) {
+    throw new Error('Google Sheets not connected. Please connect your Google account in Settings.')
   }
 
   const auth = new google.auth.OAuth2(
@@ -48,17 +107,17 @@ export async function getGoogleDriveClient() {
   )
 
   auth.setCredentials({
-    access_token: session.accessToken,
-    refresh_token: session.refreshToken,
+    access_token: integration.access_token,
+    refresh_token: integration.refresh_token,
   })
 
   return google.drive({ version: 'v3', auth })
 }
 
-export async function listGoogleSheets() {
+export async function listGoogleSheets(userId: string) {
   try {
-    console.log('Getting Google Drive client...')
-    const drive = await getGoogleDriveClient()
+    console.log('Getting Google Drive client for user:', userId)
+    const drive = await getGoogleDriveClient(userId)
     console.log('Google Drive client obtained')
 
     const response = await drive.files.list({
@@ -76,8 +135,7 @@ export async function listGoogleSheets() {
   }
 }
 
-export async function getSheetDataWithCache(googleSheetId: string, range = 'Sheet1') {
-  const { createSupabaseAdminClient } = await import('@/lib/supabase-server')
+export async function getSheetDataWithCache(userId: string, googleSheetId: string, range = 'Sheet1') {
   const supabase = createSupabaseAdminClient()
 
   try {
@@ -102,7 +160,7 @@ export async function getSheetDataWithCache(googleSheetId: string, range = 'Shee
 
     // Cache miss or expired - fetch fresh data
     console.log('Fetching fresh data for sheet:', googleSheetId)
-    const freshData = await getSheetData(googleSheetId, range)
+    const freshData = await getSheetData(userId, googleSheetId, range)
 
     // Process and cache the data
     const processedData = processSheetData(freshData)
@@ -175,10 +233,10 @@ function inferColumnType(values: any[]): string {
   return 'text'
 }
 
-export async function getSheetData(spreadsheetId: string, range: string = 'A1:Z1000') {
+export async function getSheetData(userId: string, spreadsheetId: string, range: string = 'A1:Z1000') {
   try {
-    const sheets = await getGoogleSheetsClient()
-    
+    const sheets = await getGoogleSheetsClient(userId)
+
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
@@ -191,10 +249,10 @@ export async function getSheetData(spreadsheetId: string, range: string = 'A1:Z1
   }
 }
 
-export async function getSheetMetadata(spreadsheetId: string) {
+export async function getSheetMetadata(userId: string, spreadsheetId: string) {
   try {
-    const sheets = await getGoogleSheetsClient()
-    
+    const sheets = await getGoogleSheetsClient(userId)
+
     const response = await sheets.spreadsheets.get({
       spreadsheetId,
       fields: 'properties,sheets.properties',
@@ -205,4 +263,19 @@ export async function getSheetMetadata(spreadsheetId: string) {
     console.error('Error getting sheet metadata:', error)
     throw error
   }
+}
+
+// Force refresh sheet data (invalidate cache and fetch fresh)
+export async function refreshSheetData(userId: string, googleSheetId: string, range = 'Sheet1') {
+  const supabase = createSupabaseAdminClient()
+
+  // Delete cached data
+  await supabase
+    .from('sheet_data_cache')
+    .delete()
+    .eq('google_sheet_id', googleSheetId)
+    .eq('range_name', range)
+
+  // Fetch fresh data
+  return getSheetDataWithCache(userId, googleSheetId, range)
 }

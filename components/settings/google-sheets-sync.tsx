@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { useSession } from 'next-auth/react'
 import { syncGoogleSheetsAction, getGoogleSheetsAction, refreshSheetCacheAction } from '@/app/actions/google-sheets'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, RefreshCw, FileSpreadsheet, ExternalLink, RotateCcw } from 'lucide-react'
+import { Loader2, RefreshCw, FileSpreadsheet, ExternalLink, RotateCcw, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface GoogleSheet {
@@ -20,13 +19,34 @@ interface GoogleSheet {
   updated_at: string
 }
 
+interface IntegrationStatus {
+  connected: boolean
+  email: string | null
+}
+
 export function GoogleSheetsSync() {
-  const { organization } = useAuth()
-  const { data: session } = useSession()
+  const { user, organization } = useAuth()
   const [sheets, setSheets] = useState<GoogleSheet[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [refreshingSheet, setRefreshingSheet] = useState<string | null>(null)
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(true)
+  const [connecting, setConnecting] = useState(false)
+
+  const checkIntegrationStatus = async () => {
+    if (!user) return
+
+    try {
+      const response = await fetch('/api/integrations/google/status')
+      const data = await response.json()
+      setIntegration(data)
+    } catch (err) {
+      console.error('Failed to check integration status:', err)
+    } finally {
+      setCheckingStatus(false)
+    }
+  }
 
   const loadSheets = async () => {
     if (!organization?.id) return
@@ -45,15 +65,32 @@ export function GoogleSheetsSync() {
     }
   }
 
+  const handleConnect = async () => {
+    setConnecting(true)
+    try {
+      const response = await fetch('/api/integrations/google/connect')
+      const data = await response.json()
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl
+      } else {
+        throw new Error('Failed to get auth URL')
+      }
+    } catch (err) {
+      toast.error('Failed to initiate Google connection')
+      setConnecting(false)
+    }
+  }
+
   const handleSync = async () => {
-    if (!organization?.id || !session?.user?.id) {
+    if (!organization?.id || !user?.id) {
       toast.error('Organization or user information missing')
       return
     }
 
     setSyncing(true)
     try {
-      const result = await syncGoogleSheetsAction(organization.id, session.user.id)
+      const result = await syncGoogleSheetsAction(organization.id, user.id)
       if (result.error) {
         toast.error(result.error)
       } else {
@@ -68,9 +105,14 @@ export function GoogleSheetsSync() {
   }
 
   const handleRefreshSheet = async (googleSheetId: string) => {
+    if (!user?.id) {
+      toast.error('User information missing')
+      return
+    }
+
     setRefreshingSheet(googleSheetId)
     try {
-      const result = await refreshSheetCacheAction(googleSheetId)
+      const result = await refreshSheetCacheAction(googleSheetId, user.id)
       if (result.error) {
         toast.error(result.error)
       } else {
@@ -84,10 +126,29 @@ export function GoogleSheetsSync() {
   }
 
   useEffect(() => {
-    loadSheets()
-  }, [organization?.id])
+    checkIntegrationStatus()
+  }, [user])
 
-  if (!session?.accessToken) {
+  useEffect(() => {
+    if (integration?.connected) {
+      loadSheets()
+    } else {
+      setLoading(false)
+    }
+  }, [organization?.id, integration?.connected])
+
+  if (checkingStatus) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <span>Checking connection status...</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!integration?.connected) {
     return (
       <Card>
         <CardHeader>
@@ -103,8 +164,18 @@ export function GoogleSheetsSync() {
           <p className="text-sm text-muted-foreground mb-4">
             You need to connect your Google account first to sync Google Sheets.
           </p>
-          <Button variant="outline" disabled>
-            Connect Google Account First
+          <Button onClick={handleConnect} disabled={connecting}>
+            {connecting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Link2 className="h-4 w-4 mr-2" />
+                Connect Google Account
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>

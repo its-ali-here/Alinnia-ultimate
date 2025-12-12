@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { useSession } from 'next-auth/react'
 
 export interface DataSource {
   id: string
@@ -20,10 +19,10 @@ export interface DataSource {
 
 export function useDataSources() {
   const { organization } = useAuth()
-  const { data: session } = useSession()
   const [dataSources, setDataSources] = useState<DataSource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false)
 
   const fetchDataSources = useCallback(async () => {
     if (!organization?.id) {
@@ -60,9 +59,23 @@ export function useDataSources() {
     }
   }, [organization?.id])
 
+  // Check Google connection status
+  useEffect(() => {
+    const checkGoogleStatus = async () => {
+      try {
+        const response = await fetch('/api/integrations/google/status')
+        const data = await response.json()
+        setIsGoogleConnected(data.connected)
+      } catch {
+        setIsGoogleConnected(false)
+      }
+    }
+    checkGoogleStatus()
+  }, [])
+
   useEffect(() => {
     fetchDataSources()
-  }, [fetchDataSources, session?.accessToken]) // Refetch when session changes
+  }, [fetchDataSources, isGoogleConnected]) // Refetch when Google connection changes
 
   const refreshDataSources = useCallback(() => {
     fetchDataSources()

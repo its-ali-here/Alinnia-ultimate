@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from 'react'
-import { useSession, signIn } from 'next-auth/react'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, FileSpreadsheet, Upload, CheckCircle, AlertCircle } from 'lucide-react'
+import { Loader2, FileSpreadsheet, Upload, CheckCircle, AlertCircle, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface DataSourceSetupProps {
@@ -13,27 +13,54 @@ interface DataSourceSetupProps {
   onSourceConnected: (source: string, connected: boolean) => void
 }
 
+interface IntegrationStatus {
+  connected: boolean
+  email: string | null
+  connectedAt: string | null
+}
+
 export function DataSourceSetup({ selectedSource, onSourceConnected }: DataSourceSetupProps) {
-  const { data: session, status } = useSession()
+  const { user } = useAuth()
   const [connecting, setConnecting] = useState(false)
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(false)
+
+  // Check integration status when Google Sheets is selected
+  useEffect(() => {
+    if (selectedSource === 'google-sheets' && user) {
+      checkIntegrationStatus()
+    }
+  }, [selectedSource, user])
+
+  const checkIntegrationStatus = async () => {
+    setCheckingStatus(true)
+    try {
+      const response = await fetch('/api/integrations/google/status')
+      const data = await response.json()
+      setIntegration(data)
+
+      if (data.connected) {
+        onSourceConnected('google-sheets', true)
+      }
+    } catch (err) {
+      console.error('Failed to check integration status:', err)
+    } finally {
+      setCheckingStatus(false)
+    }
+  }
 
   const handleGoogleSheetsConnect = async () => {
     setConnecting(true)
-    
+
     try {
-      await signIn('google', { 
-        callbackUrl: window.location.href,
-        redirect: false 
-      })
-      
-      // Wait a moment for the session to update
-      setTimeout(() => {
-        if (session?.accessToken) {
-          onSourceConnected('google-sheets', true)
-          toast.success('Google Sheets connected successfully!')
-        }
-        setConnecting(false)
-      }, 2000)
+      const response = await fetch('/api/integrations/google/connect')
+      const data = await response.json()
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl
+      } else {
+        throw new Error('Failed to get auth URL')
+      }
     } catch (error) {
       toast.error('Failed to connect Google Sheets')
       setConnecting(false)
@@ -80,7 +107,12 @@ export function DataSourceSetup({ selectedSource, onSourceConnected }: DataSourc
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {session?.accessToken ? (
+            {checkingStatus ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <span>Checking connection status...</span>
+              </div>
+            ) : integration?.connected ? (
               <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <div>
@@ -88,7 +120,7 @@ export function DataSourceSetup({ selectedSource, onSourceConnected }: DataSourc
                     Google Sheets Connected
                   </p>
                   <p className="text-sm text-green-700 dark:text-green-300">
-                    Signed in as {session.user?.email}
+                    Connected as {integration.email}
                   </p>
                 </div>
               </div>
@@ -105,9 +137,9 @@ export function DataSourceSetup({ selectedSource, onSourceConnected }: DataSourc
                     <li>• Access to all your Google Sheets in one place</li>
                   </ul>
                 </div>
-                
-                <Button 
-                  onClick={handleGoogleSheetsConnect} 
+
+                <Button
+                  onClick={handleGoogleSheetsConnect}
                   disabled={connecting}
                   className="w-full"
                 >
@@ -118,8 +150,8 @@ export function DataSourceSetup({ selectedSource, onSourceConnected }: DataSourc
                     </>
                   ) : (
                     <>
-                      <FileSpreadsheet className="mr-2 h-4 w-4" />
-                      Sign in with Google
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Connect Google Account
                     </>
                   )}
                 </Button>

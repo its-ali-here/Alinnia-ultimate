@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { useSession, signIn } from 'next-auth/react'
+import { useAuth } from '@/contexts/auth-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, FileSpreadsheet, ExternalLink, AlertCircle } from 'lucide-react'
+import { Loader2, FileSpreadsheet, ExternalLink, AlertCircle, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface GoogleSheet {
@@ -19,15 +19,42 @@ interface GoogleSheetsConnectorProps {
   onSheetSelect?: (sheetId: string, sheetName: string) => void
 }
 
+interface IntegrationStatus {
+  connected: boolean
+  email: string | null
+  connectedAt: string | null
+  tokenExpired?: boolean
+}
+
 export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorProps) {
-  const { data: session, status } = useSession()
+  const { user, loading: authLoading } = useAuth()
   const [sheets, setSheets] = useState<GoogleSheet[]>([])
   const [loading, setLoading] = useState(false)
+  const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(true)
+
+  // Check integration status
+  const checkIntegrationStatus = async () => {
+    if (!user) return
+
+    try {
+      const response = await fetch('/api/integrations/google/status')
+      const data = await response.json()
+      setIntegration(data)
+
+      if (data.connected && !data.tokenExpired) {
+        fetchSheets()
+      }
+    } catch (err) {
+      console.error('Failed to check integration status:', err)
+    } finally {
+      setCheckingStatus(false)
+    }
+  }
 
   const fetchSheets = async () => {
-    if (!session) return
-
     setLoading(true)
     setError(null)
 
@@ -36,6 +63,10 @@ export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorPr
       const data = await response.json()
 
       if (!response.ok) {
+        if (data.needsConnection) {
+          setIntegration({ connected: false, email: null, connectedAt: null })
+          return
+        }
         throw new Error(data.error || 'Failed to fetch sheets')
       }
 
@@ -50,16 +81,26 @@ export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorPr
   }
 
   useEffect(() => {
-    if (session) {
-      fetchSheets()
+    if (user) {
+      checkIntegrationStatus()
     }
-  }, [session])
+  }, [user])
 
-  const handleGoogleSignIn = () => {
-    signIn('google', { 
-      callbackUrl: window.location.href,
-      redirect: true 
-    })
+  const handleConnectGoogle = async () => {
+    setConnecting(true)
+    try {
+      const response = await fetch('/api/integrations/google/connect')
+      const data = await response.json()
+
+      if (data.authUrl) {
+        window.location.href = data.authUrl
+      } else {
+        throw new Error('Failed to get auth URL')
+      }
+    } catch (err) {
+      toast.error('Failed to initiate Google connection')
+      setConnecting(false)
+    }
   }
 
   const handleSheetSelect = (sheet: GoogleSheet) => {
@@ -69,7 +110,7 @@ export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorPr
     toast.success(`Selected: ${sheet.name}`)
   }
 
-  if (status === 'loading') {
+  if (authLoading || checkingStatus) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-6">
@@ -79,7 +120,7 @@ export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorPr
     )
   }
 
-  if (!session) {
+  if (!user) {
     return (
       <Card>
         <CardHeader>
@@ -88,12 +129,38 @@ export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorPr
             Connect Google Sheets
           </CardTitle>
           <CardDescription>
-            Sign in with Google to access your spreadsheets
+            Please log in to connect your Google Sheets
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  if (!integration?.connected) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            Connect Google Sheets
+          </CardTitle>
+          <CardDescription>
+            Connect your Google account to access your spreadsheets
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleGoogleSignIn} className="w-full">
-            Sign in with Google
+          <Button onClick={handleConnectGoogle} className="w-full" disabled={connecting}>
+            {connecting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Link2 className="mr-2 h-4 w-4" />
+                Connect Google Account
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
@@ -108,7 +175,7 @@ export function GoogleSheetsConnector({ onSheetSelect }: GoogleSheetsConnectorPr
           Your Google Sheets
         </CardTitle>
         <CardDescription>
-          Select a spreadsheet to import data from
+          Connected as {integration.email} • Select a spreadsheet to import
         </CardDescription>
       </CardHeader>
       <CardContent>

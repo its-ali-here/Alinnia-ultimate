@@ -1,28 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { listGoogleSheets, getSheetData, getSheetMetadata } from '@/lib/google-sheets'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
+import { listGoogleSheets, getSheetData, getSheetMetadata, getGoogleIntegration } from '@/lib/google-sheets'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('Google Sheets API called')
-    const session = await getServerSession(authOptions)
 
-    console.log('Google Sheets API - Session check:', {
-      hasSession: !!session,
-      hasAccessToken: !!session?.accessToken,
-      hasRefreshToken: !!session?.refreshToken,
-      userEmail: session?.user?.email
-    })
+    // Get user from Supabase session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+        },
+      }
+    )
 
-    if (!session) {
-      console.log('Google Sheets API - No session found')
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.log('Google Sheets API - No user found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!session.accessToken) {
-      console.log('Google Sheets API - No access token found')
-      return NextResponse.json({ error: 'No Google access token found' }, { status: 401 })
+    // Check if user has Google integration connected
+    const integration = await getGoogleIntegration(user.id)
+    if (!integration) {
+      console.log('Google Sheets API - No Google integration found')
+      return NextResponse.json({
+        error: 'Google Sheets not connected',
+        needsConnection: true
+      }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -30,12 +43,12 @@ export async function GET(request: NextRequest) {
     const spreadsheetId = searchParams.get('spreadsheetId')
     const range = searchParams.get('range')
 
-    console.log('Google Sheets API - Action:', action)
+    console.log('Google Sheets API - Action:', action, 'User:', user.id)
 
     switch (action) {
       case 'list':
         console.log('Google Sheets API - Listing sheets...')
-        const sheets = await listGoogleSheets()
+        const sheets = await listGoogleSheets(user.id)
         console.log('Google Sheets API - Found sheets:', sheets.length)
         return NextResponse.json({ sheets })
 
@@ -44,7 +57,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Spreadsheet ID required' }, { status: 400 })
         }
         console.log('Google Sheets API - Getting data for sheet:', spreadsheetId)
-        const data = await getSheetData(spreadsheetId, range || undefined)
+        const data = await getSheetData(user.id, spreadsheetId, range || undefined)
         return NextResponse.json({ data })
 
       case 'metadata':
@@ -52,7 +65,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Spreadsheet ID required' }, { status: 400 })
         }
         console.log('Google Sheets API - Getting metadata for sheet:', spreadsheetId)
-        const metadata = await getSheetMetadata(spreadsheetId)
+        const metadata = await getSheetMetadata(user.id, spreadsheetId)
         return NextResponse.json({ metadata })
 
       default:
@@ -61,11 +74,6 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('Google Sheets API error:', error)
-    console.error('Error details:', {
-      message: (error as Error).message,
-      stack: (error as Error).stack,
-      name: (error as Error).name
-    })
     return NextResponse.json(
       {
         error: 'Failed to process Google Sheets request',
