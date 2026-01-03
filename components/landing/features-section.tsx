@@ -90,7 +90,7 @@ export function FeaturesSection() {
         >
           {features.map((feature, i) => (
             <motion.div key={i} variants={item}>
-              <Card className="h-full overflow-hidden border-border/40 bg-gradient-to-b from-background to-muted/10 backdrop-blur transition-all hover:shadow-md">
+              <Card className="h-full overflow-hidden border-border/40 transition-all hover:shadow-md">
                 <CardContent className="p-6 flex flex-col h-full">
                   <div className="size-10 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary mb-4">
                     {feature.icon}

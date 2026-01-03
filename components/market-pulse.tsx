@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Lightbulb, TrendingUp, Bot, AlertTriangle } from "lucide-react"
+import { Search, TrendingUp, Scale, AlertTriangle } from "lucide-react"
 
 // This defines the structure of the data we expect from our API
 interface MarketPulseData {
@@ -96,18 +96,18 @@ export function MarketPulse() {
         <CardTitle className="text-lg font-medium flex items-center justify-between">
             <div className="flex items-center">
                 <TrendingUp className="h-5 w-5 mr-2" />
-                Market Pulse (AI-Powered)
+                Market Pulse
             </div>
             {data && getSentimentBadge(data.sentiment)}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-            <h3 className="font-semibold text-sm mb-1 flex items-center"><Lightbulb className="h-4 w-4 mr-2 text-yellow-400"/>Key Indicator</h3>
+            <h3 className="font-semibold text-sm mb-1 flex items-center"><Search className="h-4 w-4 mr-2 text-yellow-400"/>Key Indicator</h3>
             <p className="text-muted-foreground text-sm">{data?.indicator}</p>
         </div>
         <div>
-            <h3 className="font-semibold text-sm mb-1 flex items-center"><Bot className="h-4 w-4 mr-2 text-blue-400"/>AI Suggestion</h3>
+            <h3 className="font-semibold text-sm mb-1 flex items-center"><Scale className="h-4 w-4 mr-2 text-blue-400"/>Suggestion</h3>
             <p className="text-muted-foreground text-sm">{data?.suggestion}</p>
         </div>
       </CardContent>

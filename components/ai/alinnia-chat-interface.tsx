@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, Bot, User, Loader2, PlusCircle, AlertCircle } from "lucide-react"
+import { Send, MessageCircle, User, Loader2, PlusCircle, AlertCircle } from "lucide-react"
 
 // Simple markdown renderer component
 const MarkdownRenderer = ({ content }: { content: string }) => {
@@ -204,10 +204,10 @@ export function AlinniaChatInterface() {
       <Card className="flex-1 flex flex-col">
         <CardHeader className="border-b flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <MessageCircle className="h-5 w-5 text-primary" />
             <div>
-                <CardTitle>Alinnia AI Assistant</CardTitle>
-                <p className="text-sm text-muted-foreground">Powered by Llama 3.3 70B • Your intelligent financial assistant</p>
+                <CardTitle>Alinnia Assistant</CardTitle>
+                <p className="text-sm text-muted-foreground">Your intelligent financial assistant</p>
             </div>
           </div>
            {/* --- FIX 2: "New Chat" button --- */}
@@ -222,9 +222,9 @@ export function AlinniaChatInterface() {
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground py-8">
-                  <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <h3 className="text-lg font-medium mb-2">Welcome to Alinnia AI</h3>
-                  <p className="text-sm">Powered by Llama 3.3 70B, I can help with financial analysis, business insights, strategic planning, and more!</p>
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-medium mb-2">Welcome to Alinnia</h3>
+                  <p className="text-sm">I can help with financial analysis, business insights, strategic planning, and more!</p>
                 </div>
               )}
 
@@ -236,7 +236,7 @@ export function AlinniaChatInterface() {
                   {message.role === "assistant" && (
                     <Avatar className="h-8 w-8">
                       <AvatarFallback>
-                        <Bot className="h-4 w-4" />
+                        <MessageCircle className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
                   )}
@@ -269,7 +269,7 @@ export function AlinniaChatInterface() {
                 <div className="flex gap-3 justify-start">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>
-                      <Bot className="h-4 w-4" />
+                      <MessageCircle className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
                   <div className="bg-muted rounded-lg px-3 py-2">
@@ -300,7 +300,7 @@ export function AlinniaChatInterface() {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Alinnia AI anything..."
+                placeholder="Ask Alinnia anything..."
                 disabled={isLoading}
                 className="flex-1"
               />

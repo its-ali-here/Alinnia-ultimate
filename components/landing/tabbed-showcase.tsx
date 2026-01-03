@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart2, Bot, Briefcase, MessagesSquare } from 'lucide-react';
+import { BarChart2, Briefcase, MessagesSquare } from 'lucide-react';
 
 export function TabbedShowcase() {
     return (
@@ -13,7 +13,7 @@ export function TabbedShowcase() {
                     <div className="flex justify-center">
                         <TabsList className="grid w-full max-w-2xl grid-cols-4 h-auto p-1">
                             <TabsTrigger value="analytics" className="text-base py-2"><BarChart2 className="mr-2 h-5 w-5" />Analytics</TabsTrigger>
-                            <TabsTrigger value="ai" className="text-base py-2"><Bot className="mr-2 h-5 w-5" />Alinnia AI</TabsTrigger>
+                            <TabsTrigger value="ai" className="text-base py-2"><BarChart2 className="mr-2 h-5 w-5" />Insights</TabsTrigger>
                             <TabsTrigger value="projects" className="text-base py-2"><Briefcase className="mr-2 h-5 w-5" />Projects</TabsTrigger>
                             <TabsTrigger value="chat" className="text-base py-2"><MessagesSquare className="mr-2 h-5 w-5" />Chat</TabsTrigger>
                         </TabsList>

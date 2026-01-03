@@ -1,5 +1,4 @@
-// New, more robust code for lib/supabase-server.ts
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * Creates a Supabase client that uses the service_role key for elevated access.

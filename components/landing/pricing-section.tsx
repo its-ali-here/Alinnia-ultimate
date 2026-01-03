@@ -89,7 +89,7 @@ export function PricingSection() {
                     transition={{ duration: 0.5, delay: i * 0.1 }}
                   >
                     <Card
-                      className={`relative overflow-hidden h-full ${plan.popular ? "border-primary shadow-lg" : "border-border/40 shadow-md"} bg-gradient-to-b from-background to-muted/10 backdrop-blur`}
+                      className={`relative overflow-hidden h-full ${plan.popular ? "border-primary shadow-lg" : "border-border/40 shadow-md"}`}
                     >
                       {plan.popular && (
                         <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 text-xs font-medium rounded-bl-lg">
@@ -172,7 +172,7 @@ export function PricingSection() {
                     transition={{ duration: 0.5, delay: i * 0.1 }}
                   >
                     <Card
-                      className={`relative overflow-hidden h-full ${plan.popular ? "border-primary shadow-lg" : "border-border/40 shadow-md"} bg-gradient-to-b from-background to-muted/10 backdrop-blur`}
+                      className={`relative overflow-hidden h-full ${plan.popular ? "border-primary shadow-lg" : "border-border/40 shadow-md"}`}
                     >
                       {plan.popular && (
                         <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 text-xs font-medium rounded-bl-lg">

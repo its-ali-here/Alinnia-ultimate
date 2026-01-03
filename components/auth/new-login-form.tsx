@@ -37,21 +37,17 @@ export function NewLoginForm() {
     
     setCheckingOrganization(true)
     try {
-      // Check if user has an organization
-      const { data, error } = await supabase
-        .from("organization_members")
-        .select("organization_id, role")
-        .eq("user_id", user.id)
-        .maybeSingle()
+      const response = await fetch('/api/user/organization');
+      const { organization, error } = await response.json();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error("Error checking organization:", error)
         // If there's an error, assume no organization and go to onboarding
         router.push("/onboarding")
         return
       }
 
-      if (data && data.organization_id) {
+      if (organization && organization.organization_id) {
         // User has an organization, go to dashboard
         router.push("/dashboard")
       } else {
