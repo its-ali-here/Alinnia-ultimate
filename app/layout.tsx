@@ -4,6 +4,7 @@ import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
 import { SettingsProvider } from "@/contexts/settings-context"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import "react-grid-layout/css/styles.css";
@@ -30,15 +31,22 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;700&family=Inter:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <AuthProvider>
-          <SettingsProvider>
-            <TooltipProvider delayDuration={0}>
-              <GlobalDateRangeProvider>
-                {children}
-              </GlobalDateRangeProvider>
-            </TooltipProvider>
-          </SettingsProvider>
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <SettingsProvider>
+              <TooltipProvider delayDuration={0}>
+                <GlobalDateRangeProvider>
+                  {children}
+                </GlobalDateRangeProvider>
+              </TooltipProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
       </body>

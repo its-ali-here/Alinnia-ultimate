@@ -115,12 +115,12 @@ export function LandingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/legal/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/legal/terms" className="text-muted-foreground hover:text-foreground transition-colors">
                   Terms of Service
                 </Link>
               </li>
@@ -132,10 +132,10 @@ export function LandingFooter() {
             &copy; {new Date().getFullYear()} Alinnia. All rights reserved.
           </p>
           <div className="flex gap-4">
-            <Link href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/legal/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
-            <Link href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/legal/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Terms of Service
             </Link>
             <Link href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">

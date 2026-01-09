@@ -9,6 +9,7 @@ import { HowItWorksSection } from "@/components/landing/hiw-section";
 import { TestimonialsSection } from "@/components/landing/testimonials-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { LandingFooter } from "@/components/landing/landing-footer";
+import { FeaturesGridSection } from "@/components/landing/features-grid";
 
 export default function LandingPage() {
   return (
@@ -16,13 +17,14 @@ export default function LandingPage() {
       <LandingHeader />
       <main className="flex-1">
         <HeroSection />
-        <TabbedShowcase />
         <LogosSection />
-        <FeaturesSection />
+        <TabbedShowcase />
+        <CtaSection />
+        <FeaturesGridSection />
         <HowItWorksSection />
+        <FeaturesSection />
         <TestimonialsSection />
         <PricingSection />
-        <CtaSection />
         <FaqSection />
       </main>
       <LandingFooter />
