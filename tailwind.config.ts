@@ -1,10 +1,11 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: ['class'],
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  darkMode: ["class"],
   content: [
-    "./pages/**/*.{ts,tsx,js,jsx,mdx}",
-    "./components/**/*.{ts,tsx,js,jsx,mdx}",
-    "./app/**/*.{ts,tsx,js,jsx,mdx}",
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
   ],
   theme: {
     container: {
@@ -15,11 +16,6 @@ module.exports = {
       },
     },
     extend: {
-      fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
-        serif: ['"IBM Plex Serif"', 'serif'],
-        mono: ['"Roboto Mono"', 'monospace'],
-      }, // Close fontFamily
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -62,12 +58,12 @@ module.exports = {
       },
       keyframes: {
         "accordion-down": {
-          from: { height: 0 },
+          from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
+          to: { height: "0" },
         },
       },
       animation: {
@@ -76,5 +72,6 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
-}
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+};
+export default config;

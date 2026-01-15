@@ -5,6 +5,8 @@ import Image from "next/image"
 import {
   Instagram,
   Mail,
+  MapPin,
+  Phone,
 } from "lucide-react"
 
 export function LandingFooter() {
@@ -17,9 +19,18 @@ export function LandingFooter() {
               <Image src="/headerlogo.png" alt="Alinnia Logo" width={32} height={32} className="h-8 w-auto invert dark:invert-0"/>
               <span>Alinnia</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Streamline your workflow with our all-in-one SaaS platform. Boost productivity and scale your business.
-            </p>
+            
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <MapPin className="size-4" />
+                <span>30 Lawrence Road, Lahore</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="size-4" />
+                <span>(+92) 303-0543000</span>
+              </div>
+            </div>
+
             <div className="flex gap-4">
               {/* WhatsApp Link */}
               <Link href="https://wa.me/923458477010" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -105,7 +116,7 @@ export function LandingFooter() {
             <h4 className="text-sm font-bold">Company</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/pages/about" className="text-muted-foreground hover:text-foreground transition-colors">
                   About
                 </Link>
               </li>
@@ -115,33 +126,22 @@ export function LandingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/legal/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/pages/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/legal/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/pages/terms" className="text-muted-foreground hover:text-foreground transition-colors">
                   Terms of Service
                 </Link>
               </li>
             </ul>
           </div>
         </div>
-        <div className="flex flex-col gap-4 sm:flex-row justify-between items-center border-t border-border/40 pt-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-center items-center text-center border-t border-border/40 pt-8">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Alinnia. All rights reserved.
           </p>
-          <div className="flex gap-4">
-            <Link href="/legal/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/legal/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Terms of Service
-            </Link>
-            <Link href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Cookie Policy
-            </Link>
-          </div>
         </div>
       </div>
     </footer>
