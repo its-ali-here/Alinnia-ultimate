@@ -1,30 +1,115 @@
 # Alinnia
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+**Alinnia** is a SaaS business intelligence web application designed to help **SMEs make better financial and operational decisions** by transforming raw organisational data into actionable insights.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/muhammad-alis-projects-59b96270/v0-alinnia)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/eKzEfrgs2jt)
+The platform connects directly to organisational data sources (primarily spreadsheets such as Excel/Sheets), visualises them through dashboards and KPIs, and augments decision-making with **AI-driven recommendations** and **market context**.
 
-## Overview
+---
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## 🚀 What Alinnia Does
 
-## Deployment
+Alinnia helps SMEs **make or save money** by:
 
-Your project is live at:
+- Centralising business data in one place  
+- Turning spreadsheets into live dashboards  
+- Tracking key performance indicators (KPIs)  
+- Providing AI-based recommendations on next actions  
+- Incorporating relevant market news into insights  
 
-**[https://vercel.com/muhammad-alis-projects-59b96270/v0-alinnia](https://vercel.com/muhammad-alis-projects-59b96270/v0-alinnia)**
+This allows non-technical business owners and managers to move from *data collection* to *decision execution* faster.
 
-## Build your app
+---
 
-Continue building your app on:
+## 🧠 Core Features
 
-**[https://v0.dev/chat/projects/eKzEfrgs2jt](https://v0.dev/chat/projects/eKzEfrgs2jt)**
+### Current / In Progress
+- Organisation-based accounts (paid SaaS model)
+- Data ingestion from spreadsheets (Excel / Sheets-style data)
+- Dashboard visualisation
+- KPI tracking
+- Authentication via Supabase
+- AI integration using Groq AI (early stage)
 
-## How It Works
+### Planned
+- Advanced AI decision recommendations
+- Context-aware insights using market news
+- Custom KPI definitions per organisation
+- Alerts & notifications
+- Forecasting & trend analysis
+- Role-based access control (RBAC)
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+---
+
+## 🏗️ Tech Stack
+
+### Frontend
+- Next.js
+- React
+
+### Backend & Services
+- Supabase
+  - Authentication
+  - Database
+  - Row-level security (RLS)
+- Groq AI (decision intelligence & recommendations)
+
+### Hosting & DevOps
+- Vercel (deployment & hosting)
+- GitHub (version control & CI integration)
+
+---
+
+## 🔐 Authentication
+
+- Managed entirely via **Supabase Auth**
+- Organisation-scoped access
+- Session handling via Supabase client
+
+---
+
+## 📁 Project Status
+
+⚠️ **Under active development**
+
+This project is evolving rapidly. APIs, schemas, and feature scope may change without notice.
+
+---
+
+## 🧑‍💻 Internal Development Notes
+
+- This README is intended for the **internal Alinnia team**
+- No public API guarantees yet
+- No legal, licensing, or compliance framework defined at this stage
+- Environment variables and secrets are managed locally and on Vercel
+
+---
+
+## 🧩 Environment Variables (To Be Expanded)
+
+Expected (subject to change):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GROQ_API_KEY`
+
+A `.env.example` file will be added later.
+
+---
+
+## 🗺️ Vision
+
+Alinnia aims to become a **decision-intelligence layer for SMEs**, combining:
+
+- Internal organisational data  
+- External market signals  
+- AI-powered reasoning  
+
+All focused on **practical, money-impacting decisions**, not just analytics.
+
+---
+
+## 📌 Notes
+
+- No license defined yet  
+- No public documentation yet  
+- Internal use only  

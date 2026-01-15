@@ -4,7 +4,7 @@ import * as React from "react"
 import { CalendarIcon } from "@radix-ui/react-icons"
 import { format } from "date-fns"
 import type { DateRange } from "react-day-picker"
-import { useGlobalDateRange } from "@/context/GlobalDateRangeContext" // Import global context
+import { useGlobalDateRange } from "@/contexts/GlobalDateRangeContext" // Import global context
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
