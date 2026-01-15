@@ -2,17 +2,13 @@
 
 import { SignupForm } from "@/components/auth/signup-form"
 import Link from "next/link"
-import { Suspense, useState } from "react"
-import HCaptcha from "@hcaptcha/react-hcaptcha"
+import { Suspense } from "react"
 
-function SignupFormWrapper({ captchaToken }: { captchaToken: string | null }) {
-  // @ts-ignore - Ensure SignupForm is updated to accept this prop
-  return <SignupForm captchaToken={captchaToken} />
+function SignupFormWrapper() {
+  return <SignupForm />
 }
 
 export default function SignupPage() {
-  const [captchaToken, setToken] = useState<string | null>(null);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8 px-4">
@@ -38,17 +34,8 @@ export default function SignupPage() {
             </div>
           }
         >
-          <SignupFormWrapper captchaToken={captchaToken} />
+          <SignupFormWrapper />
         </Suspense>
-
-        <div className="flex justify-center mt-4">
-            <HCaptcha
-            sitekey="76106d52-1748-40da-8540-1e600504f790"
-            onVerify={(newToken) => setToken(newToken)}
-            onExpire={() => setToken(null)} // resets token if it expires
-            onError={() => setToken(null)}  // avoids errors on failure
-          />
-        </div>
       </div>
     </div>
   )

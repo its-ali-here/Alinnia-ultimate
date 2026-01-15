@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,14 +11,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, Loader2, CheckCircle2, Mail } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
+import HCaptcha from "@hcaptcha/react-hcaptcha"
 
-export function SignupForm() {
+interface SignupFormProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export function SignupForm({ className, ...props }: SignupFormProps) {
   const router = useRouter()
   const { isSupabaseConfigured } = useAuth()
   
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     fullName: "", 
@@ -62,6 +66,11 @@ export function SignupForm() {
       return
     }
 
+    if (!captchaToken) {
+      setError("Please complete the captcha verification.")
+      return
+    }
+
     setLoading(true)
     try {
       const response = await fetch("/api/simple-signup", {
@@ -71,6 +80,7 @@ export function SignupForm() {
           fullName: formData.fullName,
           email: formData.email,
           password: formData.password,
+          captchaToken: captchaToken,
         }),
       })
       
@@ -186,6 +196,15 @@ export function SignupForm() {
               onChange={handleInputChange}
               disabled={loading}
               required
+            />
+          </div>
+
+          <div className="flex justify-center py-2">
+            <HCaptcha
+              sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY || "76106d52-1748-40da-8540-1e600504f790"}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
             />
           </div>
 
