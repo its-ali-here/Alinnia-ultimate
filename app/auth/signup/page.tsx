@@ -2,7 +2,6 @@
 
 import { SignupForm } from "@/components/auth/signup-form"
 import Link from "next/link"
-import { title } from "process"
 import { Suspense } from "react"
 
 function SignupFormWrapper() {

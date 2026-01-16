@@ -2,13 +2,13 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, Loader2, CheckCircle2, Mail } from "lucide-react"
+import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import HCaptcha from "@hcaptcha/react-hcaptcha"
@@ -73,7 +73,7 @@ export function SignupForm({ className, ...props }: SignupFormProps) {
 
     setLoading(true)
     try {
-      const response = await fetch("/api/simple-signup", {
+      const response = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

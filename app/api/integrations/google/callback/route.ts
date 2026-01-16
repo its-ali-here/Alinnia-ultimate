@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     })
     const userInfo = await userInfoResponse.json()
 
-    // Store integration in database
+    // Store integration in database using admin client
     const supabase = createSupabaseAdminClient()
     
     const { error: upsertError } = await supabase

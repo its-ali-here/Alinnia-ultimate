@@ -1,9 +1,9 @@
-import { NewLoginForm } from "@/components/auth/new-login-form"
+import { LoginForm } from "@/components/auth/new-login-form"
 import Link from "next/link"
 import { Suspense } from "react"
 
 function LoginFormWrapper() {
-  return <NewLoginForm />
+  return <LoginForm />
 }
 
 export default function LoginPage() {

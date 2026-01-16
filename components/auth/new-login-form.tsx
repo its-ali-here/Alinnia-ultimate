@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { AuthCheckingScreen, OrganizationCheckingScreen } from "@/components/auth/auth-loading-screen"
 
-export function NewLoginForm() {
+export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -80,7 +80,12 @@ export function NewLoginForm() {
       })
 
       if (error) {
-        setError(error.message)
+        // Check if the error is related to Captcha configuration
+        if (error.message.toLowerCase().includes("captcha")) {
+          setError("Login failed: CAPTCHA is enabled for 'Sign In' in your Supabase project. Please disable 'Verify on Sign In' in your Supabase Dashboard > Authentication > Security.")
+        } else {
+          setError(error.message)
+        }
       } else if (data.user) {
         // The useEffect will handle routing after login
       }

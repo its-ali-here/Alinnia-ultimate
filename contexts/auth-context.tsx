@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error: new Error("Supabase is not configured.") };
       }
       try {
-        const response = await fetch("/api/simple-signup", {
+        const response = await fetch("/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
