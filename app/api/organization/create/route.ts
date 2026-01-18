@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createSupabaseAdminClient } from "@/lib/supabase-server"
+import { createSupabaseAdminClient } from "@/lib/supabase-admin"
 
 // Helper function to generate a unique organization code with retries
 async function generateUniqueOrgCode(maxAttempts = 5): Promise<string> {

@@ -1,52 +1,73 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 export async function GET() {
-  const cookieStore = cookies()
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-
   try {
+    // Get user from session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+        },
+      }
+    )
+
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+      return NextResponse.json({ organization: null, error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    // Use admin client to fetch organization membership
+    const supabaseAdmin = createSupabaseAdminClient()
+
+    const { data: membership, error: membershipError } = await supabaseAdmin
       .from('organization_members')
-      .select('organization_id, role')
+      .select(`
+        organization_id,
+        role,
+        designation,
+        organizations (
+          id,
+          name,
+          organization_code,
+          onboarding_completed
+        )
+      `)
       .eq('user_id', user.id)
-      .maybeSingle()
+      .limit(1)
+      .single()
 
-    if (error && error.code !== 'PGRST116') {
-        console.error("Error checking organization in API route:", error)
-        return new NextResponse(JSON.stringify({ error: error.message }), { status: 500 })
+    if (membershipError) {
+      // PGRST116 means no rows found - user has no organization
+      if (membershipError.code === 'PGRST116') {
+        return NextResponse.json({ organization: null })
+      }
+      console.error('Error fetching organization:', membershipError)
+      return NextResponse.json({ organization: null, error: membershipError.message }, { status: 500 })
     }
 
-    return new NextResponse(JSON.stringify({ organization: data }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+    return NextResponse.json({
+      organization: membership ? {
+        organization_id: membership.organization_id,
+        role: membership.role,
+        designation: membership.designation,
+        ...membership.organizations
+      } : null
     })
+
   } catch (error) {
-    console.error("Error in GET /api/user/organization:", error)
-    return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 })
+    console.error('User organization API error:', error)
+    return NextResponse.json(
+      { organization: null, error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

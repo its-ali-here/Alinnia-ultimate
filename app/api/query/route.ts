@@ -1,113 +1,84 @@
-// app/api/analytics/query/route.ts
-import { NextResponse } from 'next/server';
-import { createSupabaseAdminClient } from '@/lib/supabase-server';
+import { NextResponse } from 'next/server'
+import { createSupabaseAdminClient } from '@/lib/supabase-server'
+import { parse, isValid, isWithinInterval } from 'date-fns'
 
-// --- NEW: A flexible date parser that uses a format string ---
-const parseDateWithFormat = (dateString: string, format: string): Date | null => {
-    const parts = dateString.split(/[-/]/);
-    const formatParts = format.toLowerCase().split(/[-/]/);
-
-    if (parts.length !== 3 || formatParts.length !== 3) return null;
-
-    const dayIndex = formatParts.indexOf('dd');
-    const monthIndex = formatParts.indexOf('mm');
-    const yearIndex = formatParts.indexOf('yyyy');
-
-    if (dayIndex === -1 || monthIndex === -1 || yearIndex === -1) return null;
-
-    // Note: new Date() expects (year, month - 1, day)
-    const year = parseInt(parts[yearIndex], 10);
-    const month = parseInt(parts[monthIndex], 10) - 1; // Month is 0-indexed
-    const day = parseInt(parts[dayIndex], 10);
-
-    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        return new Date(year, month, day);
-    }
-    return null;
-};
-
-// Helper function to apply all filters
-const applyFilters = (data: any[], filters: any) => {
-  let filteredData = data;
-
-  // Apply Date Range Filter if all required info is present
-  if (filters?.dateRange && filters.dateColumn && filters.dateFormat) {
-    const { from, to } = filters.dateRange;
-    const startDate = new Date(from);
-    const endDate = new Date(to);
-
-    filteredData = filteredData.filter(row => {
-      // --- FIX: Use our new flexible parser with the provided format ---
-      const rowDate = parseDateWithFormat(row[filters.dateColumn], filters.dateFormat);
-      return rowDate && rowDate >= startDate && rowDate <= endDate;
-    });
-  }
-
-  return filteredData;
-};
-
-// (The rest of the file remains the same)
-
-const processChartData = (data: any[], categoryKey: string, valueKey: string) => {
-  if (!data || data.length === 0) return [];
-  const result = data.reduce((acc, row) => {
-      const category = row[categoryKey];
-      const value = parseFloat(row[valueKey]) || 0;
-      if (category) {
-          if (!acc[category]) acc[category] = 0;
-          acc[category] += value;
-      }
-      return acc;
-  }, {} as Record<string, number>);
-  return Object.entries(result).map(([key, sum]) => ({ [categoryKey]: key, [valueKey]: sum }));
-};
-
-const processMapData = (data: any[]) => {
-    if (!data || data.length === 0) return [];
-    return data;
-};
-
+// Unified query API - handles charts, maps, aggregations, and filtered queries
 export async function POST(req: Request) {
-    const supabaseAdmin = createSupabaseAdminClient();
+  try {
+    const body = await req.json()
+    const { datasourceId, type = 'chart', ...params } = body
 
-    try {
-        const { datasourceId, query, chartType, categoryKey, valueKey, filters } = await req.json();
-
-        if (!datasourceId) {
-            return NextResponse.json({ error: 'Missing datasourceId parameter.' }, { status: 400 });
-        }
-
-        const { data: datasource, error: fetchError } = await supabaseAdmin
-            .from('datasources')
-            .select('processed_data')
-            .eq('id', datasourceId)
-            .single();
-
-        if (fetchError || !datasource || !datasource.processed_data) {
-            throw new Error(`Could not find processed data for datasource: ${datasourceId}`);
-        }
-
-        const filteredData = applyFilters(datasource.processed_data, filters);
-
-        let responseData;
-        if (chartType === 'map' && query?.dimensions) {
-            responseData = processMapData(filteredData);
-        } else if (categoryKey && valueKey) {
-            responseData = processChartData(filteredData, categoryKey, valueKey);
-        } else {
-            // It's possible for summary cards to have no chartType.
-            // In this case, we can just return the filtered data.
-            // The frontend will handle the aggregation.
-            responseData = filteredData;
-        }
-
-        return NextResponse.json({ data: responseData });
-
-    } catch (error) {
-        console.error("API Query Error:", error);
-        return NextResponse.json(
-            { error: (error as Error).message },
-            { status: 500 }
-        );
+    if (!datasourceId) {
+      return NextResponse.json({ error: 'Missing datasourceId' }, { status: 400 })
     }
+
+    const supabase = createSupabaseAdminClient()
+    const { data: ds, error } = await supabase
+      .from('datasources')
+      .select('processed_data, date_format')
+      .eq('id', datasourceId)
+      .single()
+
+    if (error || !ds?.processed_data) {
+      return NextResponse.json({ error: 'Datasource not found' }, { status: 404 })
+    }
+
+    const dateFormat = ds.date_format || 'yyyy-MM-dd'
+    let data = applyFilters(ds.processed_data, params.filters, dateFormat)
+
+    let result: any
+    switch (type) {
+      case 'aggregate':
+        result = performAggregation(data, params.column, params.aggregation)
+        break
+      case 'map':
+        result = data // Map component handles its own processing
+        break
+      case 'chart':
+      default:
+        result = groupAndAggregate(data, params.categoryKey, params.valueKey)
+    }
+
+    return NextResponse.json({ data: result })
+  } catch (err) {
+    console.error('Query API Error:', err)
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+  }
+}
+
+function applyFilters(data: any[], filters: any, dateFormat: string) {
+  if (!filters?.dateRange?.from || !filters?.dateRange?.to || !filters?.dateColumn) return data
+  
+  const from = new Date(filters.dateRange.from)
+  const to = new Date(filters.dateRange.to)
+  
+  return data.filter(row => {
+    const rowDate = parse(row[filters.dateColumn], dateFormat, new Date())
+    return isValid(rowDate) && isWithinInterval(rowDate, { start: from, end: to })
+  })
+}
+
+function groupAndAggregate(data: any[], categoryKey: string, valueKey: string) {
+  if (!categoryKey || !valueKey) return data
+  
+  const grouped = data.reduce((acc, row) => {
+    const key = row[categoryKey]
+    const val = parseFloat(row[valueKey]) || 0
+    acc[key] = (acc[key] || 0) + val
+    return acc
+  }, {} as Record<string, number>)
+
+  return Object.entries(grouped).map(([k, v]) => ({ [categoryKey]: k, [valueKey]: v }))
+}
+
+function performAggregation(data: any[], column: string, type: string) {
+  const values = data.map(r => parseFloat(r[column])).filter(n => !isNaN(n))
+  switch (type) {
+    case 'sum': return values.reduce((a, b) => a + b, 0)
+    case 'count': return data.length
+    case 'average': return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0
+    case 'min': return Math.min(...values)
+    case 'max': return Math.max(...values)
+    default: return 0
+  }
 }

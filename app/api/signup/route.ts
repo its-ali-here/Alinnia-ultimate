@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     }, { status: 200 });
 
   } catch (error) {
-    console.error("Simple Signup API Error:", (error as Error).message);
+    console.error("Signup API Error:", (error as Error).message);
     return NextResponse.json({ 
       error: (error as Error).message || "An unexpected error occurred during signup." 
     }, { status: 500 });

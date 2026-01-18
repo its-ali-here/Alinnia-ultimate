@@ -1,5 +1,5 @@
 import { google } from 'googleapis'
-import { createSupabaseAdminClient } from './supabase-admin'
+import { createSupabaseAdminClient } from './supabase-server'
 
 // Helper to refresh Google access token
 async function refreshGoogleToken(userId: string, refreshToken: string): Promise<string | null> {

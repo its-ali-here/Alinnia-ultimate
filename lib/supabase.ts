@@ -3,37 +3,42 @@ import { createBrowserClient } from "@supabase/ssr"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Create Supabase client with error handling
-export const supabase = (() => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn(
-      "Supabase environment variables are missing (client-side). Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    )
-    // Return a mock client to prevent crashes
-    return {
-      auth: {
-        getSession: async () => ({ data: { session: null }, error: null }),
-        signUp: async () => ({ data: { user: null, session: null }, error: { message: "Supabase not configured" } }),
-        signInWithPassword: async () => ({
-          data: { user: null, session: null },
-          error: { message: "Supabase not configured" },
-        }),
-        signOut: async () => ({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      },
-      from: () => ({
-        select: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-        insert: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-        update: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-        delete: () => Promise.resolve({ data: null, error: { message: "Supabase not configured" } }),
-      }),
-    } as any
-  }
-  
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
-})()
+export const isSupabaseConfigured = () => !!(supabaseUrl && supabaseAnonKey)
 
-// Helper function to check if Supabase is properly configured
-export const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseAnonKey)
+// Single browser client instance
+export const supabase = isSupabaseConfigured()
+  ? createBrowserClient(supabaseUrl!, supabaseAnonKey!)
+  : createMockClient()
+
+// Also export a function for consistency with other patterns
+export const createSupabaseBrowserClient = () => supabase
+
+function createMockClient() {
+  console.warn("Supabase not configured. Using mock client.")
+  const mockResponse = { data: null, error: { message: "Supabase not configured" } }
+  const mockChain = {
+    select: () => mockChain,
+    insert: () => mockChain,
+    update: () => mockChain,
+    delete: () => mockChain,
+    eq: () => mockChain,
+    single: () => Promise.resolve(mockResponse),
+    maybeSingle: () => Promise.resolve(mockResponse),
+    then: (resolve: any) => resolve(mockResponse),
+  }
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      getUser: async () => ({ data: { user: null }, error: null }),
+      signUp: async () => ({ data: { user: null, session: null }, error: { message: "Supabase not configured" } }),
+      signInWithPassword: async () => ({ data: { user: null, session: null }, error: { message: "Supabase not configured" } }),
+      signOut: async () => ({ error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+    from: () => mockChain,
+    storage: { from: () => ({ upload: async () => mockResponse, download: async () => mockResponse, remove: async () => mockResponse }) },
+    functions: { invoke: async () => mockResponse },
+    channel: () => ({ on: () => ({ subscribe: () => {} }) }),
+    removeChannel: () => {},
+  } as any
 }

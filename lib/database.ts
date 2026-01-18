@@ -1,7 +1,5 @@
-import { supabase } from "./supabase"
-
-// If this file needs createSupabaseAdminClient, change the import to:
-// import { createSupabaseAdminClient } from './supabase-admin'
+import { supabase, isSupabaseConfigured } from "./supabase"
+import { createSupabaseAdminClient } from "./supabase-server"
 
 // NOTE: This file interacts with tables in your Supabase 'public' schema.
 // Ensure the table names here (e.g., "users", "organizations") match your database exactly.
