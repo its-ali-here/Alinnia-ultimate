@@ -36,6 +36,17 @@
     --radius: 0.5rem;
 
     --yellow: 38 92% 50%;
+
+    /* Alinnia brand color */
+    --color-alinnia: #324623; /* rgb(50,70,35) */
+
+    /* Map primary to Alinnia (for components that rely on CSS vars) */
+    --color-primary: var(--color-alinnia);
+    --color-primary-foreground: #ffffff;
+
+    /* Yellow color usable by components/utilities (hsl from --yellow) */
+    --color-yellow: hsl(var(--yellow));
+    --color-yellow-foreground: #111111;
   }
 
   .dark {
@@ -67,6 +78,9 @@
     --destructive-foreground: 210 40% 98%;
 
     --ring: 217 32.6% 57.5%;
+
+    /* keep yellow available in dark mode (can be adjusted if you want a different tone) */
+    --color-yellow: hsl(var(--yellow));
   }
 
   /* --- THIS IS THE COMBINED AND CORRECTED PART --- */
@@ -77,4 +91,17 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* utility example for older custom usage (optional) */
+  .bg-alinnia { background-color: var(--color-alinnia) !important; }
+  .text-alinnia { color: var(--color-alinnia) !important; }
+
+  /* minimal yellow utilities for progress bars / quick usage */
+  .bg-yellow { background-color: var(--color-yellow) !important; }
+  .text-yellow { color: var(--color-yellow) !important; }
+
+  /* explicit 500-shade utilities (match Tailwind shade class names) */
+  .bg-yellow-500 { background-color: var(--color-yellow) !important; }
+  .text-yellow-500 { color: var(--color-yellow) !important; }
+  .ring-yellow-500 { --tw-ring-color: var(--color-yellow) !important; }
 }
