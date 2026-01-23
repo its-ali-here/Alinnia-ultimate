@@ -96,19 +96,19 @@ function DashboardCard({ dashboard, onDashboardUpdated }: { dashboard: Dashboard
 }
 
 export function AnalyticsTab() {
-    const { user, organization } = useAuth();
+    const { organizationId } = useAuth();
     const [dashboards, setDashboards] = useState<Dashboard[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const loadDashboards = useCallback(async () => {
-        if (!organization?.id) {
+        if (!organizationId) {
             setIsLoading(false);
             return;
         }
 
         setIsLoading(true);
         try {
-            const result = await getAllDashboardsAction(organization.id);
+            const result = await getAllDashboardsAction(organizationId);
 
             if (result.error) {
                 toast.error(result.error);
@@ -122,7 +122,7 @@ export function AnalyticsTab() {
         } finally {
             setIsLoading(false);
         }
-    }, [organization?.id]);
+    }, [organizationId]);
 
     useEffect(() => {
         loadDashboards();

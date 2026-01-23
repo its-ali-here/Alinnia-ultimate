@@ -34,7 +34,10 @@ export function NewMessageModal({ isOpen, onOpenChange, onDmCreated }: NewMessag
   }, [isOpen, organizationId, user])
 
   const handleSelectMember = async (memberId: string) => {
-    if (!user || !organizationId) return;
+    if (!user || !organizationId) {
+      toast.error("Session error. Please refresh the page.")
+      return;
+    }
     
     setIsCreating(true);
     try {

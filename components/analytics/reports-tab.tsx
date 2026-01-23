@@ -28,7 +28,7 @@ export function ReportsTab() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
 
   const fetchFiles = useCallback(async () => {
-    if (!organizationId || !isSupabaseConfigured()) {
+    if (!organizationId) {
       setIsLoadingFiles(false)
       return
     }

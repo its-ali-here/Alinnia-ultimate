@@ -7,26 +7,16 @@
  */
 
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 
-// Admin client that bypasses RLS - use only on server side
-export function createSupabaseAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!url || !key) {
-    throw new Error('Missing Supabase admin credentials')
-  }
-
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
+// Re-export admin client for convenience
+export { createSupabaseAdminClient } from './supabase-admin'
 
 // Server client with user session (for Route Handlers only)
 export async function createSupabaseServerClient() {
+  // Dynamic import to avoid bundling next/headers in pages directory
+  const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
+  
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

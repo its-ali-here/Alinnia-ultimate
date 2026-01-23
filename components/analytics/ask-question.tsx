@@ -34,8 +34,7 @@ interface Summary {
 }
 
 export function AskQuestion() {
-  const { organization } = useAuth();
-  const organizationId = organization?.id;
+  const { organizationId } = useAuth();
 
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);

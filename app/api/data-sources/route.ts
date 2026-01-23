@@ -2,7 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
-import { getGoogleIntegration } from '@/lib/google-sheets'
+import { getGoogleIntegration, listGoogleSheets } from '@/lib/google-sheets' // added listGoogleSheets
+
+// Helper function to format file size
+function formatFileSize(bytes: number | null | undefined): string {
+  if (!bytes || bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`
+}
+
+const STORAGE_LIMITS: Record<string, number> = {
+  free: 100 * 1024 * 1024,      // 100MB
+  starter: 500 * 1024 * 1024,   // 500MB
+  pro: 2 * 1024 * 1024 * 1024,  // 2GB
+  enterprise: 10 * 1024 * 1024 * 1024 // 10GB
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,48 +52,37 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = createSupabaseAdminClient()
     const allDataSources = []
+    let totalStorageUsed = 0
 
-    // Fetch CSV files from Supabase
+    // Get organization plan for storage limit
+    const { data: org } = await supabaseAdmin
+      .from('organizations')
+      .select('plan')
+      .eq('id', organizationId)
+      .single()
+    
+    const storageLimit = STORAGE_LIMITS[org?.plan || 'free'] || STORAGE_LIMITS.free
+
+    // Fetch CSV files from Supabase - now including file_size
     try {
       const { data: csvFiles, error: csvError } = await supabaseAdmin
         .from('datasources')
-        .select('id, file_name, status, row_count, created_at, storage_path, date_format')
+        .select('id, file_name, status, row_count, created_at, storage_path, date_format, file_size')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
       if (csvError) {
         console.error('Error fetching CSV files:', csvError)
       } else if (csvFiles) {
-        // Transform CSV files to unified format and get file sizes
-        const csvDataSources = await Promise.all(csvFiles.map(async (file) => {
-          let fileSize = 'Unknown'
-
-          // Try to get file size from storage
-          if (file.storage_path && file.storage_path !== 'pending') {
-            try {
-              const { data: fileInfo, error: sizeError } = await supabaseAdmin.storage
-                .from('files')
-                .list(file.storage_path.split('/').slice(0, -1).join('/'), {
-                  search: file.storage_path.split('/').pop()
-                })
-
-              if (!sizeError && fileInfo && fileInfo.length > 0) {
-                const sizeInBytes = fileInfo[0].metadata?.size
-                if (sizeInBytes) {
-                  const sizeInMB = sizeInBytes / (1024 * 1024)
-                  fileSize = `${sizeInMB.toFixed(1)} MB`
-                }
-              }
-            } catch (error) {
-              console.error('Error getting file size:', error)
-            }
-          }
-
-          return {
+        for (const file of csvFiles) {
+          const sizeBytes = file.file_size || 0
+          totalStorageUsed += sizeBytes
+          allDataSources.push({
             id: file.id,
             name: file.file_name,
-            source: 'CSV' as const,
-            size: fileSize,
+            source: 'CSV',
+            size: formatFileSize(sizeBytes),
+            sizeBytes,
             uploadedAt: file.created_at,
             status: file.status,
             rowCount: file.row_count,
@@ -86,9 +90,8 @@ export async function GET(request: NextRequest) {
               dateFormat: file.date_format,
               storagePath: file.storage_path
             }
-          }
-        }))
-        allDataSources.push(...csvDataSources)
+          })
+        }
       }
     } catch (error) {
       console.error('Error processing CSV files:', error)
@@ -96,8 +99,13 @@ export async function GET(request: NextRequest) {
 
     // Check if user has Google integration and fetch sheets
     const integration = await getGoogleIntegration(user.id)
+    let googleConnected = false
+    let googleEmail = null
 
     if (integration) {
+      googleConnected = true
+      googleEmail = integration.email || null
+
       try {
         console.log('Fetching Google Sheets from database for organization:', organizationId)
 
@@ -113,16 +121,31 @@ export async function GET(request: NextRequest) {
         } else {
           console.log('Google Sheets fetched from database:', existingSheets?.length || 0)
 
-          // If no sheets in database but user has integration, try to sync
+          // If no sheets in database but user has integration, try to fetch directly from Google and insert
           if (!existingSheets || existingSheets.length === 0) {
-            console.log('No Google Sheets in database, attempting auto-sync...')
+            console.log('No Google Sheets in database, attempting server-side fetch from Google Drive...')
             try {
-              const { syncGoogleSheetsAction } = await import('@/app/actions/google-sheets')
-              const syncResult = await syncGoogleSheetsAction(organizationId, user.id)
+              const googleSheets = await listGoogleSheets(user.id)
+              if (googleSheets && googleSheets.length > 0) {
+                for (const sheet of googleSheets) {
+                  try {
+                    await supabaseAdmin.from('google_sheets').insert({
+                      google_sheet_id: sheet.id,
+                      name: sheet.name,
+                      organization_id: organizationId,
+                      created_by: user.id,
+                      web_view_link: sheet.webViewLink,
+                      last_modified: sheet.modifiedTime ? new Date(sheet.modifiedTime).toISOString() : null,
+                      created_at: sheet.createdTime ? new Date(sheet.createdTime).toISOString() : new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    })
+                  } catch (insertErr) {
+                    // ignore insert errors for individual sheets but log
+                    console.error('Failed to insert sheet:', sheet.id, insertErr)
+                  }
+                }
 
-              if (!syncResult.error && syncResult.data) {
-                console.log('Auto-sync completed:', syncResult.summary)
-                // Re-fetch the sheets after sync
+                // Re-fetch inserted sheets
                 const { data: syncedSheets } = await supabaseAdmin
                   .from('google_sheets')
                   .select('*')
@@ -130,12 +153,12 @@ export async function GET(request: NextRequest) {
                   .order('updated_at', { ascending: false })
 
                 if (syncedSheets) {
-                  // Transform Google Sheets to unified format
                   const sheetsDataSources = syncedSheets.map((sheet: any) => ({
                     id: sheet.google_sheet_id,
                     name: sheet.name,
                     source: 'Google Sheets' as const,
-                    size: 'Google Sheet',
+                    size: 'Cloud',
+                    sizeBytes: 0,
                     uploadedAt: sheet.created_at,
                     status: 'ready' as const,
                     rowCount: null,
@@ -150,7 +173,7 @@ export async function GET(request: NextRequest) {
                 }
               }
             } catch (syncError) {
-              console.error('Auto-sync failed:', syncError)
+              console.error('Server-side fetch of Google Sheets failed:', syncError)
             }
           } else {
             // Transform existing Google Sheets to unified format
@@ -158,7 +181,8 @@ export async function GET(request: NextRequest) {
               id: sheet.google_sheet_id,
               name: sheet.name,
               source: 'Google Sheets' as const,
-              size: 'Google Sheet',
+              size: 'Cloud',
+              sizeBytes: 0,
               uploadedAt: sheet.created_at,
               status: 'ready' as const,
               rowCount: null,
@@ -183,7 +207,16 @@ export async function GET(request: NextRequest) {
     // Sort all data sources by upload date (most recent first)
     allDataSources.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
 
-    return NextResponse.json({ dataSources: allDataSources })
+    return NextResponse.json({
+      dataSources: allDataSources,
+      storage: {
+        used: totalStorageUsed,
+        limit: storageLimit,
+        percentage: Math.round((totalStorageUsed / storageLimit) * 100)
+      },
+      googleConnected,
+      googleEmail
+    })
   } catch (error) {
     console.error('Data sources API error:', error)
     return NextResponse.json(

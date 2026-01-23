@@ -19,7 +19,7 @@ interface CreateDashboardDialogProps {
 }
 
 export function CreateDashboardDialog({ onDashboardCreated }: CreateDashboardDialogProps) {
-  const { user, organization } = useAuth()
+  const { user, organizationId } = useAuth()
   const { dataSources, loading: dataSourcesLoading } = useDataSources()
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState("")
@@ -71,8 +71,8 @@ export function CreateDashboardDialog({ onDashboardCreated }: CreateDashboardDia
       return
     }
 
-    if (!organization?.id || !user?.id) {
-      toast.error("Organization or user information is missing.")
+    if (!organizationId || !user?.id) {
+      toast.error("Session error. Please refresh the page.")
       return
     }
 
@@ -83,7 +83,7 @@ export function CreateDashboardDialog({ onDashboardCreated }: CreateDashboardDia
         description,
         datasourceIds: selectedDataSources,
         googleSheetsIds: selectedGoogleSheets,
-        organizationId: organization.id,
+        organizationId: organizationId,
         userId: user.id,
       })
 
@@ -92,7 +92,7 @@ export function CreateDashboardDialog({ onDashboardCreated }: CreateDashboardDia
         description,
         datasourceIds: selectedDataSources,
         googleSheetsIds: selectedGoogleSheets,
-        organizationId: organization.id,
+        organizationId: organizationId,
         userId: user.id,
       })
 
