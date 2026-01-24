@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,13 +19,23 @@ const formSchema = z.object({
   cardNumber: z.string().transform(val => val.replace(/\s/g, '')).refine(val => val.length === 16 && /^\d+$/.test(val), "Card number must be 16 digits"),
   expiryDate: z.string().refine(val => /^(0[1-9]|1[0-2])\/\d{2}$/.test(val), "Expiry must be in MM/YY format"),
   cvc: z.string().transform(val => val.replace(/\D/g, '')).refine(val => val.length === 3 && /^\d+$/.test(val), "CVC must be 3 digits"),
+  address: z.string().min(1, "Address is required"),
+  city: z.string().min(1, "City is required"),
+  country: z.string().min(1, "Country is required"),
+  zipCode: z.string().transform(val => val.replace(/\D/g, '')).refine(val => val.length === 5 && /^\d+$/.test(val), "ZIP code must be 5 digits"),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
+const COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Côte d’Ivoire", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Palestine", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+];
+
 export default function OnboardingPaymentPage() {
-  const { prevStep, updateData, data, startSubmitting, isSubmitting } = useOnboarding();
+  const { prevStep, updateData, data, startSubmitting, stopSubmitting, isSubmitting } = useOnboarding();
   const router = useRouter();
+
+  console.log('OnboardingPaymentPage data:', data); // Added console log
 
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -33,6 +44,10 @@ export default function OnboardingPaymentPage() {
       cardNumber: "",
       expiryDate: "",
       cvc: "",
+      address: "",
+      city: "",
+      country: "",
+      zipCode: "",
     }
   });
 
@@ -64,6 +79,7 @@ export default function OnboardingPaymentPage() {
           ...data,
           ...formData,
           cardNumber: formData.cardNumber.replace(/\s/g, ''), // Ensure cleaned number for backend
+          zipCode: formData.zipCode.replace(/\D/g, ''), // Ensure cleaned number for backend
         };
 
         const response = await fetch("/api/signup", {
@@ -88,13 +104,14 @@ export default function OnboardingPaymentPage() {
         // Display specific error from backend if available, otherwise generic message
         const errorMessage = (err as Error).message;
         toast.error(`Signup failed: ${errorMessage}`);
+        stopSubmitting();
         // Here you might want to reset the submitting state or redirect to an error page
     }
   };
 
-  const planDetails = {
-    starter: { name: "Starter", price: "$20/month" },
-    professional: { name: "Professional", price: "$80/month" },
+  const planDetails: { [key: string]: { name: string; price: string } } = {
+    starter: { name: "Starter", price: "$24/month" },
+    professional: { name: "Pro", price: "$49/month" },
   }
 
   const selectedPlan = data.plan ? planDetails[data.plan] : null;
@@ -115,7 +132,7 @@ export default function OnboardingPaymentPage() {
             )}
              <div className="space-y-2">
                 <Label htmlFor="cardholderName">Cardholder Name</Label>
-                <Input id="cardholderName" {...register("cardholderName")} disabled={isSubmitting} />
+                <Input id="cardholderName" placeholder="Cardholder Name" {...register("cardholderName")} disabled={isSubmitting} />
                 {errors.cardholderName && <p className="text-xs text-red-500">{errors.cardholderName.message}</p>}
             </div>
             <div className="space-y-2">
@@ -207,6 +224,70 @@ export default function OnboardingPaymentPage() {
                     />
                     {errors.cvc && <p className="text-xs text-red-500">{errors.cvc.message}</p>}
                 </div>
+            </div>
+
+            {/* New Address Fields */}
+            <h3 className="text-lg font-semibold mt-6">Billing Address</h3>
+            <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" placeholder="123 Main St" {...register("address")} disabled={isSubmitting} />
+                {errors.address && <p className="text-xs text-red-500">{errors.address.message}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" placeholder="City" {...register("city")} disabled={isSubmitting} />
+                    {errors.city && <p className="text-xs text-red-500">{errors.city.message}</p>}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="zipCode">ZIP Code</Label>
+                    <Controller
+                      name="zipCode"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          id="zipCode"
+                          placeholder="ZIP Code"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={5}
+                          disabled={isSubmitting}
+                          onChange={(e) => {
+                            const numericValue = e.target.value.replace(/\D/g, ''); // Only allow digits
+                            field.onChange(numericValue);
+                          }}
+                          onKeyDown={(e) => {
+                            // Allow numbers, backspace, delete, arrow keys, tab
+                            if (!/[0-9]/.test(e.key) && ![8, 9, 37, 39, 46].includes(e.keyCode) && !e.metaKey && !e.ctrlKey) {
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                      )}
+                    />
+                    {errors.zipCode && <p className="text-xs text-red-500">{errors.zipCode.message}</p>}
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Controller
+                  name="country"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a country" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country} value={country}>{country}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.country && <p className="text-xs text-red-500">{errors.country.message}</p>}
             </div>
         </CardContent>
         <CardFooter className="flex justify-between">

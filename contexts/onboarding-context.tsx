@@ -1,10 +1,9 @@
 "use client"
 
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 // --- Types ---
-type Plan = 'starter' | 'professional';
 type DataLocation = 'cloud' | 'local' | 'other';
 
 interface OnboardingData {
@@ -15,7 +14,7 @@ interface OnboardingData {
   companyName?: string;
   dataLocation?: DataLocation;
   agreedToTerms?: boolean;
-  plan?: Plan;
+  plan?: string;
   // We won't store actual payment details, just a flag
   paymentConfirmed?: boolean;
 }
@@ -30,6 +29,7 @@ interface OnboardingContextType {
   resetOnboarding: () => void;
   isSubmitting: boolean;
   startSubmitting: () => void;
+  stopSubmitting: () => void;
 }
 
 // --- Context Definition ---
@@ -50,31 +50,25 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     '/onboarding/setup',
   ];
 
-  const navigateToStep = (stepNumber: number) => {
-    if (stepNumber > 0 && stepNumber <= STEPS.length) {
-      router.push(STEPS[stepNumber - 1]);
-    }
-  };
+  useEffect(() => {
+    const navigateToStep = (stepNumber: number) => {
+      if (stepNumber > 0 && stepNumber <= STEPS.length) {
+        router.push(STEPS[stepNumber - 1]);
+      }
+    };
+    navigateToStep(step);
+  }, [step]);
 
   const nextStep = () => {
-    setStep(prev => {
-      const next = prev + 1;
-      navigateToStep(next);
-      return next;
-    });
+    setStep(prev => prev + 1);
   };
 
   const prevStep = () => {
-    setStep(prev => {
-      const next = prev - 1;
-      navigateToStep(next);
-      return next;
-    });
+    setStep(prev => prev - 1);
   };
 
   const goToStep = (stepNumber: number) => {
     setStep(stepNumber);
-    navigateToStep(stepNumber);
   };
   
   const updateData = (newData: Partial<OnboardingData>) => {
@@ -85,11 +79,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setIsSubmitting(true);
   }
 
+  const stopSubmitting = () => {
+    setIsSubmitting(false);
+  }
+
   const resetOnboarding = () => {
     setStep(1);
     setData({});
     setIsSubmitting(false);
-    router.push(STEPS[0]);
   }
 
   const value = useMemo(() => ({
@@ -101,7 +98,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     updateData,
     resetOnboarding,
     isSubmitting,
-    startSubmitting
+    startSubmitting,
+    stopSubmitting
   }), [step, data, isSubmitting]);
 
   return (

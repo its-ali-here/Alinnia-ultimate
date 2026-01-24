@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { getOrganizationMembers, type Profile } from "@/lib/database"
+import { getOrganizationMembers, type OrganizationUser } from "@/lib/database"
 import { getOrCreateDmChannelAction } from "@/app/actions/chat"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ interface NewMessageModalProps {
 
 export function NewMessageModal({ isOpen, onOpenChange, onDmCreated }: NewMessageModalProps) {
   const { user, organizationId } = useAuth()
-  const [members, setMembers] = useState<Profile[]>([])
+  const [members, setMembers] = useState<OrganizationUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false);
 
@@ -27,7 +27,7 @@ export function NewMessageModal({ isOpen, onOpenChange, onDmCreated }: NewMessag
     if (isOpen && organizationId) {
       setIsLoading(true);
       getOrganizationMembers(organizationId).then(data => {
-        setMembers(data.filter(m => m.profiles.id !== user?.id).map(m => m.profiles))
+        setMembers(data.filter(m => m.user_id !== user?.id))
         setIsLoading(false)
       })
     }
@@ -74,10 +74,10 @@ export function NewMessageModal({ isOpen, onOpenChange, onDmCreated }: NewMessag
                 <div className="space-y-1">
                     {members.map(member => (
                     <Button
-                        key={member.id}
+                        key={member.user_id}
                         variant="ghost"
                         className="w-full justify-start h-12"
-                        onClick={() => handleSelectMember(member.id)}
+                        onClick={() => handleSelectMember(member.user_id)}
                         disabled={isCreating}
                     >
                         <Avatar className="h-8 w-8 mr-3">

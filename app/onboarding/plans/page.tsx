@@ -37,7 +37,7 @@ export default function OnboardingPlansPage() {
           <h3 className="text-lg font-bold">Starter</h3>
           <p className="text-sm text-muted-foreground">For individuals and small teams.</p>
           <div className="my-4">
-            <span className="text-4xl font-bold">$20</span>
+            <span className="text-4xl font-bold">$24</span>
             <span className="text-muted-foreground">/month</span>
           </div>
           <ul className="space-y-2 text-sm">
@@ -53,10 +53,10 @@ export default function OnboardingPlansPage() {
           )}
           onClick={() => handleSelectPlan('professional')}
         >
-          <h3 className="text-lg font-bold">Professional</h3>
+          <h3 className="text-lg font-bold">Pro</h3>
           <p className="text-sm text-muted-foreground">For growing businesses.</p>
           <div className="my-4">
-            <span className="text-4xl font-bold">$80</span>
+            <span className="text-4xl font-bold">$49</span>
             <span className="text-muted-foreground">/month</span>
           </div>
           <ul className="space-y-2 text-sm">

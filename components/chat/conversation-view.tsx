@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 // --- FIX: Correctly import all necessary functions and types ---
-import { getMessagesForChannel, sendMessage, type Message, type Profile } from "@/lib/database"
+import { getMessagesForChannel, sendMessage, type Message, type OrganizationUser } from "@/lib/database"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
@@ -24,7 +24,7 @@ type Channel = {
   id: string;
   name?: string;
   type: 'dm' | 'group' | 'organization';
-  other_member?: Profile;
+  other_member?: OrganizationUser;
 };
 
 export function ConversationView({ channelId }: ConversationViewProps) {
@@ -42,11 +42,12 @@ export function ConversationView({ channelId }: ConversationViewProps) {
   }
 
   useEffect(() => {
-    if (!channelId) {
+    if (!channelId || !user) {
       setMessages([]);
       setActiveChannel(null);
       return;
     }
+    const { organizationId } = user;
 
     const loadConversation = async () => {
       setIsLoading(true);
@@ -67,49 +68,26 @@ export function ConversationView({ channelId }: ConversationViewProps) {
 
           // If it's a DM, fetch the other member's info
           if (channelData.type === 'dm' && user) {
-            // First try with explicit foreign key
-            let { data: members, error: membersError } = await supabase
+            const { data: memberIds } = await supabase
               .from('channel_members')
-              .select(`
-                user_id,
-                profiles!user_id (
-                  id,
-                  full_name,
-                  avatar_url,
-                  email
-                )
-              `)
+              .select('user_id')
               .eq('channel_id', channelId)
               .neq('user_id', user.id);
 
-            if (membersError) {
-              // Fallback: get user ID and fetch profile separately
-              const { data: memberIds } = await supabase
-                .from('channel_members')
-                .select('user_id')
-                .eq('channel_id', channelId)
-                .neq('user_id', user.id);
+            if (memberIds && memberIds.length > 0) {
+              const { data: profile } = await supabase
+                .from('organization_users')
+                .select('*')
+                .eq('user_id', memberIds[0].user_id)
+                .eq('organization_id', organizationId)
+                .single();
 
-              if (memberIds && memberIds.length > 0) {
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('id, full_name, avatar_url, email')
-                  .eq('id', memberIds[0].user_id)
-                  .single();
-
-                setActiveChannel({
-                  ...channelData,
-                  other_member: profile
-                });
-              } else {
-                setActiveChannel(channelData);
-              }
-            } else {
-              const otherMember = members?.[0]?.profiles;
               setActiveChannel({
                 ...channelData,
-                other_member: otherMember
+                other_member: profile
               });
+            } else {
+              setActiveChannel(channelData);
             }
           } else {
             setActiveChannel(channelData);
@@ -117,7 +95,7 @@ export function ConversationView({ channelId }: ConversationViewProps) {
         }
 
         console.log("Fetching messages for channel:", channelId);
-        const messagesData = await getMessagesForChannel(channelId);
+        const messagesData = await getMessagesForChannel(channelId, organizationId);
         console.log("Messages received in component:", messagesData);
         setMessages(messagesData);
 
@@ -154,9 +132,10 @@ export function ConversationView({ channelId }: ConversationViewProps) {
 
           // Fetch the author profile for the new message
           const { data: profile } = await supabase
-            .from('profiles')
+            .from('organization_users')
             .select('id, full_name, avatar_url')
-            .eq('id', payload.new.user_id)
+            .eq('user_id', payload.new.user_id)
+            .eq('organization_id', organizationId)
             .single();
 
           // Update the message with author info
@@ -174,7 +153,7 @@ export function ConversationView({ channelId }: ConversationViewProps) {
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [channelId]);
+  }, [channelId, user]);
 
   useEffect(scrollToBottom, [messages]);
 

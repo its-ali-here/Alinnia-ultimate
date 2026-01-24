@@ -14,27 +14,22 @@ export interface Organization {
   country: string
   organization_code: string
   created_at: string
-  owner_id: string
 }
 
-export interface Profile {
-  id: string
-  email: string
-  full_name: string
-  avatar_url?: string
-  phone?: string
-  created_at: string
-  updated_at: string
-  timezone?: string
-}
-
-export interface OrganizationMember {
+export interface OrganizationUser {
   id: string
   organization_id: string
   user_id: string
+  full_name: string
+  email: string
+  avatar_url?: string
+  phone?: string
+  timezone?: string
   role: string
   designation?: string
   joined_at: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Account {
@@ -123,68 +118,54 @@ export interface UploadedFile {
 }
 
 // Profile functions
-export async function createProfile(userId: string, fullName: string, email: string): Promise<Profile> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert({ id: userId, email: email, full_name: fullName })
-    .select()
-    .single()
-
-  if (error) {
-    console.error("DB:createProfile - Supabase error:", JSON.stringify(error, null, 2))
-    if (error.code === "23505") {
-      const existing = await getProfile(userId)
-      if (existing) return existing
-      throw new Error(`DB:createProfile - User already exists but could not be fetched. ${error.message}`)
-    }
-    throw new Error(`DB:createProfile - ${error.message} (Code: ${error.code})`)
-  }
-  return data
-}
-
-export async function getProfile(userId: string): Promise<Profile | null> {
+export async function getOrganizationUser(userId: string, organizationId: string): Promise<OrganizationUser | null> {
   if (!isSupabaseConfigured()) {
-    console.warn("DB:getProfile - Supabase not configured, returning demo data.")
+    console.warn("DB:getOrganizationUser - Supabase not configured, returning demo data.")
     return {
-      id: userId,
-      email: "demo@example.com",
+      id: "demo-user",
+      organization_id: organizationId,
+      user_id: userId,
       full_name: "Demo User",
+      email: "demo@example.com",
+      role: "member",
+      joined_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
   }
   const { data, error } = await supabase
-    .from("profiles")
+    .from("organization_users")
     .select("*")
-    .eq("id", userId)
+    .eq("user_id", userId)
+    .eq("organization_id", organizationId)
     .maybeSingle()
 
   if (error) {
-    console.error("DB:getProfile - Supabase error:", JSON.stringify(error, null, 2))
+    console.error("DB:getOrganizationUser - Supabase error:", JSON.stringify(error, null, 2))
     return null
   }
   return data
 }
 
-export async function updateProfile(
+export async function updateOrganizationUser(
   userId: string,
-  updates: Partial<Pick<Profile, "full_name" | "avatar_url" | "phone" | "timezone">>,
-): Promise<Profile | null> {
+  organizationId: string,
+  updates: Partial<Pick<OrganizationUser, "full_name" | "avatar_url" | "phone" | "timezone" | "designation">>,
+): Promise<OrganizationUser | null> {
   if (!isSupabaseConfigured()) {
-    console.warn("DB:updateProfile - Supabase not configured.")
+    console.warn("DB:updateOrganizationUser - Supabase not configured.")
     return null
   }
   const { data, error } = await supabase
-    .from("profiles")
+    .from("organization_users")
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq("id", userId)
+    .eq("user_id", userId)
+    .eq("organization_id", organizationId)
     .select()
     .single()
 
   if (error) {
-    console.error("DB:updateProfile - Supabase error:", JSON.stringify(error, null, 2))
+    console.error("DB:updateOrganizationUser - Supabase error:", JSON.stringify(error, null, 2))
     throw error
   }
   return data
@@ -193,13 +174,15 @@ export async function updateProfile(
 // Organization functions
 export async function createOrganization(
   ownerId: string,
+  ownerEmail: string,
+  ownerFullName: string,
   orgName: string,
 ): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   const supabaseAdmin = createSupabaseAdminClient()
   const { data: org, error: orgError } = await supabaseAdmin
     .from("organizations")
-    .insert({ name: orgName, owner_id: ownerId })
+    .insert({ name: orgName })
     .select()
     .single()
 
@@ -207,7 +190,7 @@ export async function createOrganization(
     console.error("DB:createOrganization - Supabase error:", JSON.stringify(orgError, null, 2))
     throw new Error(`DB:createOrganization - ${orgError.message}`)
   }
-  await addUserToOrganization(ownerId, org.id, "owner")
+  await addUserToOrganization(ownerId, ownerEmail, ownerFullName, org.id, "owner")
   return org
 }
 
@@ -215,7 +198,7 @@ export async function getUserOrganizations(userId: string) {
   if (!isSupabaseConfigured()) return null;
 
   const { data, error } = await supabase
-    .from("organization_members")
+    .from("organization_users")
     .select(`
       role,
       organization:organizations (
@@ -230,8 +213,7 @@ export async function getUserOrganizations(userId: string) {
         logo_url
       )
     `)
-    .eq("user_id", userId)
-    .maybeSingle();
+    .eq("user_id", userId);
 
   if (error) {
     console.error("Error fetching user's organization and role:", error);
@@ -240,11 +222,11 @@ export async function getUserOrganizations(userId: string) {
   return data;
 }
 
-export async function createOrganizationAndLinkUser(userId: string, orgName: string): Promise<Organization> {
-  return createOrganization(userId, orgName)
+export async function createOrganizationAndLinkUser(userId: string, userEmail: string, userFullName: string, orgName: string): Promise<Organization> {
+  return createOrganization(userId, userEmail, userFullName, orgName)
 }
 
-export async function joinOrganizationAndLinkUser(userId: string, orgCode: string): Promise<Organization> {
+export async function joinOrganizationAndLinkUser(userId: string, userEmail: string, userFullName: string, orgCode: string): Promise<Organization> {
   if (!isSupabaseConfigured()) throw new Error("Supabase not configured.")
 
   const supabaseAdmin = createSupabaseAdminClient()
@@ -253,7 +235,7 @@ export async function joinOrganizationAndLinkUser(userId: string, orgCode: strin
   if (orgErr || !org) throw new Error("Organization not found.")
 
   const { data: exists, error: memErr } = await supabaseAdmin
-    .from("organization_members")
+    .from("organization_users")
     .select("id")
     .eq("organization_id", orgCode)
     .eq("user_id", userId)
@@ -262,9 +244,11 @@ export async function joinOrganizationAndLinkUser(userId: string, orgCode: strin
   if (memErr) throw memErr
   if (exists) throw new Error("User is already a member of this organisation.")
 
-  const { error: insertErr } = await supabaseAdmin.from("organization_members").insert({
+  const { error: insertErr } = await supabaseAdmin.from("organization_users").insert({
     organization_id: orgCode,
     user_id: userId,
+    email: userEmail,
+    full_name: userFullName,
     role: "member",
   })
 
@@ -450,17 +434,15 @@ export async function getOrganizationMembers(
   if (!isSupabaseConfigured()) return [];
 
   const { data, error } = await supabase
-    .from("organization_members")
+    .from("organization_users")
     .select(`
       id,
       role,
       designation,
       joined_at,
-      profiles (
-        id,
-        full_name,
-        avatar_url
-      )
+      full_name,
+      avatar_url,
+      user_id
     `)
     .eq("organization_id", organizationId)
     .order("joined_at");
@@ -470,22 +452,21 @@ export async function getOrganizationMembers(
     return [];
   }
 
-  // This filter is important: it removes any members whose profiles couldn't be found.
-  return (data || []).filter(member => member.profiles);
+  return data || [];
 }
 
 export async function updateOrganizationMemberDesignation(
   userId: string,
   organizationId: string,
   designation: string
-): Promise<OrganizationMember | null> {
+): Promise<OrganizationUser | null> {
   if (!isSupabaseConfigured()) {
     console.warn("DB:updateOrganizationMemberDesignation - Supabase not configured.");
     return null;
   }
 
   const { data, error } = await supabase
-    .from("organization_members")
+    .from("organization_users")
     .update({ designation: designation })
     .eq("user_id", userId)
     .eq("organization_id", organizationId)
@@ -510,7 +491,7 @@ export interface Channel {
   organization_id: string;
   created_at: string;
   created_by?: string;
-  other_member?: Profile;
+  other_member?: OrganizationUser;
 }
 
 export interface Message {
@@ -519,7 +500,7 @@ export interface Message {
   created_at: string;
   user_id: string;
   channel_id: string;
-  author?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>;
+  author?: Pick<OrganizationUser, 'id' | 'full_name' | 'avatar_url'>;
 }
 
 export async function getChannelsForUser(userId: string): Promise<Channel[]> {
@@ -537,7 +518,7 @@ export async function getChannelsForUser(userId: string): Promise<Channel[]> {
   return channels;
 }
 
-export async function getMessagesForChannel(channelId: string): Promise<Message[]> {
+export async function getMessagesForChannel(channelId: string, organizationId: string): Promise<Message[]> {
   if (!isSupabaseConfigured()) return [];
 
   console.log("Fetching messages for channel:", channelId);
@@ -547,19 +528,18 @@ export async function getMessagesForChannel(channelId: string): Promise<Message[
     .from('messages')
     .select(`
       *,
-      author:profiles!user_id (
+      author:organization_users (
         id,
         full_name,
         avatar_url
       )
     `)
     .eq('channel_id', channelId)
+    .eq('organization_id', organizationId)
     .order('created_at', { ascending: true });
 
   if (error) {
-    // Expected error due to foreign key relationship issues - using fallback
-
-    // Fallback: try without the join
+    // Fallback
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('messages')
       .select('*')
@@ -573,31 +553,29 @@ export async function getMessagesForChannel(channelId: string): Promise<Message[
 
     console.log("Fallback query succeeded, fetching user profiles separately");
 
-    // Manually fetch user profiles for each message
-    const messagesWithProfiles = await Promise.all(
+    const messagesWithAuthors = await Promise.all(
       (fallbackData || []).map(async (message) => {
-        const { data: profile } = await supabase
-          .from('profiles')
+        const { data: author } = await supabase
+          .from('organization_users')
           .select('id, full_name, avatar_url')
-          .eq('id', message.user_id)
+          .eq('user_id', message.user_id)
+          .eq('organization_id', organizationId)
           .single();
 
         return {
           ...message,
-          author: profile || { id: message.user_id, full_name: 'Unknown User', avatar_url: null }
+          author: author || { id: message.user_id, full_name: 'Unknown User', avatar_url: null }
         };
       })
     );
 
-    console.log("Messages with profiles:", messagesWithProfiles);
-    return messagesWithProfiles;
+    console.log("Messages with authors:", messagesWithAuthors);
+    return messagesWithAuthors;
   }
 
   console.log("Messages fetched successfully:", data);
   return (data as any) || [];
 }
-
-
 
 export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message> {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
@@ -626,51 +604,32 @@ export async function sendMessage(channelId: string, userId: string, content: st
 }
 
 // Function to get channel members with their profiles
-export async function getChannelMembers(channelId: string): Promise<Profile[]> {
+export async function getChannelMembers(channelId: string, organizationId: string): Promise<OrganizationUser[]> {
   if (!isSupabaseConfigured()) return [];
 
-  // First try with explicit foreign key reference
-  const { data, error } = await supabase
+  const { data: memberIds, error: memberIdsError } = await supabase
     .from('channel_members')
-    .select(`
-      user_id,
-      profiles!user_id (
-        id,
-        full_name,
-        avatar_url,
-        email
-      )
-    `)
+    .select('user_id')
     .eq('channel_id', channelId);
 
-  if (error) {
-    // Expected error due to foreign key relationship issues - using fallback
-    const { data: memberIds, error: memberIdsError } = await supabase
-      .from('channel_members')
-      .select('user_id')
-      .eq('channel_id', channelId);
-
-    if (memberIdsError) {
-      console.error("Error fetching channel members:", memberIdsError);
-      return [];
-    }
-
-    // Fetch profiles for each user ID
-    const profiles = await Promise.all(
-      (memberIds || []).map(async (member) => {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, email')
-          .eq('id', member.user_id)
-          .single();
-        return profile;
-      })
-    );
-
-    return profiles.filter(Boolean) as Profile[];
+  if (memberIdsError) {
+    console.error("Error fetching channel members:", memberIdsError);
+    return [];
   }
 
-  return (data || []).map(item => item.profiles).filter(Boolean) as Profile[];
+  const userIds = memberIds.map(m => m.user_id);
+
+  const { data, error } = await supabase
+    .from('organization_users')
+    .select('*')
+    .in('user_id', userIds)
+    .eq('organization_id', organizationId)
+
+  if (error) {
+    console.error("DB:getChannelMembers - Supabase error:", JSON.stringify(error, null, 2));
+    return [];
+  }
+  return data || [];
 }
 
 // Uploaded files functions
@@ -690,7 +649,7 @@ export async function getUploadedFilesForOrganization(organizationId: string): P
 }
 
 // Function to get channel details with members
-export async function getChannelWithMembers(channelId: string): Promise<Channel & { members?: Profile[] }> {
+export async function getChannelWithMembers(channelId: string, organizationId: string): Promise<Channel & { members?: OrganizationUser[] }> {
   if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
 
   console.log("Fetching channel with members for:", channelId);
@@ -708,7 +667,7 @@ export async function getChannelWithMembers(channelId: string): Promise<Channel 
   }
 
   // Get channel members
-  const members = await getChannelMembers(channelId);
+  const members = await getChannelMembers(channelId, organizationId);
 
   return {
     ...channelData,
@@ -717,12 +676,14 @@ export async function getChannelWithMembers(channelId: string): Promise<Channel 
 }
 
 // Helper function
-async function addUserToOrganization(userId: string, organizationId: string, role: string): Promise<void> {
+async function addUserToOrganization(userId: string, userEmail: string, userFullName: string, organizationId: string, role: string): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   const supabaseAdmin = createSupabaseAdminClient()
-  const { error } = await supabaseAdmin.from("organization_members").insert({
+  const { error } = await supabaseAdmin.from("organization_users").insert({
     user_id: userId,
     organization_id: organizationId,
+    email: userEmail,
+    full_name: userFullName,
     role: role,
   })
 
@@ -746,7 +707,7 @@ export async function updateMemberRole(memberId: string, newRole: string) {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
   const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin
-      .from("organization_members")
+      .from("organization_users")
       .update({ role: newRole })
       .eq("id", memberId);
 
@@ -760,7 +721,7 @@ export async function removeMember(memberId: string) {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
   const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin
-      .from("organization_members")
+      .from("organization_users")
       .delete()
       .eq("id", memberId);
 

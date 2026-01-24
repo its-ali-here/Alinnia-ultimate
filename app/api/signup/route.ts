@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase-server";
+import { roles } from "@/lib/roles";
 
 export async function POST(req: Request) {
   const supabaseAdmin = createSupabaseAdminClient();
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     // --- 4. Create the Organization ---
     const { data: org, error: orgError } = await supabaseAdmin
       .from("organizations")
-      .insert({ name: companyName, plan: plan })
+      .insert({ name: companyName })
       .select('id')
       .single();
 
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
       .insert({
         organization_id: org.id,
         user_id: user.id,
-        role: 'Owner'
+        role: roles[0]
       });
 
     if (memberError) throw memberError;

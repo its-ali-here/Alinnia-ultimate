@@ -78,9 +78,9 @@ export default function OnboardingDetailsPage() {
                     <SelectValue placeholder="Select a location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cloud">In the cloud</SelectItem>
-                    <SelectItem value="local">On my local machine</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="cloud">CSVs/Spreadsheets/Google Sheets</SelectItem>
+                    <SelectItem value="local">SQL Database</SelectItem>
+                    <SelectItem value="other">Combination Of Both</SelectItem>
                   </SelectContent>
                 </Select>
               )}

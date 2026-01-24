@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { getOrganizationMembers, type Profile } from "@/lib/database"
+import { getOrganizationMembers, type OrganizationUser } from "@/lib/database"
 import { createGroupChannelAction } from "@/app/actions/chat"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,7 @@ interface CreateTeamModalProps {
 export function CreateTeamModal({ isOpen, onOpenChange, onTeamCreated }: CreateTeamModalProps) {
   const { user, organizationId } = useAuth()
   const [teamName, setTeamName] = useState("")
-  const [members, setMembers] = useState<Profile[]>([])
+  const [members, setMembers] = useState<OrganizationUser[]>([])
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
 
@@ -32,7 +32,7 @@ export function CreateTeamModal({ isOpen, onOpenChange, onTeamCreated }: CreateT
       // Fetch organization members when the modal opens
       getOrganizationMembers(organizationId).then(data => {
         // Exclude the current user from the list of members to select
-        setMembers(data.filter(m => m.profiles.id !== user?.id).map(m => m.profiles))
+        setMembers(data.filter(m => m.user_id !== user?.id))
       })
       // Reset state when opening
       setSelectedMemberIds(new Set(user ? [user.id] : []));
@@ -99,17 +99,17 @@ export function CreateTeamModal({ isOpen, onOpenChange, onTeamCreated }: CreateT
             <ScrollArea className="h-[200px] w-full rounded-md border p-2">
               <div className="space-y-2">
                 {members.map(member => (
-                  <div key={member.id} className="flex items-center space-x-3">
+                  <div key={member.user_id} className="flex items-center space-x-3">
                     <Checkbox
-                      id={`member-${member.id}`}
-                      checked={selectedMemberIds.has(member.id)}
-                      onCheckedChange={() => handleMemberSelect(member.id)}
+                      id={`member-${member.user_id}`}
+                      checked={selectedMemberIds.has(member.user_id)}
+                      onCheckedChange={() => handleMemberSelect(member.user_id)}
                     />
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={member.avatar_url || ''} />
                       <AvatarFallback>{member.full_name?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <label htmlFor={`member-${member.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    <label htmlFor={`member-${member.user_id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       {member.full_name}
                     </label>
                   </div>

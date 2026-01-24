@@ -220,9 +220,9 @@ export default function ProjectsPage() {
                 <CardFooter className="flex justify-between items-center">
                     <div className="flex -space-x-2 overflow-hidden">
                         {project.project_members.map((member: any) => (
-                            <Avatar key={member.profiles.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-background">
-                                <AvatarImage src={member.profiles.avatar_url} />
-                                <AvatarFallback>{member.profiles.full_name?.charAt(0)}</AvatarFallback>
+                            <Avatar key={member.user_id} className="inline-block h-8 w-8 rounded-full ring-2 ring-background">
+                                <AvatarImage src={member.avatar_url} />
+                                <AvatarFallback>{member.full_name?.charAt(0)}</AvatarFallback>
                             </Avatar>
                         ))}
                     </div>
