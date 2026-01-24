@@ -1,103 +1,107 @@
 "use client"
 
-import { DataSource } from "@/hooks/use-data-sources"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { MoreHorizontal, File, Sheet, AlertTriangle, CheckCircle, Clock } from "lucide-react"
+import { type DataSource } from "@/hooks/use-data-sources"
 import { Badge } from "@/components/ui/badge"
-import { FileText, FileSpreadsheet, ExternalLink, Trash2, MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { formatDistanceToNow } from "date-fns"
 
 interface DataSourceListProps {
   dataSources: DataSource[]
-  onDelete: (id: string, source: string) => void
-  filter?: 'all' | 'CSV' | 'Google Sheets' | 'Excel'
+  onDelete: (id: string, source: 'CSV' | 'Google Sheets') => void
 }
 
-export function DataSourceList({ dataSources, onDelete, filter = 'all' }: DataSourceListProps) {
-  const filtered = filter === 'all' 
-    ? dataSources 
-    : dataSources.filter(ds => ds.source === filter)
-
-  const getIcon = (source: string) => {
-    if (source === 'CSV') return <FileText className="h-5 w-5 text-blue-600" />
-    if (source === 'Google Sheets') return <FileSpreadsheet className="h-5 w-5 text-green-600" />
-    // Excel: reuse spreadsheet icon with a different tint
-    return <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+const SourceIcon = ({ source }: { source: 'CSV' | 'Google Sheets' }) => {
+  if (source === 'Google Sheets') {
+    return <Sheet className="h-4 w-4 text-green-500" />
   }
+  return <File className="h-4 w-4 text-blue-500" />
+}
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ready': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-      case 'processing': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-      case 'error': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+const StatusBadge = ({ status }: { status: DataSource['status'] }) => {
+  switch (status) {
+    case 'ready':
+      return <Badge variant="secondary" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"><CheckCircle className="h-3 w-3 mr-1" />Ready</Badge>
+    case 'processing':
+      return <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"><Clock className="h-3 w-3 mr-1 animate-spin" />Processing</Badge>
+    case 'error':
+      return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Error</Badge>
+    default:
+      return <Badge variant="outline">{status}</Badge>
   }
+}
 
-  if (filtered.length === 0) {
+export function DataSourceList({ dataSources, onDelete }: DataSourceListProps) {
+  if (dataSources.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-lg bg-muted/20">
-        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground">No {filter !== 'all' ? filter : ''} data sources found</p>
+      <div className="text-center py-12 border-2 border-dashed rounded-lg">
+        <h3 className="text-lg font-medium">No data sources found</h3>
+        <p className="text-sm text-muted-foreground">Upload a CSV or connect Google Sheets to get started.</p>
       </div>
     )
   }
-
   return (
-    <div className="space-y-2">
-      {filtered.map((ds) => (
-        <div key={ds.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {getIcon(ds.source)}
-            <div className="min-w-0 flex-1">
-              <p className="font-medium truncate">{ds.name}</p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{formatDistanceToNow(new Date(ds.uploadedAt), { addSuffix: true })}</span>
-                <span>•</span>
-                <span className="font-mono text-xs">{ds.size}</span>
-                {ds.rowCount && (
-                  <>
-                    <span>•</span>
-                    <span>{ds.rowCount.toLocaleString()} rows</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={getStatusColor(ds.status)}>
-              {ds.status}
-            </Badge>
-            <Badge variant="secondary">
-              {ds.source}
-            </Badge>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {ds.source === 'Google Sheets' && ds.metadata?.webViewLink && (
-                  <DropdownMenuItem onClick={() => window.open(ds.metadata!.webViewLink, '_blank')}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open in Google
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem 
-                  onClick={() => onDelete(ds.id, ds.source)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      ))}
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Source</TableHead>
+            <TableHead>Size</TableHead>
+            <TableHead>Uploaded</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {dataSources.map((ds) => (
+            <TableRow key={ds.id}>
+              <TableCell className="font-medium flex items-center gap-2">
+                <SourceIcon source={ds.source} />
+                {ds.name}
+              </TableCell>
+              <TableCell>{ds.source}</TableCell>
+              <TableCell>{ds.size}</TableCell>
+              <TableCell>{new Date(ds.uploadedAt).toLocaleDateString()}</TableCell>
+              <TableCell>
+                <StatusBadge status={ds.status} />
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {ds.source === 'Google Sheets' && ds.metadata?.webViewLink && (
+                       <DropdownMenuItem asChild>
+                         <a href={ds.metadata.webViewLink} target="_blank" rel="noopener noreferrer">View in Google</a>
+                       </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => onDelete(ds.id, ds.source)} className="text-red-500">
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
