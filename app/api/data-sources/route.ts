@@ -13,9 +13,8 @@ function formatFileSize(bytes: number | null | undefined): string {
 }
 
 const STORAGE_LIMITS: Record<string, number> = {
-  free: 100 * 1024 * 1024,      // 100MB
   starter: 500 * 1024 * 1024,   // 500MB
-  pro: 2 * 1024 * 1024 * 1024,  // 2GB
+  pro: 5000 * 1024 * 1024, // 5GB
   enterprise: 10 * 1024 * 1024 * 1024 // 10GB
 }
 
@@ -61,13 +60,14 @@ export async function GET(request: NextRequest) {
       .eq('id', organizationId)
       .single()
     
-    const storageLimit = STORAGE_LIMITS[org?.plan || 'free'] || STORAGE_LIMITS.free
+    const plan = org?.plan || 'starter'
+    const storageLimit = STORAGE_LIMITS[plan] || STORAGE_LIMITS.starter
 
-    // Fetch CSV files from Supabase - now including file_size
+    // Fetch CSV files from Supabase
     try {
       const { data: csvFiles, error: csvError } = await supabaseAdmin
         .from('datasources')
-        .select('id, file_name, status, row_count, created_at, storage_path, date_format, file_size')
+        .select('id, file_name, status, row_count, created_at, storage_path, file_size')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
@@ -87,7 +87,6 @@ export async function GET(request: NextRequest) {
             status: file.status,
             rowCount: file.row_count,
             metadata: {
-              dateFormat: file.date_format,
               storagePath: file.storage_path
             }
           })

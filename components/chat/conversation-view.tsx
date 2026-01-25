@@ -76,7 +76,7 @@ export function ConversationView({ channelId }: ConversationViewProps) {
 
             if (memberIds && memberIds.length > 0) {
               const { data: profile } = await supabase
-                .from('organization_users')
+                .from('organization_members')
                 .select('*')
                 .eq('user_id', memberIds[0].user_id)
                 .eq('organization_id', organizationId)
@@ -132,7 +132,7 @@ export function ConversationView({ channelId }: ConversationViewProps) {
 
           // Fetch the author profile for the new message
           const { data: profile } = await supabase
-            .from('organization_users')
+            .from('organization_members')
             .select('id, full_name, avatar_url')
             .eq('user_id', payload.new.user_id)
             .eq('organization_id', organizationId)

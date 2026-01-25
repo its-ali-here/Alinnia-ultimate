@@ -1,20 +1,10 @@
 "use client"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
+  ChevronLeft,
   CircleUser,
-  Home,
-  LineChart,
   Menu,
-  Package,
   Package2,
   Search,
-  Users,
-  DollarSign,
-  ReceiptText,
-  MessageSquare,
-  CreditCard,
-  Calendar,
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,119 +17,70 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useAuth } from "@/contexts/auth-context" 
+import { useAuth } from "@/contexts/auth-context"
 import { ModeToggle } from "@/components/mode-toggle"
-import { Notifications } from "@/components/notifications";
+import { Notifications } from "@/components/notifications"
+import { AlinniaChatButton } from "@/components/ai/alinnia-chat-button"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
+import Link from "next/link"
 
-export function TopNav() {
-  const router = useRouter()
-  const { signOut } = useAuth() 
+export function TopNav({ 
+  isCollapsed, 
+  setIsCollapsed,
+  isChatOpen,
+  setIsChatOpen
+}: { 
+  isCollapsed: boolean, 
+  setIsCollapsed: (value: boolean) => void,
+  isChatOpen: boolean,
+  setIsChatOpen: (value: boolean) => void
+}) {
+  const { signOut, organization, loading: authLoading } = useAuth()
 
   const handleLogout = async () => {
     await signOut()
   }
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="flex flex-col">
-          <nav className="grid gap-2 text-lg font-medium">
-            <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
-              <Package2 className="h-6 w-6" />
-              <span className="sr-only">Alinnia</span>
-            </Link>
-            <Link
-              href="/dashboard"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Home className="h-5 w-5" />
-              Dashboard
-            </Link>
-            <Link
-              href="/dashboard/transactions"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <DollarSign className="h-5 w-5" />
-              Transactions
-            </Link>
-            <Link
-              href="/dashboard/invoices"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <ReceiptText className="h-5 w-5" />
-              Invoices
-            </Link>
-            <Link
-              href="/dashboard/chat"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <MessageSquare className="h-5 w-5" />
-              Chat
-            </Link>
-            <Link
-              href="/dashboard/payments"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <CreditCard className="h-5 w-5" />
-              Payments
-            </Link>
-            <Link
-              href="/dashboard/meetings"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Calendar className="h-5 w-5" />
-              Meetings
-            </Link>
-            <Link
-              href="/dashboard/files"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Package className="h-5 w-5" />
-              Files
-            </Link>
-            <Link
-              href="/dashboard/analytics"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <LineChart className="h-5 w-5" />
-              Analytics
-            </Link>
-            <Link
-              href="/dashboard/members"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Users className="h-5 w-5" />
-              Members
-            </Link>
-            <Link
-              href="/dashboard/permissions"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Users className="h-5 w-5" />
-              Permissions
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-            >
-              <Users className="h-5 w-5" />
-              Settings
-            </Link>
-          </nav>
-        </SheetContent>
-      </Sheet>
-      
-      {/* This is the new spacer div that pushes content to the right */}
-      <div className="w-full flex-1" />
-
+    <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 z-30">
       <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <ChevronLeft className={cn("h-5 w-5 transition-transform", isCollapsed && "rotate-180")} />
+          <span className="sr-only">{isCollapsed ? "Expand" : "Collapse"} Sidebar</span>
+        </Button>
+        {authLoading ? (
+          <Skeleton className="h-8 w-8 rounded-full" />
+        ) : (
+          <Link href="/dashboard/organization" className="flex items-center gap-2 font-semibold">
+            <Avatar className="h-8 w-8 border">
+              <AvatarImage src={organization?.logo_url} alt={organization?.name} />
+              <AvatarFallback>
+                {organization?.name?.charAt(0) || <Package2 className="h-5 w-5" />}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-lg hidden sm:inline-block">{organization?.name || 'Dashboard'}</span>
+          </Link>
+        )}
+      </div>
+
+      <div className="w-full flex-1" />
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search..."
+            className="w-full appearance-none bg-background pl-8 shadow-none md:w-80"
+          />
+        </div>
+        <AlinniaChatButton onClick={() => setIsChatOpen(!isChatOpen)} />
         <Notifications />
         <ModeToggle />
         <DropdownMenu>

@@ -33,7 +33,6 @@ export default function FilesPage() {
   } = useDataSources()
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [dateFormat, setDateFormat] = useState("yyyy-MM-dd")
   const [uploading, setUploading] = useState(false)
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +63,6 @@ export default function FilesPage() {
           uploaded_by_user_id: user.id,
           status: 'uploading',
           storage_path: 'pending',
-          date_format: dateFormat,
           file_size: selectedFile.size
         })
         .select('id')
@@ -93,6 +91,7 @@ export default function FilesPage() {
       toast.success(`"${selectedFile.name}" uploaded successfully`)
       refresh()
     } catch (err) {
+      console.error("Full upload error:", err)
       toast.error(`Upload failed: ${(err as Error).message}`)
       if (datasourceId) {
         await supabase.from('datasources').delete().eq('id', datasourceId)
@@ -155,19 +154,6 @@ export default function FilesPage() {
                 onChange={handleFileChange}
                 disabled={uploading}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Date Format</Label>
-              <Select value={dateFormat} onValueChange={setDateFormat}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yyyy-MM-dd">YYYY-MM-DD</SelectItem>
-                  <SelectItem value="MM/dd/yyyy">MM/DD/YYYY</SelectItem>
-                  <SelectItem value="dd/MM/yyyy">DD/MM/YYYY</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             {selectedFile && (
               <p className="text-sm text-muted-foreground">

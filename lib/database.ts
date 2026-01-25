@@ -134,7 +134,7 @@ export async function getOrganizationUser(userId: string, organizationId: string
     }
   }
   const { data, error } = await supabase
-    .from("organization_users")
+    .from("organization_members")
     .select("*")
     .eq("user_id", userId)
     .eq("organization_id", organizationId)
@@ -157,7 +157,7 @@ export async function updateOrganizationUser(
     return null
   }
   const { data, error } = await supabase
-    .from("organization_users")
+    .from("organization_members")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("organization_id", organizationId)
@@ -198,7 +198,7 @@ export async function getUserOrganizations(userId: string) {
   if (!isSupabaseConfigured()) return null;
 
   const { data, error } = await supabase
-    .from("organization_users")
+    .from("organization_members")
     .select(`
       role,
       organization:organizations (
@@ -235,7 +235,7 @@ export async function joinOrganizationAndLinkUser(userId: string, userEmail: str
   if (orgErr || !org) throw new Error("Organization not found.")
 
   const { data: exists, error: memErr } = await supabaseAdmin
-    .from("organization_users")
+    .from("organization_members")
     .select("id")
     .eq("organization_id", orgCode)
     .eq("user_id", userId)
@@ -244,7 +244,7 @@ export async function joinOrganizationAndLinkUser(userId: string, userEmail: str
   if (memErr) throw memErr
   if (exists) throw new Error("User is already a member of this organisation.")
 
-  const { error: insertErr } = await supabaseAdmin.from("organization_users").insert({
+  const { error: insertErr } = await supabaseAdmin.from("organization_members").insert({
     organization_id: orgCode,
     user_id: userId,
     email: userEmail,
@@ -434,7 +434,7 @@ export async function getOrganizationMembers(
   if (!isSupabaseConfigured()) return [];
 
   const { data, error } = await supabase
-    .from("organization_users")
+    .from("organization_members")
     .select(`
       id,
       role,
@@ -466,7 +466,7 @@ export async function updateOrganizationMemberDesignation(
   }
 
   const { data, error } = await supabase
-    .from("organization_users")
+    .from("organization_members")
     .update({ designation: designation })
     .eq("user_id", userId)
     .eq("organization_id", organizationId)
@@ -528,7 +528,7 @@ export async function getMessagesForChannel(channelId: string, organizationId: s
     .from('messages')
     .select(`
       *,
-      author:organization_users (
+      author:organization_members (
         id,
         full_name,
         avatar_url
@@ -556,7 +556,7 @@ export async function getMessagesForChannel(channelId: string, organizationId: s
     const messagesWithAuthors = await Promise.all(
       (fallbackData || []).map(async (message) => {
         const { data: author } = await supabase
-          .from('organization_users')
+          .from('organization_members')
           .select('id, full_name, avatar_url')
           .eq('user_id', message.user_id)
           .eq('organization_id', organizationId)
@@ -620,7 +620,7 @@ export async function getChannelMembers(channelId: string, organizationId: strin
   const userIds = memberIds.map(m => m.user_id);
 
   const { data, error } = await supabase
-    .from('organization_users')
+    .from('organization_members')
     .select('*')
     .in('user_id', userIds)
     .eq('organization_id', organizationId)
@@ -679,7 +679,7 @@ export async function getChannelWithMembers(channelId: string, organizationId: s
 async function addUserToOrganization(userId: string, userEmail: string, userFullName: string, organizationId: string, role: string): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
   const supabaseAdmin = createSupabaseAdminClient()
-  const { error } = await supabaseAdmin.from("organization_users").insert({
+  const { error } = await supabaseAdmin.from("organization_members").insert({
     user_id: userId,
     organization_id: organizationId,
     email: userEmail,
@@ -699,7 +699,6 @@ export async function inviteMember(organizationId: string, email: string, role: 
   // save it to an 'invites' table, and send an email with a special link.
   // For now, we will simulate this by logging to the console.
   console.log(`Simulating invite for ${email} to org ${organizationId} with role ${role} by user ${inviterId}`);
-  toast.info(`An invitation email would be sent to ${email}.`);
   return { success: true };
 }
 
@@ -707,7 +706,7 @@ export async function updateMemberRole(memberId: string, newRole: string) {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
   const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin
-      .from("organization_users")
+      .from("organization_members")
       .update({ role: newRole })
       .eq("id", memberId);
 
@@ -721,7 +720,7 @@ export async function removeMember(memberId: string) {
   if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.");
   const supabaseAdmin = createSupabaseAdminClient()
   const { error } = await supabaseAdmin
-      .from("organization_users")
+      .from("organization_members")
       .delete()
       .eq("id", memberId);
 

@@ -9,7 +9,7 @@ export async function getUserOrganizationData(userId: string): Promise<{ organiz
     if (!userId) return null;
     const supabaseAdmin = createSupabaseAdminClient();
     const { data, error } = await supabaseAdmin
-      .from("organization_users")
+      .from("organization_members")
       .select("role, organization:organizations(*)")
       .eq("user_id", userId)
       .limit(1)

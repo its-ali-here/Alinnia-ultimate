@@ -12,7 +12,12 @@ export interface UserSettings {
   timezone: string
   language: string
   currency: string
-  dateFormat: string
+  currencyLabelStyle: "symbol" | "code" | "name"
+  separatorStyle: "comma" | "dot"
+  dateStyle: "mm-dd-yyyy" | "dd-mm-yyyy" | "yyyy-mm-dd"
+  timeFormat: "12h" | "24h"
+  firstDayOfWeek: "sunday" | "monday"
+  csvDateFormat: string
   fontSize: number
   theme: "light" | "dark" | "system"
   layout: "default" | "compact" | "expanded"
@@ -43,7 +48,12 @@ const defaultSettings: UserSettings = {
   timezone: "utc-8",
   language: "en",
   currency: "usd",
-  dateFormat: "mm-dd-yyyy",
+  currencyLabelStyle: "symbol",
+  separatorStyle: "comma",
+  dateStyle: "mm-dd-yyyy",
+  timeFormat: "12h",
+  firstDayOfWeek: "sunday",
+  csvDateFormat: "yyyy-mm-dd",
   fontSize: 16,
   theme: "system",
   layout: "default",
