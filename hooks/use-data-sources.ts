@@ -80,8 +80,10 @@ export function useDataSources() {
   }, [organizationId])
 
   useEffect(() => {
-    fetchDataSources()
-  }, [fetchDataSources])
+    if (organizationId) {
+      fetchDataSources();
+    }
+  }, [organizationId]);
 
   const connectGoogle = useCallback(async () => {
     try {

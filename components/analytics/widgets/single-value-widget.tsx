@@ -48,14 +48,15 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
             setIsLoading(true);
             try {
                 // *** THIS IS THE CORRECTED FETCH CALL ***
-                const response = await fetch('/api/analytics/aggregate', {
+                const response = await fetch('/api/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datasourceId,
-                        columnName: widgetConfig.query.columnName,
-                        aggregationType: widgetConfig.query.aggregationType,
-                        filters, // Pass the filters to the aggregate API
+                        type: 'aggregate',
+                        column: widgetConfig.query.columnName,
+                        aggregation: widgetConfig.query.aggregationType,
+                        filters,
                     }),
                 });
                 if (!response.ok) {
@@ -63,7 +64,7 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
                     throw new Error(errorData.error || 'Failed to fetch aggregate data.');
                 }
                 const data = await response.json();
-                setValue(data.result);
+                setValue(data.data);
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
                 setValue(null); // Set value to null on error

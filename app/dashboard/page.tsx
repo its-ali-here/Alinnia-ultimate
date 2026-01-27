@@ -1,4 +1,3 @@
-import { AccountsOverview } from "@/components/accounts-overview"
 import { RecentTransactions } from "@/components/recent-transactions"
 import { BusinessMetrics } from "@/components/business-metrics"
 import { ConfigurationBanner } from "@/components/configuration-banner"
@@ -25,9 +24,6 @@ export default function Dashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <ProjectSnapshot />
-        </div>
-        <div className="lg:col-span-1">
-          <AccountsOverview />
         </div>
         <div className="lg:col-span-1">
           <RecentTransactions />

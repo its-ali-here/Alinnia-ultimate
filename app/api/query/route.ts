@@ -28,6 +28,9 @@ export async function POST(req: Request) {
 
     let result: any
     switch (type) {
+      case 'filtered-query':
+        result = data
+        break
       case 'aggregate':
         result = performAggregation(data, params.column, params.aggregation)
         break

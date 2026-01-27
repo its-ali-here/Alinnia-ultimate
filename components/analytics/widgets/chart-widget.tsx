@@ -40,14 +40,14 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
             setIsLoading(true);
             try {
                 // We'll use the filtered-query endpoint for all chart types
-                const response = await fetch('/api/analytics/filtered-query', {
+                const response = await fetch('/api/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         datasourceId: datasourceId,
-                        // Pass the whole widgetConfig so the backend knows what to do
-                        query: widgetConfig.query,
-                        chartType: widgetConfig.chartType,
+                        type: 'chart',
+                        categoryKey: widgetConfig.query.categoryKey,
+                        valueKey: widgetConfig.query.valueKey,
                         filters: filters,
                     }),
                 });
@@ -56,7 +56,7 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
                     throw new Error(errorData.error || 'Failed to fetch widget data.');
                 }
                 const result = await response.json();
-                setData(result);
+                setData(result.data);
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
             } finally {

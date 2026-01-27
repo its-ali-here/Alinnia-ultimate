@@ -257,23 +257,6 @@ export async function joinOrganizationAndLinkUser(userId: string, userEmail: str
   return org as Organization
 }
 
-// Account functions
-export async function getUserAccounts(userId: string): Promise<Account[]> {
-  if (!isSupabaseConfigured()) return []
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("DB:getUserAccounts - Supabase error:", JSON.stringify(error, null, 2))
-    return []
-  }
-  return data || []
-}
-
 export async function createAccount(
   userId: string,
   accountData: {
