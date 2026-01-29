@@ -74,7 +74,7 @@ export function LandingHeader() {
                                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
-                                        <Link href="/dashboard/settings">
+                                        <Link href="/settings">
                                             <Settings className="mr-2 h-4 w-4" />
                                             Settings
                                         </Link>
@@ -97,7 +97,7 @@ export function LandingHeader() {
                     ) : (
                         // Unauthenticated user - show login and signup buttons
                         <>
-                            <Link href="/auth/login">
+                            <Link href="/login">
                                 <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                                     Log in
                                 </Button>
@@ -129,7 +129,7 @@ export function LandingHeader() {
                                     <Link href={organizationId ? "/dashboard" : "/onboarding"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         {organizationId ? "Dashboard" : "Create/Join Organization"}
                                     </Link>
-                                    <Link href="/dashboard/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href="/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Settings
                                     </Link>
                                     <button
@@ -145,7 +145,7 @@ export function LandingHeader() {
                             ) : (
                                 // Unauthenticated user - show login and signup
                                 <>
-                                    <Link href="/auth/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href="/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Log in
                                     </Link>
                                     <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>

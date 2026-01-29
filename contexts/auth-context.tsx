@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setOrganization(null);
         setUserRole(null);
-        router.push('/auth/login');
+        router.push('/login');
     }
   }, [router]);
 
@@ -168,7 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => router.push('/auth/login')}>
+            <AlertDialogAction onClick={() => router.push('/login')}>
               Go to Login
             </AlertDialogAction>
           </AlertDialogFooter>

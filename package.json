@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/groq": "latest",
+    "@duckdb/duckdb-wasm": "^1.33.1-dev18.0",
     "@emotion/is-prop-valid": "latest",
     "@hcaptcha/react-hcaptcha": "^2.0.1",
     "@hookform/resolvers": "^3.10.0",
@@ -52,6 +53,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "date-fns": "latest",
+    "duckdb": "^1.4.3",
     "embla-carousel-react": "latest",
     "framer-motion": "latest",
     "googleapis": "^156.0.0",

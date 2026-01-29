@@ -39,16 +39,36 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // We'll use the filtered-query endpoint for all chart types
+                // 1. Fetch the datasource to get the fileUrl
+                const dsResponse = await fetch(`/api/data-sources/${datasourceId}`);
+                if (!dsResponse.ok) {
+                    throw new Error('Failed to fetch datasource details.');
+                }
+                const dsData = await dsResponse.json();
+                const fileUrl = dsData.data?.file_url;
+
+                if (!fileUrl) {
+                    throw new Error('This datasource has no associated file.');
+                }
+
+                // 2. Construct the SQL query
+                const { chartType, query } = widgetConfig;
+                let sqlQuery = '';
+
+                if (chartType === 'scatter') {
+                    sqlQuery = `SELECT "${query.xAxisKey}", "${query.yAxisKey}" FROM my_table`;
+                } else {
+                    sqlQuery = `SELECT "${query.categoryKey}", SUM("${query.valueKey}") as "${query.valueKey}" FROM my_table GROUP BY "${query.categoryKey}"`;
+                }
+
+                // 3. Call the server-side query endpoint
                 const response = await fetch('/api/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        datasourceId: datasourceId,
-                        type: 'chart',
-                        categoryKey: widgetConfig.query.categoryKey,
-                        valueKey: widgetConfig.query.valueKey,
-                        filters: filters,
+                        fileUrl,
+                        query: sqlQuery,
+                        filters, // Pass filters to be handled server-side
                     }),
                 });
                 if (!response.ok) {
@@ -64,7 +84,6 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
             }
         };
         
-        // Check if the required keys for the specific chart type are present
         const { chartType, query } = widgetConfig;
         const canFetch = (chartType === 'scatter' && query.xAxisKey && query.yAxisKey) || (chartType !== 'scatter' && query.categoryKey && query.valueKey);
         

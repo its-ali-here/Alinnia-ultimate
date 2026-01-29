@@ -101,10 +101,10 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
 
     const activeFilters = useMemo(() => {
         const filters: any = {};
-        if (isDateFilterEnabled && dashboard?.datasource?.date_column && dashboard?.datasource?.date_format) {
+        if (isDateFilterEnabled && dashboard?.datasource?.date_column) {
             filters.dateRange = dateRange;
             filters.dateColumn = dashboard.datasource.date_column;
-            filters.dateFormat = dashboard.datasource.date_format;
+            filters.dateFormat = 'DD-MM-yyyy';
         }
         if (isCategoryFilterEnabled && categoryColumn && categoryValue) {
             filters.categoryFilter = {

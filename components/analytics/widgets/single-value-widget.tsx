@@ -47,27 +47,52 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // *** THIS IS THE CORRECTED FETCH CALL ***
+                // 1. Fetch the datasource to get the fileUrl
+                const dsResponse = await fetch(`/api/data-sources/${datasourceId}`);
+                if (!dsResponse.ok) {
+                    throw new Error('Failed to fetch datasource details.');
+                }
+                const dsData = await dsResponse.json();
+                const fileUrl = dsData.data?.file_url;
+
+                if (!fileUrl) {
+                    throw new Error('This datasource has no associated file.');
+                }
+                
+                // 2. Construct the SQL query
+                const { columnName, aggregationType } = widgetConfig.query;
+                // TODO: Implement filtering in the SQL query
+                const query = `SELECT ${aggregationType}(${columnName}) as value FROM my_table`;
+
+                // 3. Call the server-side query endpoint
                 const response = await fetch('/api/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        datasourceId,
-                        type: 'aggregate',
-                        column: widgetConfig.query.columnName,
-                        aggregation: widgetConfig.query.aggregationType,
-                        filters,
+                        fileUrl,
+                        query,
+                        filters, // Passing filters to be handled server-side if needed
                     }),
                 });
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Failed to fetch aggregate data.');
                 }
-                const data = await response.json();
-                setValue(data.data);
+                const result = await response.json();
+                
+                // The result from the new API is an array of objects
+                if (result.data && result.data.length > 0) {
+                    // The value is the first key of the first object
+                    const resultValue = result.data[0]?.value;
+                    setValue(Number(resultValue));
+                } else {
+                    setValue(null);
+                }
+
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
-                setValue(null); // Set value to null on error
+                setValue(null);
             } finally {
                 setIsLoading(false);
             }

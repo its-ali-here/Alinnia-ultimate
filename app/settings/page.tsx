@@ -384,12 +384,177 @@ export default function SettingsPage() {
                       <SelectValue placeholder="Select Currency" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="usd">USD ($)</SelectItem>
-                      <SelectItem value="eur">EUR (€)</SelectItem>
-                      <SelectItem value="gbp">GBP (£)</SelectItem>
-                      <SelectItem value="jpy">JPY (¥)</SelectItem>
+                      <SelectItem value="afn">Afghan Afghani</SelectItem>
+                      <SelectItem value="all">Albanian Lek</SelectItem>
+                      <SelectItem value="dzd">Algerian Dinar</SelectItem>
+                      <SelectItem value="aoa">Angolan Kwanza</SelectItem>
+                      <SelectItem value="ars">Argentine Peso</SelectItem>
+                      <SelectItem value="amd">Armenian Dram</SelectItem>
+                      <SelectItem value="awg">Aruban Florin</SelectItem>
+                      <SelectItem value="aud">Australian Dollar</SelectItem>
+                      <SelectItem value="azn">Azerbaijani Manat</SelectItem>
+                      <SelectItem value="bsd">Bahamian Dollar</SelectItem>
+                      <SelectItem value="bhd">Bahraini Dinar</SelectItem>
+                      <SelectItem value="bdt">Bangladeshi Taka</SelectItem>
+                      <SelectItem value="bbd">Barbadian Dollar</SelectItem>
+                      <SelectItem value="byn">Belarusian Ruble</SelectItem>
+                      <SelectItem value="bzd">Belize Dollar</SelectItem>
+                      <SelectItem value="bmd">Bermudian Dollar</SelectItem>
+                      <SelectItem value="btn">Bhutanese Ngultrum</SelectItem>
+                      <SelectItem value="bob">Bolivian Boliviano</SelectItem>
+                      <SelectItem value="bam">Bosnia-Herzegovina Convertible Mark</SelectItem>
+                      <SelectItem value="bwp">Botswanan Pula</SelectItem>
+                      <SelectItem value="brl">Brazilian Real</SelectItem>
+                      <SelectItem value="gbp">British Pound Sterling</SelectItem>
+                      <SelectItem value="bnd">Brunei Dollar</SelectItem>
+                      <SelectItem value="bgn">Bulgarian Lev</SelectItem>
+                      <SelectItem value="bif">Burundian Franc</SelectItem>
+                      <SelectItem value="khr">Cambodian Riel</SelectItem>
+                      <SelectItem value="cad">Canadian Dollar</SelectItem>
+                      <SelectItem value="cve">Cape Verdean Escudo</SelectItem>
+                      <SelectItem value="kyd">Cayman Islands Dollar</SelectItem>
+                      <SelectItem value="xaf">CFA Franc BEAC</SelectItem>
+                      <SelectItem value="xof">CFA Franc BCEAO</SelectItem>
+                      <SelectItem value="xpf">CFP Franc</SelectItem>
+                      <SelectItem value="clp">Chilean Peso</SelectItem>
+                      <SelectItem value="cny">Chinese Yuan</SelectItem>
+                      <SelectItem value="cop">Colombian Peso</SelectItem>
+                      <SelectItem value="kmf">Comorian Franc</SelectItem>
+                      <SelectItem value="cdf">Congolese Franc</SelectItem>
+                      <SelectItem value="crc">Costa Rican Colón</SelectItem>
+                      <SelectItem value="cup">Cuban Peso</SelectItem>
+                      <SelectItem value="czk">Czech Republic Koruna</SelectItem>
+                      <SelectItem value="dkk">Danish Krone</SelectItem>
+                      <SelectItem value="djf">Djiboutian Franc</SelectItem>
+                      <SelectItem value="dop">Dominican Peso</SelectItem>
+                      <SelectItem value="xcd">East Caribbean Dollar</SelectItem>
+                      <SelectItem value="egp">Egyptian Pound</SelectItem>
+                      <SelectItem value="ern">Eritrean Nakfa</SelectItem>
+                      <SelectItem value="etb">Ethiopian Birr</SelectItem>
+                      <SelectItem value="eur">Euro</SelectItem>
+                      <SelectItem value="fkp">Falkland Islands Pound</SelectItem>
+                      <SelectItem value="fjd">Fijian Dollar</SelectItem>
+                      <SelectItem value="gmd">Gambian Dalasi</SelectItem>
+                      <SelectItem value="gel">Georgian Lari</SelectItem>
+                      <SelectItem value="ghs">Ghanaian Cedi</SelectItem>
+                      <SelectItem value="gip">Gibraltar Pound</SelectItem>
+                      <SelectItem value="gtq">Guatemalan Quetzal</SelectItem>
+                      <SelectItem value="gnf">Guinean Franc</SelectItem>
+                      <SelectItem value="gyd">Guyanaese Dollar</SelectItem>
+                      <SelectItem value="htg">Haitian Gourde</SelectItem>
+                      <SelectItem value="hnl">Honduran Lempira</SelectItem>
+                      <SelectItem value="hkd">Hong Kong Dollar</SelectItem>
+                      <SelectItem value="huf">Hungarian Forint</SelectItem>
+                      <SelectItem value="isk">Icelandic Króna</SelectItem>
+                      <SelectItem value="inr">Indian Rupee</SelectItem>
+                      <SelectItem value="idr">Indonesian Rupiah</SelectItem>
+                      <SelectItem value="irr">Iranian Rial</SelectItem>
+                      <SelectItem value="iqd">Iraqi Dinar</SelectItem>
+                      <SelectItem value="ils">Israeli New Sheqel</SelectItem>
+                      <SelectItem value="jmd">Jamaican Dollar</SelectItem>
+                      <SelectItem value="jpy">Japanese Yen</SelectItem>
+                      <SelectItem value="jod">Jordanian Dinar</SelectItem>
+                      <SelectItem value="kzt">Kazakhstani Tenge</SelectItem>
+                      <SelectItem value="kes">Kenyan Shilling</SelectItem>
+                      <SelectItem value="kwd">Kuwaiti Dinar</SelectItem>
+                      <SelectItem value="kgs">Kyrgystani Som</SelectItem>
+                      <SelectItem value="lak">Laotian Kip</SelectItem>
+                      <SelectItem value="lbp">Lebanese Pound</SelectItem>
+                      <SelectItem value="lsl">Lesotho Loti</SelectItem>
+                      <SelectItem value="lrd">Liberian Dollar</SelectItem>
+                      <SelectItem value="lyd">Libyan Dinar</SelectItem>
+                      <SelectItem value="mop">Macanese Pataca</SelectItem>
+                      <SelectItem value="mga">Malagasy Ariary</SelectItem>
+                      <SelectItem value="mwk">Malawian Kwacha</SelectItem>
+                      <SelectItem value="myr">Malaysian Ringgit</SelectItem>
+                      <SelectItem value="mvr">Maldivian Rufiyaa</SelectItem>
+                      <SelectItem value="mru">Mauritanian Ouguiya</SelectItem>
+                      <SelectItem value="mur">Mauritian Rupee</SelectItem>
+                      <SelectItem value="mxn">Mexican Peso</SelectItem>
+                      <SelectItem value="mdl">Moldovan Leu</SelectItem>
+                      <SelectItem value="mnt">Mongolian Tugrik</SelectItem>
+                      <SelectItem value="mad">Moroccan Dirham</SelectItem>
+                      <SelectItem value="mzn">Mozambican Metical</SelectItem>
+                      <SelectItem value="mmk">Myanmar Kyat</SelectItem>
+                      <SelectItem value="nad">Namibian Dollar</SelectItem>
+                      <SelectItem value="npr">Nepalese Rupee</SelectItem>
+                      <SelectItem value="ang">Netherlands Antillean Guilder</SelectItem>
+                      <SelectItem value="twd">New Taiwan Dollar</SelectItem>
+                      <SelectItem value="nzd">New Zealand Dollar</SelectItem>
+                      <SelectItem value="nio">Nicaraguan Córdoba</SelectItem>
+                      <SelectItem value="ngn">Nigerian Naira</SelectItem>
+                      <SelectItem value="nok">Norwegian Krone</SelectItem>
+                      <SelectItem value="omr">Omani Rial</SelectItem>
+                      <SelectItem value="pkr">Pakistani Rupee</SelectItem>
+                      <SelectItem value="pab">Panamanian Balboa</SelectItem>
+                      <SelectItem value="pgk">Papua New Guinean Kina</SelectItem>
+                      <SelectItem value="pyg">Paraguayan Guarani</SelectItem>
+                      <SelectItem value="pen">Peruvian Nuevo Sol</SelectItem>
+                      <SelectItem value="php">Philippine Peso</SelectItem>
+                      <SelectItem value="pln">Polish Zloty</SelectItem>
+                      <SelectItem value="qar">Qatari Riyal</SelectItem>
+                      <SelectItem value="ron">Romanian Leu</SelectItem>
+                      <SelectItem value="rub">Russian Ruble</SelectItem>
+                      <SelectItem value="rwf">Rwandan Franc</SelectItem>
+                      <SelectItem value="shp">Saint Helena Pound</SelectItem>
+                      <SelectItem value="wst">Samoan Tala</SelectItem>
+                      <SelectItem value="stn">São Tomé and Príncipe Dobra</SelectItem>
+                      <SelectItem value="sar">Saudi Riyal</SelectItem>
+                      <SelectItem value="rsd">Serbian Dinar</SelectItem>
+                      <SelectItem value="scr">Seychellois Rupee</SelectItem>
+                      <SelectItem value="sle">Sierra Leonean Leone</SelectItem>
+                      <SelectItem value="sgd">Singapore Dollar</SelectItem>
+                      <SelectItem value="sbd">Solomon Islands Dollar</SelectItem>
+                      <SelectItem value="sos">Somali Shilling</SelectItem>
+                      <SelectItem value="zar">South African Rand</SelectItem>
+                      <SelectItem value="krw">South Korean Won</SelectItem>
+                      <SelectItem value="lkr">Sri Lankan Rupee</SelectItem>
+                      <SelectItem value="sdg">Sudanese Pound</SelectItem>
+                      <SelectItem value="srd">Surinamese Dollar</SelectItem>
+                      <SelectItem value="szl">Swazi Lilangeni</SelectItem>
+                      <SelectItem value="sek">Swedish Krona</SelectItem>
+                      <SelectItem value="chf">Swiss Franc</SelectItem>
+                      <SelectItem value="syp">Syrian Pound</SelectItem>
+                      <SelectItem value="tjs">Tajikistani Somoni</SelectItem>
+                      <SelectItem value="tzs">Tanzanian Shilling</SelectItem>
+                      <SelectItem value="thb">Thai Baht</SelectItem>
+                      <SelectItem value="top">Tongan Paʻanga</SelectItem>
+                      <SelectItem value="ttd">Trinidad and Tobago Dollar</SelectItem>
+                      <SelectItem value="tnd">Tunisian Dinar</SelectItem>
+                      <SelectItem value="try">Turkish Lira</SelectItem>
+                      <SelectItem value="tmt">Turkmenistani Manat</SelectItem>
+                      <SelectItem value="ugx">Ugandan Shilling</SelectItem>
+                      <SelectItem value="uah">Ukrainian Hryvnia</SelectItem>
+                      <SelectItem value="aed">United Arab Emirates Dirham</SelectItem>
+                      <SelectItem value="usd">United States Dollar</SelectItem>
+                      <SelectItem value="uyu">Uruguayan Peso</SelectItem>
+                      <SelectItem value="uzs">Uzbekistan Som</SelectItem>
+                      <SelectItem value="vuv">Vanuatu Vatu</SelectItem>
+                      <SelectItem value="ves">Venezuelan Bolívar</SelectItem>
+                      <SelectItem value="vnd">Vietnamese Dong</SelectItem>
+                      <SelectItem value="yer">Yemeni Rial</SelectItem>
+                      <SelectItem value="zmw">Zambian Kwacha</SelectItem>
+                      <SelectItem value="zwg">Zimbabwean Gold</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Separator Style</Label>
+                  <RadioGroup 
+                    value={settings.separatorStyle} 
+                    onValueChange={(value) => updateSettings({ separatorStyle: value as any })}
+                    className="flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="comma" id="sep-comma" />
+                      <Label htmlFor="sep-comma">1,234.56</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="dot" id="sep-dot" />
+                      <Label htmlFor="sep-dot">1.234,56</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 <div className="space-y-2">
@@ -415,24 +580,6 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Separator Style</Label>
-                  <RadioGroup 
-                    value={settings.separatorStyle} 
-                    onValueChange={(value) => updateSettings({ separatorStyle: value as any })}
-                    className="flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="comma" id="sep-comma" />
-                      <Label htmlFor="sep-comma">1,234.56</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="dot" id="sep-dot" />
-                      <Label htmlFor="sep-dot">1.234,56</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="date-style">Date Style</Label>
                   <Select value={settings.dateStyle} onValueChange={(value) => updateSettings({ dateStyle: value as any })}>
                     <SelectTrigger id="date-style">
@@ -447,12 +594,12 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="csv-date-format">CSV Date Format</Label>
+                  <Label htmlFor="csv-date-format">Date Format</Label>
                   <Input 
                     id="csv-date-format" 
                     value={settings.csvDateFormat}
                     onChange={(e) => updateSettings({ csvDateFormat: e.target.value })}
-                    placeholder="e.g., YYYY-MM-DD"
+                    placeholder="e.g., DD-MM-YYYY"
                   />
                 </div>
 
@@ -507,23 +654,6 @@ export default function SettingsPage() {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="system" id="theme-system" />
                     <Label htmlFor="theme-system">System</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <div className="space-y-2 pt-4">
-                <Label>Dashboard Layout</Label>
-                <RadioGroup value={settings.layout} onValueChange={(value) => updateSettings({ layout: value as any })}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="default" id="layout-default" />
-                    <Label htmlFor="layout-default">Default</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="compact" id="layout-compact" />
-                    <Label htmlFor="layout-compact">Compact</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="expanded" id="layout-expanded" />
-                    <Label htmlFor="layout-expanded">Expanded</Label>
                   </div>
                 </RadioGroup>
               </div>
