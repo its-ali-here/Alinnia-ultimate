@@ -19,48 +19,23 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [checkingOrganization, setCheckingOrganization] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const message = searchParams.get("message")
-  const { isSupabaseConfigured, user, loading: authLoading } = useAuth()
+  const { isSupabaseConfigured, user, organization, loading: authLoading } = useAuth()
 
   // Handle routing after successful login
   useEffect(() => {
-    if (!authLoading && user && !checkingOrganization) {
-      checkUserOrganization()
-    }
-  }, [user, authLoading, checkingOrganization])
-
-  const checkUserOrganization = async () => {
-    if (!user) return
-    
-    setCheckingOrganization(true)
-    try {
-      const response = await fetch('/api/user/organization');
-      const { organization, error } = await response.json();
-
-      if (error) {
-        console.error("Error checking organization:", error)
-        // If there's an error, assume no organization and go to onboarding
-        router.push("/onboarding")
-        return
-      }
-
-      if (organization && organization.organization_id) {
+    if (!authLoading && user) {
+      if (organization) {
         // User has an organization, go to dashboard
         router.push("/dashboard")
       } else {
         // User has no organization, go to onboarding
-        router.push("/onboarding")
+        router.push("/signup")
       }
-    } catch (error) {
-      console.error("Error checking organization:", error)
-      router.push("/onboarding")
-    } finally {
-      setCheckingOrganization(false)
     }
-  }
+  }, [user, organization, authLoading, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,14 +77,14 @@ export function LoginForm() {
     return <AuthCheckingScreen />
   }
 
-  // Show loading screen while checking organization
-  if (checkingOrganization) {
-    return <OrganizationCheckingScreen />
-  }
-
   // If user is already logged in, don't show the form
   if (user) {
-    return <OrganizationCheckingScreen />
+    // Redirect will be handled by the useEffect
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -175,7 +150,7 @@ export function LoginForm() {
 
           <div className="text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <Link href="/auth/signup" className="font-medium text-primary hover:underline">
+            <Link href="/signup/start" className="font-medium text-primary hover:underline">
               Sign up
             </Link>
           </div>

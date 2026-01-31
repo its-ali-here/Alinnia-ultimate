@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from 'sonner';
+import { useDuckDB } from '@/contexts/duckdb-context';
+import { format } from 'date-fns';
 
 interface ChartWidgetProps {
     widgetConfig: {
@@ -34,8 +36,11 @@ const PIE_COLORS = ['#0ea5e9', '#84cc16', '#eab308', '#f97316', '#d946ef', '#636
 export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidgetProps) {
     const [data, setData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const { db, loading: dbLoading, error: dbError } = useDuckDB();
 
     useEffect(() => {
+        if (dbLoading || !db) return;
+
         const fetchData = async () => {
             setIsLoading(true);
             try {
@@ -51,32 +56,43 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
                     throw new Error('This datasource has no associated file.');
                 }
 
+                // Register the file as a table
+                await db.registerFileURL(
+                    'my_table.csv',
+                    fileUrl,
+                    4, // CSV
+                    true
+                  );
+
                 // 2. Construct the SQL query
                 const { chartType, query } = widgetConfig;
                 let sqlQuery = '';
 
                 if (chartType === 'scatter') {
-                    sqlQuery = `SELECT "${query.xAxisKey}", "${query.yAxisKey}" FROM my_table`;
+                    sqlQuery = `SELECT "${query.xAxisKey}", "${query.yAxisKey}" FROM "my_table.csv"`;
                 } else {
-                    sqlQuery = `SELECT "${query.categoryKey}", SUM("${query.valueKey}") as "${query.valueKey}" FROM my_table GROUP BY "${query.categoryKey}"`;
+                    sqlQuery = `SELECT "${query.categoryKey}", SUM("${query.valueKey}") as "${query.valueKey}" FROM "my_table.csv" GROUP BY "${query.categoryKey}"`;
                 }
 
-                // 3. Call the server-side query endpoint
-                const response = await fetch('/api/query', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileUrl,
-                        query: sqlQuery,
-                        filters, // Pass filters to be handled server-side
-                    }),
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to fetch widget data.');
+                if (filters?.dateRange?.from && filters?.dateRange?.to && filters?.dateColumn) {
+                    const from = format(new Date(filters.dateRange.from), 'yyyy-MM-dd');
+                    const to = format(new Date(filters.dateRange.to), 'yyyy-MM-dd');
+                    const whereClause = `WHERE CAST("${filters.dateColumn}" AS DATE) BETWEEN '${from}' AND '${to}'`;
+                    
+                    const groupByIndex = sqlQuery.toUpperCase().indexOf(' GROUP BY');
+                    if (groupByIndex > -1) {
+                        sqlQuery = `${sqlQuery.substring(0, groupByIndex)} ${whereClause} ${sqlQuery.substring(groupByIndex)}`;
+                    } else {
+                        sqlQuery = `${sqlQuery} ${whereClause}`;
+                    }
                 }
-                const result = await response.json();
-                setData(result.data);
+                
+                // 3. Run the query
+                const c = await db.connect();
+                const result = await c.query(sqlQuery);
+                setData(JSON.parse(JSON.stringify(result.toArray().map(Object.fromEntries))));
+                await c.close();
+
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
             } finally {
@@ -92,7 +108,7 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
         } else {
             setIsLoading(false);
         }
-    }, [widgetConfig, datasourceId, filters]);
+    }, [widgetConfig, datasourceId, filters, db, dbLoading]);
 
     const renderChart = () => {
         const { chartType, query } = widgetConfig;
@@ -129,8 +145,12 @@ export function ChartWidget({ widgetConfig, datasourceId, filters }: ChartWidget
         }
     };
 
-    if (isLoading) {
+    if (isLoading || dbLoading) {
         return <Skeleton className="h-full w-full" />;
+    }
+
+    if (dbError) {
+        return <div className="text-center text-red-500 text-sm h-full flex items-center justify-center">Error initializing database: {dbError.message}</div>;
     }
 
     return (

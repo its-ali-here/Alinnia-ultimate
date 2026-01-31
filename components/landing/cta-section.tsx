@@ -25,7 +25,7 @@ export function CtaSection() {
             our platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            <Link href="/auth/signup">
+            <Link href="/signup/start">
               <Button size="lg" variant="secondary" className="rounded-full h-12 px-8 text-base">
                 Start Free Trial
                 <ArrowRight className="ml-2 size-4" />

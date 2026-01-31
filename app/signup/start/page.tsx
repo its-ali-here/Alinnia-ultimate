@@ -18,7 +18,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function OnboardingStartPage() {
   const { nextStep, updateData, data } = useOnboarding();
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setError, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: data.email || "",
@@ -26,9 +26,33 @@ export default function OnboardingStartPage() {
     }
   });
 
-  const onSubmit = (formData: FormData) => {
-    updateData(formData);
-    nextStep();
+  const onSubmit = async (formData: FormData) => {
+    // Check server whether email already exists
+    try {
+      const res = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError("email", { type: "server", message: json?.error || "Unable to validate email." });
+        return;
+      }
+
+      if (json.exists) {
+        setError("email", { type: "duplicate", message: "This email is already registered." });
+        return;
+      }
+
+      // proceed if email is not registered
+      updateData(formData);
+      nextStep();
+    } catch (err) {
+      setError("email", { type: "network", message: "Network error while validating email." });
+    }
   };
 
   return (
@@ -44,7 +68,7 @@ export default function OnboardingStartPage() {
             <Input id="email" type="email" placeholder="name@company.com" {...register("email")} />
             {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
           </div>
-          <div className="spaceFirs-y-2">
+          <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" placeholder="Shhh..." {...register("password")} />
             {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}

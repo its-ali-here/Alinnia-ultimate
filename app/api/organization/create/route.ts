@@ -47,10 +47,6 @@ export async function POST(req: Request) {
       city,
       country,
       industry,
-      niche,
-      goals,
-      selectedDashboards,
-      wantsDataSource
     } = await req.json()
 
     if (!userId || !orgName) {
@@ -110,15 +106,7 @@ export async function POST(req: Request) {
         industry: industry || "",
         city: city || "",
         country: country || "",
-        business_type: niche || null,
-        business_description: `${industry} - ${niche}` || null,
-        business_metrics: {
-          companySize,
-          goals: goals || [],
-          selectedDashboards: selectedDashboards || [],
-          wantsDataSource: wantsDataSource || false
-        },
-        onboarding_completed: true
+        business_description: `${industry} ` || null,
       })
       .select()
       .single()

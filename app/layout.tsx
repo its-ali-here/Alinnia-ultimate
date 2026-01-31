@@ -12,6 +12,8 @@ import "react-resizable/css/styles.css";
 import 'leaflet/dist/leaflet.css';
 import { GlobalDateRangeProvider } from "@/contexts/GlobalDateRangeContext"
 
+import { DuckDBProvider } from "@/contexts/duckdb-context"
+
 export const metadata: Metadata = {
   title: "Alinnia - Business Intelligence",
   description: "Modern financial dashboard and analytics platform",
@@ -39,11 +41,13 @@ export default function RootLayout({
         >
           <AuthProvider>
             <SettingsProvider>
-              <TooltipProvider delayDuration={0}>
-                <GlobalDateRangeProvider>
-                  {children}
-                </GlobalDateRangeProvider>
-              </TooltipProvider>
+              <DuckDBProvider>
+                <TooltipProvider delayDuration={0}>
+                  <GlobalDateRangeProvider>
+                    {children}
+                  </GlobalDateRangeProvider>
+                </TooltipProvider>
+              </DuckDBProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

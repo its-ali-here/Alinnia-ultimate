@@ -147,7 +147,7 @@ export default function OrganizationPage() {
             <p className="mb-4 mt-2 text-sm text-muted-foreground">
                 It seems you're not part of an organization yet.
             </p>
-            <Link href="/onboarding">
+            <Link href="/signup">
                 <Button>Set Up or Join an Organization</Button>
             </Link>
         </div>

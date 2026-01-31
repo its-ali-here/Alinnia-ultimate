@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-server"
 export async function POST(req: Request) {
   try {
     const supabaseAdmin = createSupabaseAdminClient()
-    const { organizationId, businessType, businessDescription, onboarding_completed } = await req.json()
+    const { organizationId, businessType, businessDescription } = await req.json()
 
     if (!organizationId) {
       return NextResponse.json({ error: "Organization ID is required." }, { status: 400 })
@@ -13,8 +13,7 @@ export async function POST(req: Request) {
     console.log("🔄 Updating organization with business profile:", {
       organizationId,
       businessType,
-      businessDescription,
-      onboarding_completed
+      businessDescription
     })
 
     // Update the organization with business profile data
@@ -23,7 +22,6 @@ export async function POST(req: Request) {
       .update({
         business_type: businessType,
         business_description: businessDescription,
-        onboarding_completed: onboarding_completed || false,
         updated_at: new Date().toISOString()
       })
       .eq('id', organizationId)

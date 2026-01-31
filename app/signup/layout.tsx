@@ -2,7 +2,7 @@
 
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 
-export default function OnboardingLayout({
+export default function SignupLayout({
     children,
 }: {
     children: React.ReactNode

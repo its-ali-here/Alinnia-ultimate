@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { useDuckDB } from '@/contexts/duckdb-context';
+import { format } from 'date-fns';
 
 interface SingleValueWidgetProps {
     widgetConfig: {
@@ -42,8 +44,11 @@ const formatValue = (value: number | null, formatType?: 'number' | 'currency' | 
 export function SingleValueWidget({ widgetConfig, datasourceId, filters }: SingleValueWidgetProps) {
     const [value, setValue] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { db, loading: dbLoading, error: dbError } = useDuckDB();
 
     useEffect(() => {
+        if (dbLoading || !db) return;
+        
         const fetchData = async () => {
             setIsLoading(true);
             try {
@@ -59,37 +64,38 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
                     throw new Error('This datasource has no associated file.');
                 }
                 
+                await db.registerFileURL(
+                    'my_table.csv',
+                    fileUrl,
+                    4, // CSV
+                    true
+                  );
+
                 // 2. Construct the SQL query
                 const { columnName, aggregationType } = widgetConfig.query;
-                // TODO: Implement filtering in the SQL query
-                const query = `SELECT ${aggregationType}(${columnName}) as value FROM my_table`;
+                let query = `SELECT ${aggregationType}(${columnName}) as value FROM "my_table.csv"`;
+
+                if (filters?.dateRange?.from && filters?.dateRange?.to && filters?.dateColumn) {
+                    const from = format(new Date(filters.dateRange.from), 'yyyy-MM-dd');
+                    const to = format(new Date(filters.dateRange.to), 'yyyy-MM-dd');
+                    const whereClause = `WHERE CAST("${filters.dateColumn}" AS DATE) BETWEEN '${from}' AND '${to}'`;
+                    query = `${query} ${whereClause}`;
+                }
 
                 // 3. Call the server-side query endpoint
-                const response = await fetch('/api/query', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileUrl,
-                        query,
-                        filters, // Passing filters to be handled server-side if needed
-                    }),
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to fetch aggregate data.');
-                }
-                const result = await response.json();
+                const c = await db.connect();
+                const result = await c.query(query);
+                const resultData = result.toArray().map(Object.fromEntries);
                 
                 // The result from the new API is an array of objects
-                if (result.data && result.data.length > 0) {
+                if (resultData && resultData.length > 0) {
                     // The value is the first key of the first object
-                    const resultValue = result.data[0]?.value;
+                    const resultValue = (resultData[0] as any)?.value;
                     setValue(Number(resultValue));
                 } else {
                     setValue(null);
                 }
-
+                await c.close();
             } catch (error) {
                 toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
                 setValue(null);
@@ -98,15 +104,19 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
             }
         };
         fetchData();
-    }, [widgetConfig, datasourceId, filters]);
+    }, [widgetConfig, datasourceId, filters, db, dbLoading]);
 
-    if (isLoading) {
+    if (isLoading || dbLoading) {
         return (
             <div className="h-full w-full flex flex-col justify-center gap-2">
                 <Skeleton className="h-10 w-1/2" />
                 <Skeleton className="h-4 w-3/4" />
             </div>
         )
+    }
+
+    if (dbError) {
+        return <div className="text-center text-red-500 text-sm h-full flex items-center justify-center">Error initializing database: {dbError.message}</div>;
     }
 
     return (

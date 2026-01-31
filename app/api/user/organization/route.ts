@@ -37,8 +37,7 @@ export async function GET() {
         organizations (
           id,
           name,
-          organization_code,
-          onboarding_completed
+          organization_code
         )
       `)
       .eq('user_id', user.id)

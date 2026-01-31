@@ -98,7 +98,7 @@ export default function OnboardingPaymentPage() {
         toast.success("Welcome! Your account has been created.");
         
         // Redirect to the setup page
-        router.push('/onboarding/setup');
+        router.push('/signup/setup');
 
     } catch (err) {
         // Display specific error from backend if available, otherwise generic message

@@ -58,7 +58,7 @@ export function LandingHeader() {
                     {!authLoading && user ? (
                         // Authenticated user - show Dashboard or Organization setup button
                         <>
-                            <Link href={organizationId ? "/dashboard" : "/onboarding"}>
+                            <Link href={organizationId ? "/dashboard" : "/signup"}>
                                 <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                                     {organizationId ? "Dashboard" : "Create/Join Organization"}
                                 </Button>
@@ -102,7 +102,7 @@ export function LandingHeader() {
                                     Log in
                                 </Button>
                             </Link>
-                            <Link href="/auth/signup">
+                            <Link href="/signup/start">
                                 <Button className="rounded-full">
                                     Get Started <ChevronRight className="ml-1 size-4" />
                                 </Button>
@@ -126,7 +126,7 @@ export function LandingHeader() {
                             {!authLoading && user ? (
                                 // Authenticated user - show Dashboard or Organization setup
                                 <>
-                                    <Link href={organizationId ? "/dashboard" : "/onboarding"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href={organizationId ? "/dashboard" : "/signup"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         {organizationId ? "Dashboard" : "Create/Join Organization"}
                                     </Link>
                                     <Link href="/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
@@ -148,7 +148,7 @@ export function LandingHeader() {
                                     <Link href="/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Log in
                                     </Link>
-                                    <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href="/signup/start" onClick={() => setMobileMenuOpen(false)}>
                                         <Button className="w-full rounded-full">Get Started</Button>
                                     </Link>
                                 </>

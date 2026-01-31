@@ -2,10 +2,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function OnboardingPage() {
+export default function SignupPage() {
     const router = useRouter();
     useEffect(() => {
-        router.replace("/onboarding/start");
+        router.replace("/signup/start");
     }, [router]);
 
     return null;
