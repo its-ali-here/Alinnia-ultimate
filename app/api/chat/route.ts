@@ -1,244 +1,117 @@
 // app/api/chat/route.ts
-
 import { groq } from "@ai-sdk/groq";
 import { generateText, tool } from "ai";
 import { z } from "zod";
+import { createSupabaseAdminClient } from "@/lib/supabase-server";
 
-export const maxDuration = 30;
-
-// Enhanced system prompt for better formatting and professional presentation
-const systemPrompt = `You are Alinnia AI, an advanced intelligent financial assistant powered by Llama 3.3 70B for the Alinnia analytics platform.
-
-Your enhanced capabilities include:
-- Analyzing financial data, business metrics, and analytics with advanced reasoning
-- Providing clear, concise, and professional insights with detailed explanations
-- Helping users understand complex dashboards, reports, and financial trends
-- Offering strategic financial recommendations and forecasting insights
-- Explaining complex financial concepts in accessible language
-
-Your personality:
-- Professional yet approachable
-- Detail-oriented but concise
-- Proactive in suggesting relevant follow-up questions
-- Honest about limitations and uncertainties
-
-FORMATTING GUIDELINES:
-- Use markdown formatting for better readability
-- Use **bold text** for key terms and important concepts
-- Use headers (## or ###) to organize complex responses
-- Use bullet points (-) for lists and key points
-- Use numbered lists (1.) for step-by-step processes
-- Use \`inline code\` for financial formulas or specific values
-- Use professional emojis sparingly but effectively (📊 📈 💰 💡 ⚠️ ✅ 🎯)
-
-RESPONSE STRUCTURE:
-1. Start with a clear, direct answer
-2. Use headers to organize detailed explanations
-3. Include relevant context and reasoning with proper formatting
-4. Use bullet points for key takeaways
-5. End with actionable next steps when appropriate
-
-PROFESSIONAL EMOJI USAGE:
-- 📊 for data analysis topics
-- 📈 for growth, trends, positive metrics
-- 📉 for declining trends, risks
-- 💰 for revenue, profit, financial gains
-- 💡 for insights, recommendations, tips
-- ⚠️ for warnings, risks, important notes
-- ✅ for confirmed facts, completed items
-- 🎯 for goals, targets, objectives
-- 🔍 for analysis, investigation
-- 📋 for reports, documentation
-
-When responding:
-1. Provide direct, actionable answers with proper formatting
-2. Include relevant context and reasoning
-3. Suggest next steps or related insights when appropriate
-4. If you don't know something, clearly state your limitations
-5. Never fabricate financial data or make unfounded claims
-
-You are here to empower users with financial intelligence and strategic insights through clear, well-formatted communication.
-
-When users ask about their specific data, organization, or business metrics, use the accessData tool to get their actual information.
-
-WHEN TO USE THE accessData TOOL:
-- User asks about "my organization", "my data", "my business"
-- Questions about their dashboards, analytics setup
-- Requests about their uploaded files or data sources
-- Any question that requires their specific business information
-
-AVAILABLE DATA TYPES:
-- **financial_summary**: Organization details and data overview
-- **dashboard_metrics**: Analytics dashboards and widgets
-- **recent_transactions**: Recent data uploads and activity
-- **cash_flow**: Team and business intelligence setup
-
-For general financial advice or concepts, respond directly without using tools.`;
-
-// Define data access tools for the AI
-const dataAccessTool = tool({
-  description: "Access user's business data and provide insights about their organization, dashboards, and data files",
-  parameters: z.object({
-    dataType: z.enum(['financial_summary', 'recent_transactions', 'dashboard_metrics', 'cash_flow']).describe("Type of data to retrieve"),
-    query: z.string().describe("The user's specific question"),
-  }),
-  execute: async ({ dataType, query }) => {
-    console.log("[TOOL] Executing data access:", { dataType, query });
-
-    try {
-      // Make actual API call to get real data
-      const response = await fetch(`http://localhost:3001/api/ai/data-access`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataType, query, organizationId: 'current' }),
-      });
-
-      if (!response.ok) {
-        console.error("[TOOL] API response not ok:", response.status);
-        return { error: "Unable to access data at this time", summary: "Data access temporarily unavailable." };
-      }
-
-      const result = await response.json();
-      console.log("[TOOL] API result:", result);
-
-      if (result.success && result.summary) {
-        return { summary: result.summary, data: result.data };
-      } else {
-        return { error: "No data available", summary: "No data found for this request." };
-      }
-
-    } catch (error) {
-      console.error("[TOOL] Error:", error);
-      return { error: "Unable to access data", summary: "Data access is temporarily unavailable." };
-    }
-  },
-});
+export const maxDuration = 60; // Increased for complex reasoning
 
 export async function POST(req: Request) {
   try {
-    console.log("[CHAT_API] Received request");
+    const { messages, organizationId } = await req.json();
 
-    const { messages } = await req.json();
-    console.log("[CHAT_API] Messages received:", messages?.length || 0);
-
-    // Check for the API key. It's good practice to keep this check.
-    if (!process.env.GROQ_API_KEY) {
-      console.error("[CHAT_API] GROQ_API_KEY is not configured");
-      throw new Error("GROQ_API_KEY is not configured in environment variables.");
+    // 1. FETCH CONTEXT: Give the AI "Eyes" on your actual files
+    // We fetch the list of files and their columns so the AI knows what to visualize.
+    const supabase = createSupabaseAdminClient();
+    
+    // Fallback for demo purposes if no org ID provided
+    let targetOrgId = organizationId;
+    if (!targetOrgId) {
+       const { data: orgs } = await supabase.from('organizations').select('id').limit(1);
+       targetOrgId = orgs?.[0]?.id;
     }
 
-    console.log("[CHAT_API] Using non-streaming approach with Llama 4 Scout");
+    const { data: datasources } = await supabase
+      .from('datasources')
+      .select('id, file_name, column_definitions')
+      .eq('organization_id', targetOrgId)
+      .eq('status', 'ready')
+      .limit(10);
 
+    // Create a "Context String" to inject into the AI
+    const dataContext = datasources?.map(ds => 
+      `File: "${ds.file_name}" (ID: ${ds.id})\nColumns: ${JSON.stringify(ds.column_definitions)}`
+    ).join('\n\n') || "No data files available.";
+
+    // 2. DEFINE THE TOOL
+    // This tool lets the AI say: "I want to build a bar chart using File X"
+    const visualizationTool = tool({
+        description: "Generate a dashboard widget (Chart, Map, or Metric) to visualize data.",
+        parameters: z.object({
+            title: z.string().describe("A short, descriptive title for the chart"),
+            datasourceId: z.string().describe("The exact ID of the file to use (from context)"),
+            chartType: z.enum(['bar', 'line', 'pie', 'area', 'scatter', 'summary-card']).describe("The best visualization type"),
+            query: z.object({
+                // We make these optional because different charts need different keys
+                categoryKey: z.string().optional().describe("Column for X-Axis (Categories)"),
+                valueKey: z.string().optional().describe("Column for Y-Axis (Values)"),
+                xAxisKey: z.string().optional().describe("For Scatter plots only"),
+                yAxisKey: z.string().optional().describe("For Scatter plots only"),
+                columnName: z.string().optional().describe("For Summary Cards only"),
+                aggregationType: z.enum(['sum', 'average', 'count', 'min', 'max']).optional(),
+            }).describe("The configuration for the data query")
+        }),
+        execute: async (config) => {
+            // We just return the config. The frontend will do the heavy lifting (rendering).
+            return {
+                isWidget: true,
+                config: config
+            };
+        },
+    });
+
+    // 3. SYSTEM PROMPT
+    const systemPrompt = `You are Alinnia AI, a Data Analyst.
+    
+    YOUR GOAL: Help the user visualize their data.
+    
+    AVAILABLE DATA FILES:
+    ${dataContext}
+    
+    RULES:
+    1. If the user asks for a chart, trends, or summary, USE the 'generate_visualization' tool.
+    2. Look at the "AVAILABLE DATA FILES" to find the correct 'datasourceId' and column names.
+    3. Do NOT make up column names. Use exactly what is listed above.
+    4. For "Trends" or "Over time", use a LINE chart.
+    5. For "Comparison", use a BAR chart.
+    6. For "Composition" or "Share", use a PIE chart.
+    7. For "KPIs" or single numbers, use 'summary-card'.
+    
+    If the user asks a general question, just answer text.
+    `;
+
+    // 4. RUN AI
     const result = await generateText({
-      // Using Llama 3.3 70B - Stable production model
       model: groq("llama-3.3-70b-versatile"),
       system: systemPrompt,
       messages,
       tools: {
-        accessData: dataAccessTool,
+        generate_visualization: visualizationTool,
       },
-      // Add some additional options for better error handling
       maxTokens: 1000,
-      temperature: 0.7,
     });
 
-    console.log("[CHAT_API] Generation completed");
-    console.log("[CHAT_API] Text length:", result.text?.length || 0);
-    console.log("[CHAT_API] Tool calls:", result.toolCalls?.length || 0);
-    console.log("[CHAT_API] Tool results:", result.toolResults?.length || 0);
+    // 5. HANDLE RESPONSE
+    // We need to see if the tool was called and send that payload to the frontend
+    let finalContent = result.text;
+    let widgetPayload = null;
 
-    // Handle tool calls and results
-    let finalText = result.text;
-
-    if (result.toolCalls && result.toolCalls.length > 0) {
-      console.log("[CHAT_API] Processing tool calls...");
-
-      // If we have tool results, use them to generate a response
-      if (result.toolResults && result.toolResults.length > 0) {
-        console.log("[CHAT_API] Tool results found, processing...");
-
-        const toolResult = result.toolResults[0];
-        console.log("[CHAT_API] First tool result:", toolResult);
-
-        if (toolResult.result && !(toolResult.result as any).error) {
-          // Generate a response based on the tool result
-          const data = toolResult.result;
-          if (data.summary) {
-            finalText = `📊 **Data Analysis Results**\n\n${data.summary}\n\n## Key Insights:\n✅ Your data has been successfully analyzed\n💡 This information is based on your current setup\n🎯 Ready to provide more specific insights if needed`;
-          } else {
-            finalText = `📊 **Your Business Data**\n\nI've accessed your data and here's what I found:\n\n${JSON.stringify(data, null, 2)}\n\nWould you like me to analyze any specific aspect in more detail?`;
-          }
-        } else {
-          finalText = "I encountered an issue accessing your data. Let me help you with general guidance instead. What would you like to know?";
+    if (result.toolResults && result.toolResults.length > 0) {
+        const toolOutput = result.toolResults[0].result as any;
+        if (toolOutput.isWidget) {
+            widgetPayload = toolOutput.config;
+            finalContent = `Here is the visualization for **${toolOutput.config.title}**.`;
         }
-      } else if (!finalText || finalText.trim() === '') {
-        finalText = "I'm analyzing your data to provide insights. Let me gather the information...";
-      }
     }
 
-    // Return as a simple JSON response
-    return new Response(
-      JSON.stringify({
-        id: Date.now().toString(),
+    return new Response(JSON.stringify({
         role: "assistant",
-        content: finalText || "I received your message but couldn't generate a response.",
-        timestamp: new Date().toISOString(),
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+        content: finalContent,
+        widgetConfig: widgetPayload // <--- This is the magic payload
+    }));
 
   } catch (error: any) {
-    // Enhanced error handling to provide clearer feedback
-    console.error("[CHAT_API_ERROR] Full error:", error);
-    console.error("[CHAT_API_ERROR] Error message:", error?.message);
-    console.error("[CHAT_API_ERROR] Error stack:", error?.stack);
-
-    // Check for a specific authentication error from the AI SDK
-    if (error?.message?.includes("401") || error?.status === 401) {
-         console.error("[CHAT_API_ERROR] Authentication error detected");
-         return new Response(
-            JSON.stringify({ error: "Authentication error. Please check your GROQ_API_KEY." }),
-            { status: 401, headers: { "Content-Type": "application/json" } }
-        );
-    }
-
-    // Check for rate limiting
-    if (error?.message?.includes("429") || error?.status === 429) {
-         console.error("[CHAT_API_ERROR] Rate limit error detected");
-         return new Response(
-            JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-            { status: 429, headers: { "Content-Type": "application/json" } }
-        );
-    }
-
-    // Check if it's a tool-related error
-    if (error.message?.includes('tool') || error.message?.includes('function') || error.message?.includes('accessData')) {
-      console.error("[CHAT_API_ERROR] Tool execution error detected");
-      return new Response(
-        JSON.stringify({
-          id: Date.now().toString(),
-          role: "assistant",
-          content: "I'm having trouble accessing your data right now. Let me help you with general financial guidance instead. What specific area would you like to discuss?",
-          timestamp: new Date().toISOString(),
-        }),
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
-    return new Response(
-        JSON.stringify({
-          error: "An unexpected error occurred. Please try again.",
-          details: error?.message || "Unknown error"
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    console.error("AI Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }

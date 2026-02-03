@@ -1,8 +1,8 @@
+// components/analytics/widgets/single-value-widget.tsx
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
 import { useDuckDB } from '@/contexts/duckdb-context';
 import { format } from 'date-fns';
 
@@ -19,7 +19,6 @@ interface SingleValueWidgetProps {
     filters: any;
 }
 
-// Helper function to format the number, which remains very useful
 const formatValue = (value: number | null, formatType?: 'number' | 'currency' | 'percent') => {
     if (value === null || value === undefined) return 'N/A';
     
@@ -30,7 +29,7 @@ const formatValue = (value: number | null, formatType?: 'number' | 'currency' | 
     switch (formatType) {
         case 'currency':
             options.style = 'currency';
-            options.currency = 'USD'; // This can be made dynamic later
+            options.currency = 'USD';
             break;
         case 'percent':
             options.style = 'percent';
@@ -45,35 +44,43 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
     const [value, setValue] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { db, loading: dbLoading, error: dbError } = useDuckDB();
+    const lastFetchConfig = useRef<string>("");
 
     useEffect(() => {
         if (dbLoading || !db) return;
         
+        const currentConfigString = JSON.stringify({ widgetConfig, datasourceId, filters });
+        if (lastFetchConfig.current === currentConfigString && value !== null) return;
+
+        const uniqueFileName = `data_${Math.random().toString(36).substr(2, 9)}.csv`;
+
         const fetchData = async () => {
-            setIsLoading(true);
+            if (value === null) setIsLoading(true);
             try {
-                // 1. Fetch the datasource to get the fileUrl
                 const dsResponse = await fetch(`/api/data-sources/${datasourceId}`);
-                if (!dsResponse.ok) {
-                    throw new Error('Failed to fetch datasource details.');
-                }
+                if (!dsResponse.ok) throw new Error('Failed to fetch datasource details.');
+                
                 const dsData = await dsResponse.json();
                 const fileUrl = dsData.data?.file_url;
-
-                if (!fileUrl) {
-                    throw new Error('This datasource has no associated file.');
-                }
+                if (!fileUrl) throw new Error('This datasource has no associated file.');
                 
-                await db.registerFileURL(
-                    'my_table.csv',
-                    fileUrl,
-                    4, // CSV
-                    true
-                  );
+                await db.registerFileURL(uniqueFileName, fileUrl, 4, true);
 
-                // 2. Construct the SQL query
                 const { columnName, aggregationType } = widgetConfig.query;
-                let query = `SELECT ${aggregationType}(${columnName}) as value FROM "my_table.csv"`;
+                
+                // --- THE FIX IS HERE ---
+                // 1. REPLACE(..., ',', '') removes commas (1,000 -> 1000)
+                // 2. REPLACE(..., '$', '') removes currency signs ($50 -> 50)
+                // 3. TRY_CAST(... AS DOUBLE) safely converts to number (ignoring bad text)
+                const safeColumn = `TRY_CAST(NULLIF(REPLACE(REPLACE(CAST("${columnName}" AS VARCHAR), ',', ''), '$', ''), '') AS DOUBLE)`;
+                
+                let query = '';
+                if (aggregationType === 'count') {
+                    // Count doesn't need casting
+                    query = `SELECT COUNT(*) as value FROM "${uniqueFileName}"`;
+                } else {
+                    query = `SELECT ${aggregationType}(${safeColumn}) as value FROM "${uniqueFileName}"`;
+                }
 
                 if (filters?.dateRange?.from && filters?.dateRange?.to && filters?.dateColumn) {
                     const from = format(new Date(filters.dateRange.from), 'yyyy-MM-dd');
@@ -82,31 +89,31 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
                     query = `${query} ${whereClause}`;
                 }
 
-                // 3. Call the server-side query endpoint
                 const c = await db.connect();
                 const result = await c.query(query);
                 const resultData = result.toArray().map(Object.fromEntries);
                 
-                // The result from the new API is an array of objects
                 if (resultData && resultData.length > 0) {
-                    // The value is the first key of the first object
                     const resultValue = (resultData[0] as any)?.value;
                     setValue(Number(resultValue));
                 } else {
                     setValue(null);
                 }
+                
+                lastFetchConfig.current = currentConfigString;
                 await c.close();
+
             } catch (error) {
-                toast.error(`Could not load data for "${widgetConfig.title}": ${(error as Error).message}`);
-                setValue(null);
+                console.error("Widget Error:", error);
             } finally {
+                try { await db.registerFileURL(uniqueFileName, '', 4, true); } catch (e) { }
                 setIsLoading(false);
             }
         };
         fetchData();
-    }, [widgetConfig, datasourceId, filters, db, dbLoading]);
+    }, [widgetConfig, datasourceId, filters, db, dbLoading, value]);
 
-    if (isLoading || dbLoading) {
+    if (isLoading && value === null) {
         return (
             <div className="h-full w-full flex flex-col justify-center gap-2">
                 <Skeleton className="h-10 w-1/2" />
@@ -116,7 +123,7 @@ export function SingleValueWidget({ widgetConfig, datasourceId, filters }: Singl
     }
 
     if (dbError) {
-        return <div className="text-center text-red-500 text-sm h-full flex items-center justify-center">Error initializing database: {dbError.message}</div>;
+        return <div className="text-red-500 text-xs">DB Error</div>;
     }
 
     return (

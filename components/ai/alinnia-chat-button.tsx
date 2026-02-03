@@ -8,6 +8,7 @@ export function AlinniaChatButton({ onClick }: { onClick: () => void }) {
     <Button
       variant="outline"
       size="icon"
+      title="Summon AlinBot"
       className="flex items-center gap-2"
       onClick={onClick}
     >

@@ -5,7 +5,7 @@ import { OverviewTab } from "@/components/analytics/overview-tab";
 import { AnalyticsTab } from "@/components/analytics/analytics-tab";
 import { ReportsTab } from "@/components/analytics/reports-tab";
 import { NotificationsTab } from "@/components/analytics/notifications-tab";
-import { AskQuestion } from "@/components/analytics/ask-question"; // Import the component
+import { UnifiedQueryBuilder } from "@/components/analytics/query-builder/unified-query-builder";
 
 export default function AnalyticsPage() {
   return (
@@ -28,7 +28,11 @@ export default function AnalyticsPage() {
           <AnalyticsTab />
         </TabsContent>
         <TabsContent value="ask" className="space-y-4">
-          <AskQuestion />
+          <UnifiedQueryBuilder datasources={[]} onSave={function (config: any): void {
+            throw new Error("Function not implemented.");
+          } } onCancel={function (): void {
+            throw new Error("Function not implemented.");
+          } } />
         </TabsContent>
         <TabsContent value="reports" className="space-y-4">
           <ReportsTab />

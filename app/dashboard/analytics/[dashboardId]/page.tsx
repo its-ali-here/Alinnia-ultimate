@@ -2,17 +2,15 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { use } from 'react';
-import dynamic from 'next/dynamic';
 import { getDashboardByIdAction, updateDashboardLayoutAction, updateWidgetAction, deleteWidgetAction, getReadyDatasourcesAction } from '@/app/actions/analytics';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Plus, LayoutGrid, Loader2, BarChart, Hash, Edit, Map as MapIcon } from 'lucide-react';
+import { Plus, LayoutGrid } from 'lucide-react';
 import { Responsive, WidthProvider } from "react-grid-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +21,7 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { type DateRange } from "react-day-picker";
 import 'leaflet/dist/leaflet.css';
 import { GeoWidget } from '@/components/analytics/widgets/geo-widget';
+import { UnifiedQueryBuilder } from '@/components/analytics/query-builder/unified-query-builder';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -35,13 +34,12 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
     const [isLoading, setIsLoading] = useState(true);
     const [datasources, setDatasources] = useState<any[]>([]);
     
-    const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
+    // --- SIMPLIFIED STATE ---
+    // We removed 'isTypeSelectorOpen' because we don't need it anymore.
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [editingWidget, setEditingWidget] = useState<any>(null);
     const [widgetToDelete, setWidgetToDelete] = useState<any>(null);
-    const [widgetTypeToCreate, setWidgetTypeToCreate] = useState<null | 'chart' | 'summary-card' | 'map'>(null);
     
-    const [widgetTitle, setWidgetTitle] = useState("");
     const [isSavingWidget, setIsSavingWidget] = useState(false);
     
     const [isDateFilterEnabled, setIsDateFilterEnabled] = useState(false);
@@ -53,19 +51,6 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
     const [categoryColumn, setCategoryColumn] = useState<string>('');
     const [categoryValue, setCategoryValue] = useState<string>('');
     const [uniqueCategoryValues, setUniqueCategoryValues] = useState<string[]>([]);
-
-    const [widgetDatasourceId, setWidgetDatasourceId] = useState<string | undefined>();
-    const [widgetChartType, setWidgetChartType] = useState("bar");
-    const [widgetCategoryKey, setWidgetCategoryKey] = useState<string | undefined>();
-    const [widgetValueKey, setWidgetValueKey] = useState<string | undefined>();
-    const [widgetXAxisKey, setWidgetXAxisKey] = useState<string | undefined>();
-    const [widgetYAxisKey, setWidgetYAxisKey] = useState<string | undefined>();
-    const [widgetMapValueKey, setWidgetMapValueKey] = useState<string | undefined>();
-    const [widgetColumnName, setWidgetColumnName] = useState<string | undefined>();
-    const [widgetAggregationType, setWidgetAggregationType] = useState('sum');
-    const [widgetNumberFormat, setWidgetNumberFormat] = useState('number');
-    const [widgetLatKey, setWidgetLatKey] = useState<string | undefined>();
-    const [widgetLonKey, setWidgetLonKey] = useState<string | undefined>();
 
     const loadDashboard = useCallback(async () => {
         if (!params.dashboardId) {
@@ -115,8 +100,6 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
         return filters;
     }, [isDateFilterEnabled, dateRange, dashboard, isCategoryFilterEnabled, categoryColumn, categoryValue]);
     
-    // This effect for global category filter depends on a primary datasource, which may be deprecated.
-    // It should be adapted if per-widget filtering is introduced.
     useEffect(() => {
         if (categoryColumn && dashboard?.datasource?.processed_data) {
             const allValues = dashboard.datasource.processed_data.map((row: any) => row[categoryColumn]);
@@ -128,111 +111,42 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
         }
     }, [categoryColumn, dashboard?.datasource?.processed_data]);
 
-
-    const resetFormState = () => {
+    const handleOpenCreateDialog = () => {
         setEditingWidget(null);
-        setWidgetTitle("");
-        setWidgetDatasourceId(undefined);
-        setWidgetChartType("bar");
-        setWidgetCategoryKey(undefined);
-        setWidgetValueKey(undefined);
-        setWidgetXAxisKey(undefined);
-        setWidgetYAxisKey(undefined);
-        setWidgetMapValueKey(undefined);
-        setWidgetLatKey(undefined);
-        setWidgetLonKey(undefined);
-        setWidgetColumnName(undefined);
-        setWidgetAggregationType("sum");
-        setWidgetNumberFormat('number');
-    };
-
-    const handleOpenCreateDialog = (type: 'chart' | 'summary-card' | 'map') => {
-        resetFormState();
-        setWidgetTypeToCreate(type);
-        setIsTypeSelectorOpen(false);
         setIsConfigOpen(true);
     };
 
     const handleOpenEditDialog = (widget: any) => {
-        resetFormState();
         setEditingWidget(widget);
-        setWidgetTitle(widget.title);
-        setWidgetTypeToCreate(widget.widgetType);
-        setWidgetDatasourceId(widget.datasourceId);
-
-        if (widget.widgetType === 'chart') {
-            setWidgetChartType(widget.chartType);
-            if (widget.chartType === 'scatter') {
-                setWidgetXAxisKey(widget.query.xAxisKey);
-                setWidgetYAxisKey(widget.query.yAxisKey);
-            } else {
-                setWidgetCategoryKey(widget.query.categoryKey);
-                setWidgetValueKey(widget.query.valueKey);
-            }
-        } else if (widget.widgetType === 'map') {
-            setWidgetLatKey(widget.query.latKey);
-            setWidgetLonKey(widget.query.lonKey);
-            setWidgetMapValueKey(widget.query.valueKey);
-        } else if (widget.widgetType === 'summary-card') {
-            setWidgetColumnName(widget.query.columnName);
-            setWidgetAggregationType(widget.query.aggregationType);
-            setWidgetNumberFormat(widget.query.format || 'number');
-        }
         setIsConfigOpen(true);
     };
 
-    const handleSaveWidget = async () => {
-        if (!widgetDatasourceId) {
-            toast.error("Please select a data source for the widget.");
-            return;
-        }
-
+    // --- NEW SIMPLIFIED SAVE HANDLER ---
+    // The Unified Builder gives us the 'config' ready to go.
+    const handleWidgetSave = async (config: any) => {
         setIsSavingWidget(true);
-        let widgetData;
-
-        switch (widgetTypeToCreate) {
-            case 'chart':
-                let chartQuery: any = {};
-                if (widgetChartType === 'scatter') {
-                    if (!widgetXAxisKey || !widgetYAxisKey) { toast.error("Please select columns for both X and Y axes."); setIsSavingWidget(false); return; }
-                    chartQuery = { xAxisKey: widgetXAxisKey, yAxisKey: widgetYAxisKey };
-                } else {
-                    if (!widgetCategoryKey || !widgetValueKey) { toast.error("Please select a category and value column."); setIsSavingWidget(false); return; }
-                    chartQuery = { categoryKey: widgetCategoryKey, valueKey: widgetValueKey };
-                }
-                widgetData = { title: widgetTitle, datasourceId: widgetDatasourceId, chartType: widgetChartType, widgetType: 'chart', query: chartQuery };
-                break;
-            case 'map':
-                if (!widgetLatKey || !widgetLonKey || !widgetMapValueKey) {
-                    toast.error("Please select columns for latitude, longitude, and value."); 
-                    setIsSavingWidget(false); 
-                    return; 
-                }
-                const mapQuery = { latKey: widgetLatKey, lonKey: widgetLonKey, valueKey: widgetMapValueKey };
-                widgetData = { title: widgetTitle, datasourceId: widgetDatasourceId, widgetType: 'map', query: mapQuery };
-                break;
-            case 'summary-card':
-                if (!widgetTitle || !widgetColumnName) { toast.error("Please complete all summary card fields."); setIsSavingWidget(false); return; }
-                widgetData = { title: widgetTitle, datasourceId: widgetDatasourceId, widgetType: 'summary-card', query: { columnName: widgetColumnName, aggregationType: widgetAggregationType, format: widgetNumberFormat } };
-                break;
-            default:
-                setIsSavingWidget(false);
-                return;
-        }
-
         try {
             if (editingWidget) {
-                await updateWidgetAction({ dashboardId: dashboard.id, widget: { ...editingWidget, ...widgetData } });
+                await updateWidgetAction({ 
+                    dashboardId: dashboard.id, 
+                    widget: { ...editingWidget, ...config } 
+                });
                 toast.success("Widget updated successfully!");
             } else {
-                const newWidget = { ...widgetData, i: `widget-${Date.now()}`, x: (dashboard.layout?.length * 6) % 12, y: Infinity, w: 6, h: 4 };
+                const newWidget = { 
+                    ...config, 
+                    i: `widget-${Date.now()}`, 
+                    x: (dashboard.layout?.length * 6) % 12, 
+                    y: Infinity, 
+                    w: 6, 
+                    h: 4 
+                };
                 const newLayout = [...(dashboard.layout || []), newWidget];
                 await updateDashboardLayoutAction({ dashboardId: dashboard.id, layout: newLayout });
                 toast.success("Widget added successfully!");
             }
             await loadDashboard();
             setIsConfigOpen(false);
-            resetFormState();
         } catch (error) {
             toast.error((error as Error).message);
         } finally {
@@ -261,13 +175,7 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
         }
     };
 
-    const columnDefinitions = useMemo(() => {
-        if (!widgetDatasourceId) return [];
-        const selectedDs = datasources.find(ds => ds.id === widgetDatasourceId);
-        return selectedDs?.column_definitions || [];
-    }, [widgetDatasourceId, datasources]);
-
-    // Columns for the global filter bar. Only enabled if a primary datasource exists.
+    // Columns for the global filter bar
     const globalFilterColumnDefinitions: string[] = dashboard?.datasource?.column_definitions || [];
 
     if (isLoading || !dashboard) {
@@ -283,7 +191,6 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
             </div>
         );
     }
-    
 
     return (
         <div className="space-y-4">
@@ -294,115 +201,22 @@ export default function DashboardViewPage({ params: paramsPromise }: { params: P
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
-                        <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> Add Widget</Button></DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Choose a widget type</DialogTitle>
-                                <DialogDescription>Select a new widget to add to your dashboard.</DialogDescription>
-                            </DialogHeader>
-                            <div className="grid grid-cols-2 gap-4 py-4">
-                                <Card onClick={() => handleOpenCreateDialog('summary-card')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><Hash className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Summary Card</p><p className="text-xs text-muted-foreground">Display a single metric.</p></div></Card>
-                                <Card onClick={() => handleOpenCreateDialog('chart')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><BarChart className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Chart</p><p className="text-xs text-muted-foreground">Visualize data with a chart.</p></div></Card>
-                                <Card onClick={() => handleOpenCreateDialog('map')} className="hover:border-primary cursor-pointer p-4 text-center justify-center flex flex-col items-center gap-2"><MapIcon className="h-8 w-8 text-muted-foreground" /><div><p className="font-semibold">Map</p><p className="text-xs text-muted-foreground">Display geographical data.</p></div></Card>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    {/* --- BUTTON WIRED DIRECTLY TO BUILDER --- */}
+                    <Button onClick={handleOpenCreateDialog}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Widget
+                    </Button>
                 </div>
             </div>
             
-            <Dialog open={isConfigOpen} onOpenChange={(open) => { if (!open) { resetFormState(); setIsConfigOpen(false); } else { setIsConfigOpen(open); } }}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader><DialogTitle>{editingWidget ? 'Edit' : 'Configure'} Widget</DialogTitle></DialogHeader>
-                    <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-                        <div className="space-y-2"><Label>Widget Title</Label><Input value={widgetTitle} onChange={(e) => setWidgetTitle(e.target.value)} placeholder="e.g., Total Revenue" /></div>
-                        
-                        <div className="space-y-2">
-                            <Label>Data Source</Label>
-                            <Select value={widgetDatasourceId} onValueChange={setWidgetDatasourceId} >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a data source..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {datasources.map(ds => (
-                                        <SelectItem key={ds.id} value={ds.id}>{ds.file_name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {widgetDatasourceId && (
-                        <>
-                            {widgetTypeToCreate === 'chart' && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Chart Type</Label>
-                                        <Select value={widgetChartType} onValueChange={(value) => setWidgetChartType(value)}>
-                                            <SelectTrigger><SelectValue placeholder="Select chart type..." /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="bar">Bar</SelectItem>
-                                                <SelectItem value="line">Line</SelectItem>
-                                                <SelectItem value="pie">Pie</SelectItem>
-                                                <SelectItem value="area">Area</SelectItem>
-                                                <SelectItem value="scatter">Scatter</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    {widgetChartType === 'scatter' ? (
-                                        <>
-                                            <div className="space-y-2"><Label>X-Axis Key</Label><Select value={widgetXAxisKey} onValueChange={setWidgetXAxisKey}><SelectTrigger><SelectValue placeholder="Select X-axis column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                            <div className="space-y-2"><Label>Y-Axis Key</Label><Select value={widgetYAxisKey} onValueChange={setWidgetYAxisKey}><SelectTrigger><SelectValue placeholder="Select Y-axis column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="space-y-2"><Label>Category Key</Label><Select value={widgetCategoryKey} onValueChange={setWidgetCategoryKey}><SelectTrigger><SelectValue placeholder="Select category column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                            <div className="space-y-2"><Label>Value Key</Label><Select value={widgetValueKey} onValueChange={setWidgetValueKey}><SelectTrigger><SelectValue placeholder="Select value column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
-                            {widgetTypeToCreate === 'map' && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2"><Label>Latitude Key</Label><Select value={widgetLatKey} onValueChange={setWidgetLatKey}><SelectTrigger><SelectValue placeholder="Select latitude column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                    <div className="space-y-2"><Label>Longitude Key</Label><Select value={widgetLonKey} onValueChange={setWidgetLonKey}><SelectTrigger><SelectValue placeholder="Select longitude column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                    <div className="space-y-2"><Label>Value Key</Label><Select value={widgetMapValueKey} onValueChange={setWidgetMapValueKey}><SelectTrigger><SelectValue placeholder="Select value column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                </div>
-                            )}
-
-                            {widgetTypeToCreate === 'summary-card' && (
-                               <div className="space-y-4">
-                                    <div className="space-y-2"><Label>Column Name</Label><Select value={widgetColumnName} onValueChange={setWidgetColumnName}><SelectTrigger><SelectValue placeholder="Select column..." /></SelectTrigger><SelectContent>{columnDefinitions.map((col: string) => (<SelectItem key={col} value={col}>{col}</SelectItem>))}</SelectContent></Select></div>
-                                    <div className="space-y-2">
-                                        <Label>Aggregation Type</Label>
-                                        <Select value={widgetAggregationType} onValueChange={setWidgetAggregationType}><SelectTrigger><SelectValue placeholder="Select aggregation type..." /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="sum">Sum</SelectItem>
-                                                <SelectItem value="average">Average</SelectItem>
-                                                <SelectItem value="count">Count</SelectItem>
-                                                <SelectItem value="count_distinct">Count Distinct</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Number Format</Label>
-                                        <Select value={widgetNumberFormat} onValueChange={setWidgetNumberFormat}><SelectTrigger><SelectValue placeholder="Select format..." /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="number">Number</SelectItem>
-                                                <SelectItem value="currency">Currency</SelectItem>
-                                                <SelectItem value="percentage">Percentage</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsConfigOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSaveWidget} disabled={isSavingWidget || !widgetDatasourceId}>{isSavingWidget && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Changes</Button>
-                    </DialogFooter>
+            {/* --- NEW UNIFIED DIALOG --- */}
+            <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+                <DialogContent className="max-w-5xl h-[80vh] flex flex-col p-0 gap-0">
+                    <UnifiedQueryBuilder 
+                        datasources={datasources}
+                        initialConfig={editingWidget} 
+                        onSave={handleWidgetSave}
+                        onCancel={() => setIsConfigOpen(false)}
+                    />
                 </DialogContent>
             </Dialog>
 

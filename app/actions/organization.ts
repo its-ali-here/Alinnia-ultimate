@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 
 // This is the main function to get the user's org data.
 export async function getUserOrganizationData(userId: string): Promise<{ organization: Organization; role: string; } | null> {
+  console.log("getUserOrganizationData: userId", userId);
     if (!userId) return null;
     const supabaseAdmin = createSupabaseAdminClient();
     const { data, error } = await supabaseAdmin
@@ -14,6 +15,9 @@ export async function getUserOrganizationData(userId: string): Promise<{ organiz
       .eq("user_id", userId)
       .limit(1)
       .single(); 
+    
+    console.log("getUserOrganizationData: data", data);
+    console.log("getUserOrganizationData: error", error);
 
     if (error || !data || !data.organization) {
       if (error && error.code !== 'PGRST116') { console.error("Org Action Error:", error); }

@@ -27,7 +27,7 @@ export function ModeToggle() {
   }
 
   return (
-    <Button variant="outline" size="icon" onClick={toggleTheme}>
+    <Button variant="outline" title="Toggle theme" size="icon" onClick={toggleTheme}>
       {isDarkMode ? (
         <Sun className="h-[1.2rem] w-[1.2rem]" />
       ) : (

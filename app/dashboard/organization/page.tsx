@@ -238,8 +238,8 @@ export default function OrganizationPage() {
                         {members.map((member) => (
                         <Card key={member.id}>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <div className="flex items-center space-x-3"><Avatar className="h-10 w-10"><AvatarImage src={member.profiles.avatar_url} /><AvatarFallback>{member.profiles.full_name?.split(" ").map((n: string) => n[0]).join("")}</AvatarFallback></Avatar><div><p className="font-semibold">{member.profiles.full_name}</p><p className="text-xs text-muted-foreground">{member.designation || 'Member'}</p></div></div>
-                                {canManageOrg && user?.id !== member.profiles.id && (
+                                <div className="flex items-center space-x-3"><Avatar className="h-10 w-10"><AvatarImage src={member.avatar_url} /><AvatarFallback>{member.full_name?.split(" ").map((n: string) => n[0]).join("")}</AvatarFallback></Avatar><div><p className="font-semibold">{member.full_name}</p><p className="text-xs text-muted-foreground">{member.designation || 'Member'}</p></div></div>
+                                {canManageOrg && user?.id !== member.user_id && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent>
