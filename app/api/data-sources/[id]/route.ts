@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const supabase = createSupabaseAdminClient();
     
-    // 1. Get the file path from the database
+    // 1. Get the file path
     const { data, error } = await supabase
       .from('datasources')
       .select('id, file_name, storage_path')
@@ -20,33 +20,31 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .single();
 
     if (error || !data) {
-      console.error('Error fetching datasource record:', error);
-      return NextResponse.json({ error: 'Datasource record not found in database.' }, { status: 404 });
+      console.error('Error fetching datasource:', error);
+      return NextResponse.json({ error: 'Datasource not found.' }, { status: 404 });
     }
 
-    // 2. Generate a secure Signed URL (valid for 1 hour)
-    // We use your correct bucket name: 'files'
+    // 2. Generate a SIGNED URL (Valid for 1 hour)
+    // This allows access to Private buckets
     const { data: signedUrlData, error: signedUrlError } = await supabase
       .storage
-      .from('files') 
-      .createSignedUrl(data.storage_path, 3600);
+      .from('files') // Ensure this matches your bucket name
+      .createSignedUrl(data.storage_path, 3600); // 3600 seconds = 1 hour
 
-    if (signedUrlError || !signedUrlData) {
-      console.error('Error generating signed URL:', signedUrlError);
-      // We return the data anyway, but file_url will be missing
-      return NextResponse.json({ data }); 
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error('Error generating signed URL:', signedUrlError);
+        return NextResponse.json({ error: 'Could not generate access link.' }, { status: 500 });
     }
 
-    // 3. Return the Signed URL as 'file_url'
+    // 3. Return the data with the Secure URL
     return NextResponse.json({ 
         data: {
             ...data,
-            file_url: signedUrlData.signedUrl 
+            file_url: signedUrlData.signedUrl
         } 
     });
 
   } catch (err) {
-    console.error('Server error:', err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

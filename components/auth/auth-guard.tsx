@@ -1,25 +1,25 @@
 "use client"
 
 import type React from "react"
-
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, organizationId, loading } = useAuth()
+  // We don't need organizationId for the strict check anymore
+  const { user, loading } = useAuth() 
   const router = useRouter()
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
+        // Only redirect if they are strictly NOT logged in
         router.push("/login")
-      } else if (!organizationId) {
-        router.push("/signup")
-      }
+      } 
+      // DELETED: else if (!organizationId) { router.push("/signup") }
     }
-  }, [user, organizationId, loading, router])
+  }, [user, loading, router])
 
   if (loading) {
     return (
@@ -49,7 +49,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user || !organizationId) {
+  // Allow rendering if user exists, even if orgId is still loading/null
+  if (!user) {
     return null
   }
 
