@@ -110,7 +110,7 @@ export default function OnboardingPaymentPage() {
   };
 
   const planDetails: { [key: string]: { name: string; price: string } } = {
-    starter: { name: "Starter", price: "$24/month" },
+    starter: { name: "Starter", price: "$19/month" },
     professional: { name: "Pro", price: "$49/month" },
   }
 

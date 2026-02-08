@@ -47,7 +47,7 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "$24",
+                    price: "$19",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
@@ -68,7 +68,7 @@ export function PricingSection() {
                   },
                   {
                     name: "Enterprise",
-                    price: "$99",
+                    price: "$79",
                     description: "For large organizations with complex needs.",
                     features: [
                       "Unlimited team members",
@@ -130,14 +130,14 @@ export function PricingSection() {
                 {[
                   {
                     name: "Starter",
-                    price: "$19",
+                    price: "$199",
                     description: "Perfect for small teams and startups.",
                     features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
                     cta: "Start Free Trial",
                   },
                   {
                     name: "Professional",
-                    price: "$39",
+                    price: "$499",
                     description: "Ideal for growing businesses.",
                     features: [
                       "Up to 20 team members",
@@ -151,7 +151,7 @@ export function PricingSection() {
                   },
                   {
                     name: "Enterprise",
-                    price: "$79",
+                    price: "$799",
                     description: "For large organizations with complex needs.",
                     features: [
                       "Unlimited team members",
@@ -183,7 +183,7 @@ export function PricingSection() {
                         <h3 className="text-2xl font-bold">{plan.name}</h3>
                         <div className="flex items-baseline mt-4">
                           <span className="text-4xl font-bold">{plan.price}</span>
-                          <span className="text-muted-foreground ml-1">/month</span>
+                          <span className="text-muted-foreground ml-1">/annum</span>
                         </div>
                         <p className="text-muted-foreground mt-2">{plan.description}</p>
                         <ul className="space-y-3 my-6 flex-grow">
