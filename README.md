@@ -1,115 +1,242 @@
 # Alinnia
 
-**Alinnia** is a SaaS business intelligence web application designed to help **SMEs make better financial and operational decisions** by transforming raw organisational data into actionable insights.
-
-The platform connects directly to organisational data sources (primarily spreadsheets such as Excel/Sheets), visualises them through dashboards and KPIs, and augments decision-making with **AI-driven recommendations** and **market context**.
+A decision-driven working capital simulation engine built for spreadsheet-driven businesses.
 
 ---
 
-## 🚀 What Alinnia Does
+## 🚀 Overview
 
-Alinnia helps SMEs **make or save money** by:
+Alinnia is a lightweight financial modelling tool designed for SMEs and mid-market businesses that operate primarily in Excel.
 
-- Centralising business data in one place  
-- Turning spreadsheets into live dashboards  
-- Tracking key performance indicators (KPIs)  
-- Providing AI-based recommendations on next actions  
-- Incorporating relevant market news into insights  
+Instead of replacing accounting software, it sits on top of existing spreadsheets and answers one critical question:
 
-This allows non-technical business owners and managers to move from *data collection* to *decision execution* faster.
+> **“If we make this decision, when do we run out of cash?”**
+
+The product replaces gut-feel capital decisions with structured, scenario-based simulation.
 
 ---
 
-## 🧠 Core Features
+## ❗ The Problem
 
-### Current / In Progress
-- Organisation-based accounts (paid SaaS model)
-- Data ingestion from spreadsheets (Excel / Sheets-style data)
-- Dashboard visualisation
-- KPI tracking
-- Authentication via Supabase
-- AI integration using Groq AI (early stage)
+Millions of profitable businesses globally:
 
-### Planned
-- Advanced AI decision recommendations
-- Context-aware insights using market news
-- Custom KPI definitions per organisation
-- Alerts & notifications
-- Forecasting & trend analysis
-- Role-based access control (RBAC)
+- Operate using Excel exports from accounting systems
+- Make credit and inventory decisions based on instinct
+- Lack structured liquidity modelling
+- Discover risk only when cash tightens
+
+Existing tools are either:
+
+- Full accounting systems  
+- Enterprise FP&A software  
+- Static dashboards  
+- Overbuilt and integration-heavy  
+
+None are designed for fast executive-level liquidity simulation.
 
 ---
 
-## 🏗️ Tech Stack
+## 💡 The Solution
 
-### Frontend
-- Next.js
-- React
+Alinnia is a **Working Capital Simulation Engine**.
 
-### Backend & Services
+It:
+
+1. Ingests simplified financial inputs  
+2. Projects a 12-month liquidity baseline  
+3. Allows shock modelling via simple controls  
+4. Instantly recalculates cash runway and breach timing  
+
+The goal is clarity, not complexity.
+
+---
+
+## 🔧 Core MVP Features
+
+### 1️⃣ Financial Input Layer
+
+Minimal required inputs:
+
+- Monthly sales  
+- Gross margin  
+- Collection days  
+- Payable days  
+- Inventory days  
+- Fixed expenses  
+- Starting cash  
+- Bank facility limit (optional)  
+
+Designed to onboard in under 5 minutes.
+
+---
+
+### 2️⃣ Baseline Liquidity Projection
+
+Generates:
+
+- 12-month cash projection  
+- Monthly liquidity curve  
+- Clear runway visibility  
+
+---
+
+### 3️⃣ Shock Simulation Controls
+
+Three core stress variables:
+
+- 📉 Sales drop %
+- 🕒 Collection delay increase
+- 📦 Inventory increase %
+
+These allow users to simulate:
+
+- Market downturn  
+- Credit extension  
+- Inventory overstock  
+- Delayed receivables  
+
+---
+
+### 4️⃣ Breach Detection
+
+Outputs one clear result:
+
+- **“Liquidity breach in Month X”**
+- Or **“No breach within 12 months”**
+
+This is the executive decision trigger.
+
+---
+
+## 🎯 Who This Is For
+
+- Wholesale traders  
+- Distributors  
+- Manufacturers  
+- Import/export businesses  
+- Inventory-heavy SMEs  
+- Spreadsheet-driven finance teams  
+
+Especially useful in markets where:
+
+- Excel is the operational backbone  
+- Working capital drives survival  
+- Decisions are owner-led  
+
+---
+
+## 🚫 What This Is NOT
+
+- Not accounting software  
+- Not ERP  
+- Not bookkeeping  
+- Not tax management  
+- Not a dashboard product  
+
+It is a simulation tool.
+
+---
+
+## 🧠 Philosophy
+
+Most businesses monitor numbers.
+
+Very few simulate consequences.
+
+Liquidity Shock Simulator focuses on:
+
+- Second-order effects  
+- Decision impact  
+- Risk timing  
+- Working capital stress  
+
+It converts:
+
+> “I think we’re fine.”
+
+into:
+
+> “We breach in Month 7 under a 20% slowdown.”
+
+---
+
+## 🛠 Technical Stack (MVP Prototype)
+
+- Typescript  
 - Supabase
-  - Authentication
-  - Database
-  - Row-level security (RLS)
-- Groq AI (decision intelligence & recommendations)
+- Groq AI
+- Github
+- Vercel 
 
-### Hosting & DevOps
-- Vercel (deployment & hosting)
-- GitHub (version control & CI integration)
+### Future Architecture
 
----
-
-## 🔐 Authentication
-
-- Managed entirely via **Supabase Auth**
-- Organisation-scoped access
-- Session handling via Supabase client
+- Web-based SaaS  
+- CSV / Google Sheets ingestion  
+- Column mapping layer  
+- Modular simulation engine  
+- Scenario comparison engine  
 
 ---
 
-## 📁 Project Status
+## 🗺 Roadmap
 
-⚠️ **Under active development**
+### Phase 1 – MVP
+- Manual inputs  
+- 12-month projection  
+- Shock sliders  
+- Breach indicator  
 
-This project is evolving rapidly. APIs, schemas, and feature scope may change without notice.
+### Phase 2 – Spreadsheet Integration
+- CSV upload  
+- Google Sheets sync  
+- Column mapping  
 
----
-
-## 🧑‍💻 Internal Development Notes
-
-- This README is intended for the **internal Alinnia team**
-- No public API guarantees yet
-- No legal, licensing, or compliance framework defined at this stage
-- Environment variables and secrets are managed locally and on Vercel
-
----
-
-## 🧩 Environment Variables (To Be Expanded)
-
-Expected (subject to change):
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `GROQ_API_KEY`
-
-A `.env.example` file will be added later.
+### Phase 3 – Advanced Simulation
+- Facility utilization tracking  
+- Multi-scenario comparison  
+- Sensitivity analysis  
+- Inventory capital modelling  
+- Customer credit impact simulation  
 
 ---
 
-## 🗺️ Vision
+## 🌍 Vision
 
-Alinnia aims to become a **decision-intelligence layer for SMEs**, combining:
+To become the default liquidity decision engine for spreadsheet-driven businesses globally.
 
-- Internal organisational data  
-- External market signals  
-- AI-powered reasoning  
+Not by replacing accounting software.
 
-All focused on **practical, money-impacting decisions**, not just analytics.
+But by becoming the intelligence layer above it.
 
 ---
 
-## 📌 Notes
+## 📈 Long-Term Direction
 
-- No license defined yet  
-- No public documentation yet  
-- Internal use only  
+Once simulation becomes trusted, the platform can expand into:
+
+- Credit risk modelling  
+- Inventory optimization  
+- Working capital efficiency scoring  
+- Capital structure advisory  
+- Stress testing for lenders  
+
+All built on the same core simulation engine.
+
+---
+
+## 🧪 Status
+
+Early MVP prototype complete.
+
+Currently validating:
+
+- Financial logic accuracy  
+- User clarity  
+- Executive usability  
+- Real-world modelling alignment  
+
+---
+
+## 🔑 Core Principle
+
+If the product does not change how a business owner makes a capital decision, it has failed.

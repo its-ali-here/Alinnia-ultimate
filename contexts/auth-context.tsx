@@ -2,10 +2,9 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"; // Make sure this is imported
+import { useRouter } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
-import { getUserOrganizationData } from "@/app/actions/organization"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -19,146 +18,104 @@ import {
 
 interface AuthContextType {
   user: User | null
-  organization: any | null
-  organizationId: string | null
-  userRole: string | null
   loading: boolean
   isSupabaseConfigured: boolean
   signOut: () => Promise<void>
-  refreshOrganization: () => Promise<void>
-  signUp: (data: any) => Promise<{ user: User | null; error: Error | null }>;
+  signUp: (data: any) => Promise<{ user: User | null; error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter(); // Get the router instance
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [organization, setOrganization] = useState<any | null>(null)
-  const [userRole, setUserRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isIdle, setIsIdle] = useState(false);
+  const [isIdle, setIsIdle] = useState(false)
 
-  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const IDLE_TIMEOUT_DURATION = 30 * 60 * 1000; // 30 minutes
+  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const IDLE_TIMEOUT_DURATION = 30 * 60 * 1000 // 30 minutes
 
-  const fetchAndSetOrganization = useCallback(async (currentUser: User) => {
-    try {
-      const orgData = await getUserOrganizationData(currentUser.id);
-      if (orgData) {
-        setOrganization(orgData.organization);
-        setUserRole(orgData.role);
-      } else {
-        setOrganization(null);
-        setUserRole(null);
-      }
-    } catch (error) {
-      console.error("AuthContext: Error fetching user organization data:", error);
-      setOrganization(null);
-      setUserRole(null);
-    }
-  }, []);
-
-  // Corrected signOut function
   const signOut = useCallback(async () => {
     try {
-        await supabase.auth.signOut();
+      await supabase.auth.signOut()
     } catch (err) {
-        toast.error("An unexpected error occurred during sign out.");
-        console.error("Unexpected error during signOut process:", err);
+      toast.error("An unexpected error occurred during sign out.")
+      console.error("Unexpected error during signOut process:", err)
     } finally {
-        // This block ensures redirection happens regardless of success or failure
-        setUser(null);
-        setOrganization(null);
-        setUserRole(null);
-        router.push('/login');
+      setUser(null)
+      router.push("/login")
     }
-  }, [router]);
+  }, [router])
 
   const logoutDueToInactivity = useCallback(() => {
-    toast.info("You have been logged out due to inactivity.");
-    signOut();
-    setIsIdle(true);
-  }, [signOut]);
+    toast.info("You have been logged out due to inactivity.")
+    signOut()
+    setIsIdle(true)
+  }, [signOut])
 
   const resetIdleTimer = useCallback(() => {
     if (timeoutId.current) {
-      clearTimeout(timeoutId.current);
+      clearTimeout(timeoutId.current)
     }
-    timeoutId.current = setTimeout(logoutDueToInactivity, IDLE_TIMEOUT_DURATION);
-  }, [logoutDueToInactivity]);
+    timeoutId.current = setTimeout(logoutDueToInactivity, IDLE_TIMEOUT_DURATION)
+  }, [logoutDueToInactivity])
 
   useEffect(() => {
-    if (!user) return;
-    const activityEvents: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
-    activityEvents.forEach((event) => window.addEventListener(event, resetIdleTimer));
-    resetIdleTimer();
+    if (!user) return
+    const activityEvents: (keyof WindowEventMap)[] = ["mousemove", "keydown", "mousedown", "touchstart", "scroll"]
+    activityEvents.forEach((event) => window.addEventListener(event, resetIdleTimer))
+    resetIdleTimer()
     return () => {
-      if (timeoutId.current) clearTimeout(timeoutId.current);
-      activityEvents.forEach((event) => window.removeEventListener(event, resetIdleTimer));
-    };
-  }, [user, resetIdleTimer]);
-
+      if (timeoutId.current) clearTimeout(timeoutId.current)
+      activityEvents.forEach((event) => window.removeEventListener(event, resetIdleTimer))
+    }
+  }, [user, resetIdleTimer])
 
   useEffect(() => {
-    setLoading(true);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-  
-        if (currentUser) {
-          await fetchAndSetOrganization(currentUser);
-        } else {
-          setOrganization(null);
-          setUserRole(null);
-        }
-        
-        setLoading(false);
-      }
-    );
-  
-    return () => { subscription.unsubscribe(); };
-  }, [fetchAndSetOrganization]);
+    setLoading(true)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      setLoading(false)
+    })
 
-  const refreshOrganization = useCallback(async () => {
-    if (user) await fetchAndSetOrganization(user);
-  }, [user, fetchAndSetOrganization]);
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const signUp = async (formData: any): Promise<{ user: User | null; error: Error | null }> => {
-      if (!isSupabaseConfigured()) {
-        return { user: null, error: new Error("Supabase is not configured.") };
-      }
-      try {
-        const response = await fetch("/api/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "An unknown error occurred during signup.");
-        return { user: null, error: null };
-      } catch (err) {
-        return { user: null, error: err as Error };
-      }
-    };
+    if (!isSupabaseConfigured()) {
+      return { user: null, error: new Error("Supabase is not configured.") }
+    }
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "An unknown error occurred during signup.")
+      return { user: null, error: null }
+    } catch (err) {
+      return { user: null, error: err as Error }
+    }
+  }
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        organization,
-        organizationId: organization?.id || null,
-        userRole,
         loading,
         isSupabaseConfigured: isSupabaseConfigured(),
         signOut,
-        refreshOrganization,
         signUp,
       }}
     >
       {children}
-      
+
       <AlertDialog open={isIdle}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -168,13 +125,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => router.push('/login')}>
-              Go to Login
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => router.push("/login")}>Go to Login</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </AuthContext.Provider>
   )
 }

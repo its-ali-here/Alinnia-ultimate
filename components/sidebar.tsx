@@ -9,21 +9,20 @@ import {
   Building2,
   FileText,
   ArrowRightLeft,
-  MessagesSquare,
-  Video,
-  Briefcase,
+  GitBranch,
+  Package,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 const navigation = [
-  { name: "Overview", href: "/dashboard", icon: Home },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
-  { name: "Cash Flow", href: "/dashboard/cash-flow", icon: ArrowRightLeft },
-  { name: "Projects", href: "/dashboard/projects", icon: Briefcase },
-  { name: "Meetings", href: "/dashboard/meetings", icon: Video },
-  { name: "Chat", href: "/dashboard/chat", icon: MessagesSquare },
-  { name: "Organization", href: "/dashboard/organization", icon: Building2 },
+  { name: "Overview", href: "/dashboard/overview", icon: Home },
+  { name: "Cash Flow", href: "/dashboard/cashflow", icon: ArrowRightLeft },
+  { name: "Runway Calendar", href: "/dashboard/runway-calendar", icon: Building2 },
+  { name: "What-If Analysis", href: "/dashboard/what-if-analysis", icon: GitBranch },
+  { name: "Credit Risk", href: "/dashboard/credit-risk", icon: Shield },
+  { name: "Inventory Flow", href: "/dashboard/inventory-flow", icon: Package },
   { name: "Files", href: "/dashboard/files", icon: FileText },
 ]
 
