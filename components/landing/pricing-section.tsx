@@ -38,7 +38,7 @@ export function PricingSection() {
                   Monthly
                 </TabsTrigger>
                 <TabsTrigger value="annually" className="rounded-full px-6">
-                  Annually (Save 20%)
+                  Annually (Save 15%)
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -46,39 +46,19 @@ export function PricingSection() {
               <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
                 {[
                   {
-                    name: "Starter",
-                    price: "$19",
-                    description: "Perfect for small teams and startups.",
-                    features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
-                    cta: "Start Free Trial",
-                  },
-                  {
                     name: "Professional",
-                    price: "$49",
-                    description: "Ideal for growing businesses.",
+                    price: "$39",
+                    description: "The Complete Package.",
                     features: [
-                      "Up to 20 team members",
-                      "Advanced analytics",
-                      "25GB storage",
+                      "Cash flow forecast",
+                      "Inventory flow",
+                      "What-If analysis",
+                      "Credit risk assessment",
                       "Priority email support",
-                      "API access",
+                      "Spreadsheets/Google Sheets connection",
                     ],
                     cta: "Start Free Trial",
                     popular: true,
-                  },
-                  {
-                    name: "Enterprise",
-                    price: "$79",
-                    description: "For large organizations with complex needs.",
-                    features: [
-                      "Unlimited team members",
-                      "Custom analytics",
-                      "Unlimited storage",
-                      "24/7 phone & email support",
-                      "Advanced API access",
-                      "Custom integrations",
-                    ],
-                    cta: "Contact Sales",
                   },
                 ].map((plan, i) => (
                   <motion.div
@@ -111,7 +91,7 @@ export function PricingSection() {
                             </li>
                           ))}
                         </ul>
-                        <Link href="/signup/start">
+                        <Link href="/auth/signup/start">
                           <Button
                             className={`w-full mt-auto rounded-full ${plan.popular ? "bg-primary hover:bg-primary/90" : "bg-muted hover:bg-muted/80"}`}
                             variant={plan.popular ? "default" : "outline"}
@@ -129,39 +109,19 @@ export function PricingSection() {
               <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
                 {[
                   {
-                    name: "Starter",
-                    price: "$199",
-                    description: "Perfect for small teams and startups.",
-                    features: ["Up to 5 team members", "Basic analytics", "5GB storage", "Email support"],
-                    cta: "Start Free Trial",
-                  },
-                  {
                     name: "Professional",
-                    price: "$499",
-                    description: "Ideal for growing businesses.",
+                    price: "$399",
+                    description: "The Complete Package.",
                     features: [
-                      "Up to 20 team members",
-                      "Advanced analytics",
-                      "25GB storage",
+                      "Cash flow forecast",
+                      "Inventory flow",
+                      "What-If analysis",
+                      "Credit risk assessment",
                       "Priority email support",
-                      "API access",
+                      "Spreadsheets/Google Sheets connection",
                     ],
                     cta: "Start Free Trial",
                     popular: true,
-                  },
-                  {
-                    name: "Enterprise",
-                    price: "$799",
-                    description: "For large organizations with complex needs.",
-                    features: [
-                      "Unlimited team members",
-                      "Custom analytics",
-                      "Unlimited storage",
-                      "24/7 phone & email support",
-                      "Advanced API access",
-                      "Custom integrations",
-                    ],
-                    cta: "Contact Sales",
                   },
                 ].map((plan, i) => (
                   <motion.div
@@ -194,7 +154,7 @@ export function PricingSection() {
                             </li>
                           ))}
                         </ul>
-                        <Link href="/signup/start">
+                        <Link href="/auth/signup/start">
                           <Button
                             className={`w-full mt-auto rounded-full ${plan.popular ? "bg-primary hover:bg-primary/90" : "bg-muted hover:bg-muted/80"}`}
                             variant={plan.popular ? "default" : "outline"}

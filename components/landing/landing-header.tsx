@@ -58,7 +58,7 @@ export function LandingHeader() {
                     {!authLoading && user ? (
                         // Authenticated user - show Dashboard or Organization setup button
                         <>
-                            <Link href={organizationId ? "/dashboard" : "/signup"}>
+                            <Link href={organizationId ? "/dashboard" : "/auth/signup"}>
                                 <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                                     {organizationId ? "Dashboard" : "Create/Join Organization"}
                                 </Button>
@@ -74,7 +74,7 @@ export function LandingHeader() {
                                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
-                                        <Link href="/settings">
+                                        <Link href="/dashboard/settings">
                                             <Settings className="mr-2 h-4 w-4" />
                                             Settings
                                         </Link>
@@ -97,12 +97,12 @@ export function LandingHeader() {
                     ) : (
                         // Unauthenticated user - show login and signup buttons
                         <>
-                            <Link href="/login">
+                            <Link href="/auth/login">
                                 <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                                     Log in
                                 </Button>
                             </Link>
-                            <Link href="/signup/start">
+                            <Link href="/auth/signup/start">
                                 <Button className="rounded-full">
                                     Get Started <ChevronRight className="ml-1 size-4" />
                                 </Button>
@@ -126,10 +126,10 @@ export function LandingHeader() {
                             {!authLoading && user ? (
                                 // Authenticated user - show Dashboard or Organization setup
                                 <>
-                                    <Link href={organizationId ? "/dashboard" : "/signup"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href={organizationId ? "/dashboard" : "/auth/signup"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         {organizationId ? "Dashboard" : "Create/Join Organization"}
                                     </Link>
-                                    <Link href="/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href="/dashboard/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Settings
                                     </Link>
                                     <button
@@ -145,10 +145,10 @@ export function LandingHeader() {
                             ) : (
                                 // Unauthenticated user - show login and signup
                                 <>
-                                    <Link href="/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href="/auth/login" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Log in
                                     </Link>
-                                    <Link href="/signup/start" onClick={() => setMobileMenuOpen(false)}>
+                                    <Link href="/auth/signup/start" onClick={() => setMobileMenuOpen(false)}>
                                         <Button className="w-full rounded-full">Get Started</Button>
                                     </Link>
                                 </>

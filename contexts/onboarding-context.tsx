@@ -43,11 +43,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const STEPS = [
-    '/signup/start',
-    '/signup/details',
-    '/signup/plans',
-    '/signup/payment',
-    '/signup/setup',
+    '/auth/signup/start',
+    '/auth/signup/details',
+    '/auth/signup/payment',
+    '/auth/signup/setup',
   ];
 
   useEffect(() => {

@@ -32,7 +32,7 @@ export function LoginForm() {
         router.push("/dashboard")
       } else {
         // User has no organization, go to onboarding
-        router.push("/signup")
+        router.push("/auth/signup")
       }
     }
   }, [user, organization, authLoading, router])
@@ -150,7 +150,7 @@ export function LoginForm() {
 
           <div className="text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <Link href="/signup/start" className="font-medium text-primary hover:underline">
+            <Link href="/auth/signup/start" className="font-medium text-primary hover:underline">
               Sign up
             </Link>
           </div>

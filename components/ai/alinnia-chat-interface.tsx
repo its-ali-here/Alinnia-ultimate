@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send, MessageCircle, User, Loader2, PlusCircle, LayoutDashboard } from "lucide-react"
 import { ChartWidget } from "@/components/analytics/widgets/chart-widget"
 import { SingleValueWidget } from "@/components/analytics/widgets/single-value-widget"
-import { SaveWidgetDialog } from "@/components/ai/save-widget-dialog"
 
 interface Message {
   id: string;
@@ -214,14 +213,6 @@ export function AlinniaChatInterface() {
           </div>
         </CardContent>
       </Card>
-
-      {/* The Save Dialog */}
-      <SaveWidgetDialog 
-        open={isSaveDialogOpen} 
-        onOpenChange={setIsSaveDialogOpen} 
-        widgetConfig={widgetToSave}
-        organizationId={organizationId || ""}
-      />
     </div>
   )
 }

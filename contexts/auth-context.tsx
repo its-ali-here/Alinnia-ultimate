@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Unexpected error during signOut process:", err)
     } finally {
       setUser(null)
-      router.push("/login")
+      router.push("/auth/login")
     }
   }, [router])
 
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => router.push("/login")}>Go to Login</AlertDialogAction>
+            <AlertDialogAction onClick={() => router.push("/auth/login")}>Go to Login</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

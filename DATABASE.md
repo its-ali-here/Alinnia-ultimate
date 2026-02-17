@@ -1,15 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public.ai_usage_tracking (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  feature_type character varying NOT NULL,
-  usage_count integer DEFAULT 1,
-  usage_date date DEFAULT CURRENT_DATE,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT ai_usage_tracking_pkey PRIMARY KEY (id)
-);
 CREATE TABLE public.dashboards (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -94,24 +85,6 @@ CREATE TABLE public.news_api_usage (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT news_api_usage_pkey PRIMARY KEY (id)
 );
-CREATE TABLE public.organization_members (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  organization_id uuid,
-  user_id uuid,
-  full_name text,
-  email text UNIQUE,
-  avatar_url text,
-  phone text,
-  timezone text DEFAULT 'UTC'::text,
-  role text DEFAULT 'member'::text CHECK (role = ANY (ARRAY['owner'::text, 'admin'::text, 'member'::text])),
-  designation text,
-  joined_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT organization_members_pkey PRIMARY KEY (id),
-  CONSTRAINT organization_users_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
-  CONSTRAINT organization_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
-);
 CREATE TABLE public.organizations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -130,29 +103,6 @@ CREATE TABLE public.organizations (
   CONSTRAINT organizations_pkey PRIMARY KEY (id),
   CONSTRAINT organizations_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES auth.users(id)
 );
-CREATE TABLE public.project_members (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  project_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  role text NOT NULL DEFAULT 'member'::text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT project_members_pkey PRIMARY KEY (id),
-  CONSTRAINT project_members_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id)
-);
-CREATE TABLE public.projects (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL,
-  created_by uuid,
-  name text NOT NULL,
-  description text,
-  status text NOT NULL DEFAULT 'On Track'::text,
-  due_date timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  icon text,
-  CONSTRAINT projects_pkey PRIMARY KEY (id),
-  CONSTRAINT projects_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
-);
 CREATE TABLE public.sheet_data_cache (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   google_sheet_id text NOT NULL,
@@ -164,19 +114,4 @@ CREATE TABLE public.sheet_data_cache (
   expires_at timestamp with time zone DEFAULT (now() + '00:15:00'::interval),
   CONSTRAINT sheet_data_cache_pkey PRIMARY KEY (id),
   CONSTRAINT sheet_data_cache_google_sheet_id_fkey FOREIGN KEY (google_sheet_id) REFERENCES public.google_sheets(google_sheet_id)
-);
-CREATE TABLE public.tasks (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL,
-  created_by uuid,
-  assignee_id uuid,
-  title text NOT NULL,
-  description text,
-  status text NOT NULL DEFAULT 'todo'::text,
-  priority text DEFAULT 'medium'::text,
-  due_date timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT tasks_pkey PRIMARY KEY (id),
-  CONSTRAINT tasks_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id)
 );

@@ -15,9 +15,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!loading) {
       if (!user) {
         // Only redirect if they are strictly NOT logged in
-        router.push("/login")
+        router.push("/auth/login")
       } 
-      // DELETED: else if (!organizationId) { router.push("/signup") }
+      // DELETED: else if (!organizationId) { router.push("/auth/signup") }
     }
   }, [user, loading, router])
 

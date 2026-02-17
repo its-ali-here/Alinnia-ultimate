@@ -99,7 +99,7 @@ export default function OnboardingDetailsPage() {
                 )}
             />
             <Label htmlFor="terms" className="text-sm text-muted-foreground">
-              I agree to Alinnia's <Link href="/terms" className="underline">Terms of Service</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
+              I agree to Alinnia's <Link href="/extras/terms" className="underline">Terms of Service</Link> and <Link href="/extras/privacy" className="underline">Privacy Policy</Link>.
             </Label>
           </div>
            {errors.agreedToTerms && <p className="text-xs text-red-500 pt-1">{errors.agreedToTerms.message}</p>}

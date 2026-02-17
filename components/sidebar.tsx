@@ -5,13 +5,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Home,
-  BarChart2,
-  Building2,
   FileText,
   ArrowRightLeft,
   GitBranch,
   Package,
   Shield,
+  CalendarClock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -19,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 const navigation = [
   { name: "Overview", href: "/dashboard/overview", icon: Home },
   { name: "Cash Flow", href: "/dashboard/cashflow", icon: ArrowRightLeft },
-  { name: "Runway Calendar", href: "/dashboard/runway-calendar", icon: Building2 },
+  { name: "Runway Calendar", href: "/dashboard/runway-calendar", icon: CalendarClock },
   { name: "What-If Analysis", href: "/dashboard/what-if-analysis", icon: GitBranch },
   { name: "Credit Risk", href: "/dashboard/credit-risk", icon: Shield },
   { name: "Inventory Flow", href: "/dashboard/inventory-flow", icon: Package },
@@ -35,14 +34,16 @@ export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
         <Link
           href={item.href}
           className={cn(
-            "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            // UPDATED: Increased padding (px-4 py-3) and font size (text-base)
+            "flex items-center rounded-md px-4 py-3 text-base font-medium transition-colors",
             pathname === item.href
               ? "bg-secondary text-secondary-foreground"
               : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground",
             isCollapsed && "justify-center px-2",
           )}
         >
-          <item.icon className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
+          {/* UPDATED: Increased icon size (h-6 w-6) and margin (mr-4) */}
+          <item.icon className={cn("h-6 w-6", !isCollapsed && "mr-4")} />
           {!isCollapsed && <span>{item.name}</span>}
         </Link>
       </TooltipTrigger>
