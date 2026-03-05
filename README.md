@@ -1,127 +1,104 @@
 # Alinnia
 
-A decision-driven working capital simulation engine built for spreadsheet-driven businesses.
+A **construction project and cashflow management tool** built for contractors, project managers, and owner-reps.
 
 ---
 
 ## 🚀 Overview
 
-Alinnia is a lightweight financial modelling tool designed for SMEs and mid-market businesses that operate primarily in Excel.
+Alinnia is a mobile-first, web-friendly app designed to give contractors **complete visibility over construction projects**.
 
-Instead of replacing accounting software, it sits on top of existing spreadsheets and answers one critical question:
+It combines:
 
-> **“If we make this decision, when do we run out of cash?”**
+- Project phase tracking  
+- Payment and receivable management  
+- Cash forecasting  
+- Digital proof of payments (receiving slips)  
+- Alerts for upcoming expenses, cash shortfalls, and delays  
 
-The product replaces gut-feel capital decisions with structured, scenario-based simulation.
+The goal: **clarity, foresight, and daily usability**, without replacing Excel or accounting software.
 
 ---
 
 ## ❗ The Problem
 
-Millions of profitable businesses globally:
+Contractors and owners often face:
 
-- Operate using Excel exports from accounting systems
-- Make credit and inventory decisions based on instinct
-- Lack structured liquidity modelling
-- Discover risk only when cash tightens
+- Multiple sub-contractors and suppliers per project  
+- Cash flow uncertainty, especially with cash or cheque payments  
+- Manual tracking via Excel or paper  
+- Difficulty associating payments with invoices or project phases  
+- Limited visibility into upcoming tasks and phase completion  
 
-Existing tools are either:
+Existing solutions either:
 
-- Full accounting systems  
-- Enterprise FP&A software  
-- Static dashboards  
-- Overbuilt and integration-heavy  
+- Are accounting-focused (QuickBooks, Xero)  
+- Are enterprise project management tools (Procore, Oracle)  
+- Require full adoption of complex software  
 
-None are designed for fast executive-level liquidity simulation.
+They fail to provide **fast, actionable, daily insights** for mid-market projects.
 
 ---
 
 ## 💡 The Solution
 
-Alinnia is a **Working Capital Simulation Engine**.
+Alinnia is a **holistic project and liquidity tracker**.  
 
-It:
+It allows users to:
 
-1. Ingests simplified financial inputs  
-2. Projects a 12-month liquidity baseline  
-3. Allows shock modelling via simple controls  
-4. Instantly recalculates cash runway and breach timing  
+1. Track **project phases** and % completion  
+2. Record **payments and receivables** (cash, bank, cheque)  
+3. Generate **digital receiving slips** for cash payments  
+4. Associate **payments with invoices and accounts**  
+5. Forecast **cash runway per project**  
+6. Receive **alerts for critical financial or project events**  
+7. Monitor **budgets vs actuals** per phase  
 
-The goal is clarity, not complexity.
+All in a **single dashboard**, optimized for **mobile and web**.
 
 ---
 
 ## 🔧 Core MVP Features
 
-### 1️⃣ Financial Input Layer
+### 1️⃣ Project Phases & Timeline
+- Define phases: Excavation, Foundation, Shuttering, Plumbing, Electrical, Finishing, Handover  
+- Track completion %  
+- Visual timeline / Gantt-style view  
+- Alerts for upcoming phases or dependencies  
 
-Minimal required inputs:
+### 2️⃣ Payments & Receivables
+- Record cash, bank, or cheque payments  
+- Link payments to sub-contractors, suppliers, and invoices  
+- Digital receiving slips for cash payments  
+- Optional upload of signed paper receipts  
+- Partial payment tracking for invoices  
 
-- Monthly sales  
-- Gross margin  
-- Collection days  
-- Payable days  
-- Inventory days  
-- Fixed expenses  
-- Starting cash  
-- Bank facility limit (optional)  
+### 3️⃣ Dashboard & Forecast
+- Project overview: cash on hand, upcoming payments, % completion  
+- Multi-project summaries  
+- Cash runway forecasts  
+- Alerts for cash shortfalls, overdue payments, and budget overruns  
 
-Designed to onboard in under 5 minutes.
+### 4️⃣ Notifications & Alerts
+- Upcoming payments  
+- Phase delays  
+- Budget overshoots  
+- Receivable delays  
 
----
-
-### 2️⃣ Baseline Liquidity Projection
-
-Generates:
-
-- 12-month cash projection  
-- Monthly liquidity curve  
-- Clear runway visibility  
-
----
-
-### 3️⃣ Shock Simulation Controls
-
-Three core stress variables:
-
-- 📉 Sales drop %
-- 🕒 Collection delay increase
-- 📦 Inventory increase %
-
-These allow users to simulate:
-
-- Market downturn  
-- Credit extension  
-- Inventory overstock  
-- Delayed receivables  
-
----
-
-### 4️⃣ Breach Detection
-
-Outputs one clear result:
-
-- **“Liquidity breach in Month X”**
-- Or **“No breach within 12 months”**
-
-This is the executive decision trigger.
+### 5️⃣ Settings / Admin
+- Add/remove projects, categories, and users  
+- Export snapshots (PDF/CSV)  
+- Role-based permissions  
 
 ---
 
 ## 🎯 Who This Is For
 
-- Wholesale traders  
-- Distributors  
-- Manufacturers  
-- Import/export businesses  
-- Inventory-heavy SMEs  
-- Spreadsheet-driven finance teams  
-
-Especially useful in markets where:
-
-- Excel is the operational backbone  
-- Working capital drives survival  
-- Decisions are owner-led  
+- General contractors and project managers  
+- Owner-reps overseeing construction projects  
+- SMEs managing multiple sub-contractors  
+- Projects $50k–$1M in value  
+- Regions: Global, initially focusing on emerging markets  
 
 ---
 
@@ -131,112 +108,64 @@ Especially useful in markets where:
 - Not ERP  
 - Not bookkeeping  
 - Not tax management  
-- Not a dashboard product  
 
-It is a simulation tool.
+It is a **project and cashflow visibility tool**.
 
 ---
 
 ## 🧠 Philosophy
 
-Most businesses monitor numbers.
+Most construction software focuses on **scheduling or accounting**. Very few focus on:
 
-Very few simulate consequences.
+- Daily cash visibility  
+- Linking **payments, receipts, invoices, and project phases**  
+- Providing **actionable alerts** before problems arise  
 
-Liquidity Shock Simulator focuses on:
+Alinnia converts:
 
-- Second-order effects  
-- Decision impact  
-- Risk timing  
-- Working capital stress  
+> “I hope we have enough cash for next week.”  
 
-It converts:
+Into:
 
-> “I think we’re fine.”
-
-into:
-
-> “We breach in Month 7 under a 20% slowdown.”
+> “We have a cash shortfall in Phase 3 unless Payment X clears by Friday.”
 
 ---
 
 ## 🛠 Technical Stack (MVP Prototype)
 
 - Typescript  
-- Supabase
-- Groq AI
-- Github
-- Vercel 
+- Supabase  
+- Github  
+- PWA for mobile-first experience  
 
 ### Future Architecture
-
-- Web-based SaaS  
-- CSV / Google Sheets ingestion  
-- Column mapping layer  
-- Modular simulation engine  
-- Scenario comparison engine  
-
----
-
-## 🗺 Roadmap
-
-### Phase 1 – MVP
-- Manual inputs  
-- 12-month projection  
-- Shock sliders  
-- Breach indicator  
-
-### Phase 2 – Spreadsheet Integration
-- CSV upload  
-- Google Sheets sync  
-- Column mapping  
-
-### Phase 3 – Advanced Simulation
-- Facility utilization tracking  
-- Multi-scenario comparison  
-- Sensitivity analysis  
-- Inventory capital modelling  
-- Customer credit impact simulation  
+- Multi-project management  
+- Predictive cashflow modeling  
+- Optional accounting integrations  
+- Scenario-based alerts for delays, cost overruns, and cash gaps  
 
 ---
 
 ## 🌍 Vision
 
-To become the default liquidity decision engine for spreadsheet-driven businesses globally.
-
-Not by replacing accounting software.
-
-But by becoming the intelligence layer above it.
+To become the **default construction project visibility and liquidity tool**, trusted by contractors globally for **daily decision-making** — without forcing them to replace their existing workflows.
 
 ---
 
-## 📈 Long-Term Direction
+## 📈 Revenue Model
 
-Once simulation becomes trusted, the platform can expand into:
-
-- Credit risk modelling  
-- Inventory optimization  
-- Working capital efficiency scoring  
-- Capital structure advisory  
-- Stress testing for lenders  
-
-All built on the same core simulation engine.
+- $49/month per contractor / project manager  
+- $499/year annual subscription  
+- Optional lifetime license for homeowners or single-project users  
 
 ---
 
 ## 🧪 Status
 
-Early MVP prototype complete.
+Early MVP prototype planned. Focus on:
 
-Currently validating:
-
-- Financial logic accuracy  
-- User clarity  
-- Executive usability  
-- Real-world modelling alignment  
-
----
-
-## 🔑 Core Principle
-
-If the product does not change how a business owner makes a capital decision, it has failed.
+- Project phase tracking  
+- Payments & receivables  
+- Dashboard & alerts  
+- Cash forecasting  
+- Daily usability testing with contractors  

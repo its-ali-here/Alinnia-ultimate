@@ -1,3 +1,5 @@
+//components/top-nav/page.tsx
+
 "use client"
 import {
   ChevronLeft,
@@ -58,7 +60,7 @@ export function TopNav({
         {authLoading ? (
           <Skeleton className="h-8 w-8 rounded-full" />
         ) : (
-          <Link href="/dashboard/organization" className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-semibold">
             <Avatar className="h-8 w-8 border">
               <AvatarImage src={organization?.logo_url} alt={organization?.name} />
               <AvatarFallback>
@@ -66,7 +68,7 @@ export function TopNav({
               </AvatarFallback>
             </Avatar>
             <span className="text-lg hidden sm:inline-block">{organization?.name || 'Dashboard'}</span>
-          </Link>
+          </div>
         )}
       </div>
 

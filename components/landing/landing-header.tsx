@@ -58,9 +58,9 @@ export function LandingHeader() {
                     {!authLoading && user ? (
                         // Authenticated user - show Dashboard or Organization setup button
                         <>
-                            <Link href={organizationId ? "/dashboard" : "/auth/signup"}>
+                            <Link href="/dashboard">
                                 <Button variant="ghost" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                                    {organizationId ? "Dashboard" : "Create/Join Organization"}
+                                    Dashboard
                                 </Button>
                             </Link>
                             <DropdownMenu>
@@ -126,8 +126,8 @@ export function LandingHeader() {
                             {!authLoading && user ? (
                                 // Authenticated user - show Dashboard or Organization setup
                                 <>
-                                    <Link href={organizationId ? "/dashboard" : "/auth/signup"} className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
-                                        {organizationId ? "Dashboard" : "Create/Join Organization"}
+                                    <Link href="/dashboard" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
+                                        Dashboard
                                     </Link>
                                     <Link href="/dashboard/settings" className="py-2 text-sm font-medium" onClick={() => setMobileMenuOpen(false)}>
                                         Settings

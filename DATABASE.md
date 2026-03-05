@@ -88,20 +88,15 @@ CREATE TABLE public.news_api_usage (
 CREATE TABLE public.organizations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
-  owner_id uuid,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  organization_code text UNIQUE,
   email text,
   industry text,
   city text,
   country text,
-  phone text,
   logo_url text,
   description text,
-  plan text DEFAULT 'starter'::text,
-  CONSTRAINT organizations_pkey PRIMARY KEY (id),
-  CONSTRAINT organizations_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES auth.users(id)
+  CONSTRAINT organizations_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.sheet_data_cache (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

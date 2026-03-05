@@ -1,3 +1,5 @@
+//auth/signup/start/page.tsx
+
 "use client"
 
 import { useOnboarding } from "@/contexts/onboarding-context";
@@ -11,58 +13,81 @@ import * as z from "zod";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters long." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
+  firstName: z.string().min(1, { message: "First name is required." }),
+  lastName: z.string().min(1, { message: "Last name is required." }),
+  companyName: z.string().min(1, { message: "Company name is required." }),
+  industry: z.string().min(1, { message: "Industry is required." }),
+  city: z.string().min(1, { message: "City is required." }),
+  country: z.string().min(1, { message: "Country is required." }),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function OnboardingStartPage() {
   const { nextStep, updateData, data } = useOnboarding();
-  const { register, handleSubmit, setError, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: data.email || "",
       password: data.password || "",
+      firstName: data.firstName || "",
+      lastName: data.lastName || "",
+      companyName: data.companyName || "",
+      industry: data.industry || "",
+      city: data.city || "",
+      country: data.country || "",
     }
   });
 
-  const onSubmit = async (formData: FormData) => {
-    // Check server whether email already exists
-    try {
-      const res = await fetch("/api/auth/check-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        setError("email", { type: "server", message: json?.error || "Unable to validate email." });
-        return;
-      }
-
-      if (json.exists) {
-        setError("email", { type: "duplicate", message: "This email is already registered." });
-        return;
-      }
-
-      // proceed if email is not registered
-      updateData(formData);
-      nextStep();
-    } catch (err) {
-      setError("email", { type: "network", message: "Network error while validating email." });
-    }
+  const onSubmit = (formData: FormData) => {
+    updateData(formData);
+    nextStep();
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-lg">
       <CardHeader>
         <CardTitle className="text-2xl">Get Started</CardTitle>
         <CardDescription>Create your Alinnia account to continue.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input id="firstName" placeholder="First name" {...register("firstName")} />
+              {errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input id="lastName" placeholder="Last name" {...register("lastName")} />
+              {errors.lastName && <p className="text-xs text-red-500">{errors.lastName.message}</p>}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Company Name</Label>
+            <Input id="companyName" placeholder="Company name" {...register("companyName")} />
+            {errors.companyName && <p className="text-xs text-red-500">{errors.companyName.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="industry">Industry</Label>
+            <Input id="industry" placeholder="e.g., Technology, Finance, etc." {...register("industry")} />
+            {errors.industry && <p className="text-xs text-red-500">{errors.industry.message}</p>}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" placeholder="City" {...register("city")} />
+              {errors.city && <p className="text-xs text-red-500">{errors.city.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Input id="country" placeholder="Country" {...register("country")} />
+              {errors.country && <p className="text-xs text-red-500">{errors.country.message}</p>}
+            </div>
+          </div>
+          <hr />
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" placeholder="name@company.com" {...register("email")} />

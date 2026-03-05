@@ -12,6 +12,9 @@ interface OnboardingData {
   firstName?: string;
   lastName?: string;
   companyName?: string;
+  city?: string;
+  country?: string;
+  industry?: string;
   dataLocation?: DataLocation;
   agreedToTerms?: boolean;
   plan?: string;
@@ -44,7 +47,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const STEPS = [
     '/auth/signup/start',
-    '/auth/signup/details',
     '/auth/signup/payment',
     '/auth/signup/setup',
   ];
