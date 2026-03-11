@@ -10,7 +10,7 @@ export default function OnboardingSetupPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/dashboard');
+      router.replace('/control-centre');
     }, 10000); // 10 seconds
 
     return () => clearTimeout(timer); // Cleanup timer on unmount

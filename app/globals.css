@@ -4,83 +4,68 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 27%;
+    --background: 30 33% 91%;
+    --foreground: 0 0% 0%;
 
     --muted: 220 14% 91%;
     --muted-foreground: 220 9% 46%;
 
-    --popover: 210 20% 98%;
-    --popover-foreground: 215 25% 27%;
+    --popover: 30 33% 91%;
+    --popover-foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
+    --card-foreground: 0 0% 0%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
 
-    --primary: 217 32.6% 17.5%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 16 100% 54%;
+    --primary-foreground: 0 0% 0%;
 
     --secondary: 217 32.6% 57.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary-foreground: 0 0% 0%;
 
     --accent: 217 32.6% 57.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 0%;
 
-    --ring: 217 32.6% 17.5%;
+    --ring: 16 100% 54%;
 
     --radius: 0.5rem;
 
-    --yellow: 38 92% 50%;
-
-    /* Alinnia brand color */
-    --color-alinnia: #324623; /* rgb(50,70,35) */
-
-    /* Map primary to Alinnia (for components that rely on CSS vars) */
-    --color-primary: var(--color-alinnia);
-    --color-primary-foreground: #ffffff;
-
-    /* Yellow color usable by components/utilities (hsl from --yellow) */
-    --color-yellow: hsl(var(--yellow));
-    --color-yellow-foreground: #111111;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    --background: 0 0% 8%;
+    --foreground: 30 33% 91%;
 
     --muted: 223 47% 11%;
     --muted-foreground: 215 14% 70%;
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 30 33% 91%;
 
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
+    --card: 0 0% 8%;
+    --card-foreground: 30 33% 91%;
 
     --border: 223 47% 11%;
     --input: 223 47% 11%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
+    --primary: 16 100% 54%;
+    --primary-foreground: 0 0% 0%;
 
     --secondary: 217 32.6% 57.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary-foreground: 0 0% 0%;
 
     --accent: 217 32.6% 57.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 0%;
 
-    --ring: 217 32.6% 57.5%;
-
-    /* keep yellow available in dark mode (can be adjusted if you want a different tone) */
-    --color-yellow: hsl(var(--yellow));
+    --ring: 16 100% 54%;
   }
 
   /* --- THIS IS THE COMBINED AND CORRECTED PART --- */
@@ -91,17 +76,4 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-
-  /* utility example for older custom usage (optional) */
-  .bg-alinnia { background-color: var(--color-alinnia) !important; }
-  .text-alinnia { color: var(--color-alinnia) !important; }
-
-  /* minimal yellow utilities for progress bars / quick usage */
-  .bg-yellow { background-color: var(--color-yellow) !important; }
-  .text-yellow { color: var(--color-yellow) !important; }
-
-  /* explicit 500-shade utilities (match Tailwind shade class names) */
-  .bg-yellow-500 { background-color: var(--color-yellow) !important; }
-  .text-yellow-500 { color: var(--color-yellow) !important; }
-  .ring-yellow-500 { --tw-ring-color: var(--color-yellow) !important; }
 }

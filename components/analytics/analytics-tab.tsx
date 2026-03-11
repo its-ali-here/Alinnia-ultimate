@@ -66,7 +66,7 @@ function DashboardCard({ dashboard, onDashboardUpdated }: { dashboard: Dashboard
                 {/* Action Buttons */}
                 <div className="pt-4 space-y-2">
                     <Button asChild className="w-full">
-                        <Link href={`/dashboard/analytics/${dashboard.id}`}>
+                        <Link href={`/control-centre/analytics/${dashboard.id}`}>
                             Open Dashboard
                         </Link>
                     </Button>

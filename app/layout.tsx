@@ -15,8 +15,8 @@ import { GlobalDateRangeProvider } from "@/contexts/GlobalDateRangeContext"
 import { DuckDBProvider } from "@/contexts/duckdb-context"
 
 export const metadata: Metadata = {
-  title: "Alinnia - Business Intelligence",
-  description: "Modern financial dashboard and analytics platform",
+  title: "Alinnia - Construction Management",
+  description: "The all-in-one app for owners to control their construction projects",
     generator: 'v0.dev'
 }
 
@@ -30,7 +30,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;700&family=Inter:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body>
         <ThemeProvider

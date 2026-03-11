@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Google OAuth error:', error)
       return NextResponse.redirect(
-        new URL('/dashboard/settings?tab=integrations&error=google_auth_denied', request.url)
+        new URL('/control-centre/settings?tab=integrations&error=google_auth_denied', request.url)
       )
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL('/dashboard/settings?tab=integrations&error=missing_params', request.url)
+        new URL('/control-centre/settings?tab=integrations&error=missing_params', request.url)
       )
     }
 
@@ -29,14 +29,14 @@ export async function GET(request: NextRequest) {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString())
     } catch {
       return NextResponse.redirect(
-        new URL('/dashboard/settings?tab=integrations&error=invalid_state', request.url)
+        new URL('/control-centre/settings?tab=integrations&error=invalid_state', request.url)
       )
     }
 
     // Check state is not too old (10 minutes)
     if (Date.now() - stateData.timestamp > 10 * 60 * 1000) {
       return NextResponse.redirect(
-        new URL('/dashboard/settings?tab=integrations&error=state_expired', request.url)
+        new URL('/control-centre/settings?tab=integrations&error=state_expired', request.url)
       )
     }
 
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       console.error('Failed to exchange code for tokens:', tokens)
       return NextResponse.redirect(
-        new URL('/dashboard/settings?tab=integrations&error=token_exchange_failed', request.url)
+        new URL('/control-centre/settings?tab=integrations&error=token_exchange_failed', request.url)
       )
     }
 
@@ -94,18 +94,18 @@ export async function GET(request: NextRequest) {
     if (upsertError) {
       console.error('Failed to store integration:', upsertError)
       return NextResponse.redirect(
-        new URL('/dashboard/settings?tab=integrations&error=storage_failed', request.url)
+        new URL('/control-centre/settings?tab=integrations&error=storage_failed', request.url)
       )
     }
 
     // Redirect to settings with success
     return NextResponse.redirect(
-      new URL('/dashboard/settings?tab=integrations&success=google_connected', request.url)
+      new URL('/control-centre/settings?tab=integrations&success=google_connected', request.url)
     )
   } catch (error) {
     console.error('Error in Google OAuth callback:', error)
     return NextResponse.redirect(
-      new URL('/dashboard/settings?tab=integrations&error=callback_failed', request.url)
+      new URL('/control-centre/settings?tab=integrations&error=callback_failed', request.url)
     )
   }
 }

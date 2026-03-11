@@ -1,6 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require('tailwindcss/colors');
-
 module.exports = {
   darkMode: ['class'],
   content: [
@@ -18,7 +16,7 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
+        sans: ['Archivo', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
         serif: ['"IBM Plex Serif"', 'serif'],
         mono: ['"Roboto Mono"', 'monospace'],
       }, // Close fontFamily
@@ -29,8 +27,8 @@ module.exports = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#324623",
-          foreground: "#ffffff",
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -56,14 +54,6 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        alinnia: "#324623",
-        yellow: {
-          DEFAULT: "hsl(var(--yellow))",
-          500: "hsl(var(--yellow))",
-          foreground: "hsl(0 0% 0%)", // dark/black foreground for readability on yellow
-        },
-        /* alias for blue-gray (keeps blue-gray accessible) */
-        blueGray: colors.slate,
       },
       borderRadius: {
         lg: "var(--radius)",

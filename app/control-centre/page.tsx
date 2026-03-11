@@ -3,5 +3,5 @@
 import { redirect } from 'next/navigation'
 
 export default function DashboardPage() {
-  redirect('/dashboard/overview')
+  redirect('/control-centre/overview')
 }

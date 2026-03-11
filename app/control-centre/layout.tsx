@@ -1,4 +1,4 @@
-// /app/dashboard/layout.tsx
+// /app/control-centre/layout.tsx
 
 "use client"
 

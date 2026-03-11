@@ -29,7 +29,7 @@ export function LoginForm() {
     if (!authLoading && user) {
       if (organization) {
         // User has an organization, go to dashboard
-        router.push("/dashboard")
+        router.push("/control-centre")
       } else {
         // User has no organization, go to onboarding
         router.push("/auth/signup")

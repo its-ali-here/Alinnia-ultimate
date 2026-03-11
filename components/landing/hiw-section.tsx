@@ -5,9 +5,7 @@ import { Badge } from "@/components/ui/badge"
 
 export function HowItWorksSection() {
   return (
-    <section className="w-full py-20 md:py-32 bg-muted/30 relative overflow-hidden">
-      <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_40%,transparent_100%)]"></div>
-
+    <section className="w-full py-20 md:py-32 bg-[#EAE0D7] relative overflow-hidden">
       <div className="container px-4 md:px-6 relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -16,33 +14,33 @@ export function HowItWorksSection() {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center justify-center space-y-4 text-center mb-16"
         >
-          <Badge className="rounded-full px-4 py-1.5 text-sm font-medium" variant="secondary">
+          <Badge className="rounded-full px-4 py-1.5 text-sm font-medium bg-[#FF5A13]/20 text-[#FF5A13]" variant="secondary">
             How It Works
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Simple Process, Powerful Results</h2>
-          <p className="max-w-[800px] text-muted-foreground md:text-lg">
-            Get started in minutes and see the difference our platform can make for your business.
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">Get Started in 3 Simple Steps</h2>
+          <p className="max-w-[800px] text-black md:text-lg">
+            Alinnia is designed to be intuitive and easy to use. Get your team up and running in minutes.
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-8 md:gap-12 relative">
-          <div className="hidden md:block absolute top-1/2 left-0 right-0 h-0.5 bg-border -translate-y-1/2 z-0"></div>
+          <div className="hidden md:block absolute top-12 left-0 right-0 h-0.5 bg-black/20 -translate-y-1/2 z-0 border-t border-dashed border-black/50"></div>
 
           {[
             {
               step: "01",
-              title: "Create Account",
-              description: "Sign up in seconds with just your email. No credit card required to get started.",
+              title: "Connect Your Team",
+              description: "Invite your entire team, from the office to the field, to collaborate on a single platform.",
             },
             {
               step: "02",
-              title: "Configure Workspace",
-              description: "Customize your workspace to match your team's unique workflow and requirements.",
+              title: "Track Your Progress",
+              description: "Monitor project performance in real-time. Track budgets, schedules, and quality from anywhere.",
             },
             {
               step: "03",
-              title: "Boost Productivity",
-              description: "Start using our powerful features to streamline processes and achieve your goals.",
+              title: "Build with Confidence",
+              description: "Make data-driven decisions to improve efficiency, mitigate risk, and increase profitability.",
             },
           ].map((step, i) => (
             <motion.div
@@ -53,11 +51,11 @@ export function HowItWorksSection() {
               transition={{ duration: 0.5, delay: i * 0.1 }}
               className="relative z-10 flex flex-col items-center text-center space-y-4"
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground text-xl font-bold shadow-lg">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FF5A13] text-black text-xl font-bold shadow-lg">
                 {step.step}
               </div>
-              <h3 className="text-xl font-bold">{step.title}</h3>
-              <p className="text-muted-foreground">{step.description}</p>
+              <h3 className="text-xl font-bold text-black">{step.title}</h3>
+              <p className="text-black">{step.description}</p>
             </motion.div>
           ))}
         </div>

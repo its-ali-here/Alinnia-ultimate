@@ -117,6 +117,74 @@ export interface UploadedFile {
   updated_at: string
 }
 
+export interface Project {
+  id: string
+  organization_id: string
+  name: string
+  description?: string
+  address?: string
+  start_date: string
+  end_date?: string
+  budget: number
+  status: 'planning' | 'in_progress' | 'completed' | 'on_hold'
+}
+
+export interface Phase {
+  id: string
+  project_id: string
+  parent_phase_id?: string
+  name: string
+  description?: string
+  start_date: string
+  end_date: string
+  budget: number
+  status: 'not_started' | 'in_progress' | 'completed'
+  completion_percentage: number
+}
+
+export interface Task {
+  id: string
+  phase_id: string
+  name: string
+  description?: string
+  due_date: string
+  status: 'todo' | 'in_progress' | 'done'
+  assignee_id?: string
+}
+
+export interface Expense {
+  id: string
+  project_id: string
+  phase_id?: string
+  task_id?: string
+  description: string
+  amount: number
+  date: string
+  category: string
+  vendor?: string
+  invoice_id?: string
+}
+
+export interface Document {
+  id: string
+  project_id: string
+  file_name: string
+  file_path: string
+  file_type: 'invoice' | 'drawing' | 'receipt' | 'other'
+  uploaded_at: string
+  uploaded_by: string
+}
+
+export interface PriceIntelligence {
+  id: string
+  item_name: string
+  item_type: 'material' | 'labor'
+  unit: string
+  price: number
+  location: string
+  updated_at: string
+}
+
 // Profile functions
 export async function getOrganizationUser(userId: string, organizationId: string): Promise<OrganizationUser | null> {
   if (!isSupabaseConfigured()) {

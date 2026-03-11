@@ -1,4 +1,4 @@
-// app/dashboard/help/page.tsx
+// app/control-centre/help/page.tsx
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

@@ -11,16 +11,16 @@ import {
 
 export function LandingFooter() {
   return (
-    <footer className="w-full border-t bg-background/95 backdrop-blur-sm">
+    <footer className="w-full border-t bg-[#EAE0D7] text-black">
       <div className="container flex flex-col gap-8 px-4 py-10 md:px-6 lg:py-16">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div className="space-y-4">
             <div className="flex items-center gap-2 font-bold">
-              <Image src="/headerlogo.png" alt="Alinnia Logo" width={32} height={32} className="h-8 w-auto invert dark:invert-0"/>
+              <Image src="/headerlogo.png" alt="Alinnia Logo" width={32} height={32} className="h-8 w-auto"/>
               <span>Alinnia</span>
             </div>
             
-            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <MapPin className="size-4" />
                 <span>30 Lawrence Road, Lahore</span>
@@ -33,7 +33,7 @@ export function LandingFooter() {
 
             <div className="flex gap-4">
               {/* WhatsApp Link */}
-              <Link href="https://wa.me/923458477010" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="https://wa.me/923458477010" target="_blank" className="hover:text-[#FF5A13] transition-colors">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="24"
@@ -51,12 +51,12 @@ export function LandingFooter() {
                 <span className="sr-only">WhatsApp</span>
               </Link>
               {/* Instagram Link */}
-              <Link href="https://instagram.com/alinniadotcom" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="https://instagram.com/alinniadotcom" target="_blank" className="hover:text-[#FF5A13] transition-colors">
                 <Instagram className="size-5" />
                 <span className="sr-only">Instagram</span>
               </Link>
               {/* Mail Link */}
-              <Link href="mailto:contact@alinnia.com" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="mailto:contact@alinnia.com" className="hover:text-[#FF5A13] transition-colors">
                 <Mail className="size-5" />
                 <span className="sr-only">Mail</span>
               </Link>
@@ -66,22 +66,22 @@ export function LandingFooter() {
             <h4 className="text-sm font-bold">Product</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#features" className="hover:text-[#FF5A13] transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#pricing" className="hover:text-[#FF5A13] transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   Integrations
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   API
                 </Link>
               </li>
@@ -91,22 +91,22 @@ export function LandingFooter() {
             <h4 className="text-sm font-bold">Resources</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   Documentation
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   Guides
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   Support
                 </Link>
               </li>
@@ -116,30 +116,30 @@ export function LandingFooter() {
             <h4 className="text-sm font-bold">Company</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/extras/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/extras/about" className="hover:text-[#FF5A13] transition-colors">
                   About
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="#" className="hover:text-[#FF5A13] transition-colors">
                   Careers
                 </Link>
               </li>
               <li>
-                <Link href="/extras/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/extras/privacy" className="hover:text-[#FF5A13] transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/extras/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/extras/terms" className="hover:text-[#FF5A13] transition-colors">
                   Terms of Service
                 </Link>
               </li>
             </ul>
           </div>
         </div>
-        <div className="flex flex-col gap-4 sm:flex-row sm:justify-center items-center text-center border-t border-border/40 pt-8">
-          <p className="text-xs text-muted-foreground">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-center items-center text-center border-t border-black/20 pt-8">
+          <p className="text-xs">
             &copy; {new Date().getFullYear()} Alinnia. All rights reserved.
           </p>
         </div>

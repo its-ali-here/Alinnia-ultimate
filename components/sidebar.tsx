@@ -16,14 +16,13 @@ import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 const navigation = [
-  { name: "Overview", href: "/dashboard/overview", icon: Home },
-  { name: "Cash Flow", href: "/dashboard/cashflow", icon: ArrowRightLeft },
-  { name: "Runway Calendar", href: "/dashboard/runway-calendar", icon: CalendarClock },
-  { name: "What-If Analysis", href: "/dashboard/what-if-analysis", icon: GitBranch },
-  { name: "Credit Risk", href: "/dashboard/credit-risk", icon: Shield },
-  { name: "Inventory Flow", href: "/dashboard/inventory-flow", icon: Package },
-  { name: "Files", href: "/dashboard/files", icon: FileText },
-]
+  { name: "Overview", href: "/control-centre/overview", icon: Home },
+      { name: "Cash Flow", href: "/control-centre/cashflow", icon: ArrowRightLeft },
+      { name: "Timeline", href: "/control-centre/timeline", icon: CalendarClock },
+      { name: "Forecasting", href: "/control-centre/forecasting", icon: GitBranch },
+      { name: "Credit Risk", href: "/control-centre/credit-risk", icon: Shield },
+      { name: "Inventory Flow", href: "/control-centre/inventory-flow", icon: Package },
+      { name: "Files", href: "/control-centre/files", icon: FileText },]
 
 export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
   const pathname = usePathname()
