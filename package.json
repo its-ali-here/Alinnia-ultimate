@@ -53,6 +53,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "date-fns": "latest",
+    "duckdb-async": "latest",
     "embla-carousel-react": "latest",
     "framer-motion": "latest",
     "googleapis": "^156.0.0",
