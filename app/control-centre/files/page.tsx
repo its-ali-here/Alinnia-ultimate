@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback, type ChangeEvent } from "react"
-import { useDataSources } from "@/hooks/use-data-sources"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 import { StorageBar } from "@/components/files/storage-bar"
@@ -30,7 +29,7 @@ export default function FilesPage() {
     disconnectGoogle,
     syncGoogleSheets,
     deleteDataSource
-  } = useDataSources()
+  } = ()
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
