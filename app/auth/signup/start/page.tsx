@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useState } from "react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -22,7 +23,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function OnboardingStartPage() {
   const { nextStep, updateData, data } = useOnboarding();
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: data.email || "",
@@ -31,10 +32,27 @@ export default function OnboardingStartPage() {
       lastName: data.lastName || ""
     }
   });
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (formData: FormData) => {
-    updateData(formData);
-    nextStep();
+  const onSubmit = async (formData: FormData) => {
+    setError(null);
+    try {
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Something went wrong');
+      }
+
+      updateData(formData);
+      nextStep();
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -45,31 +63,34 @@ export default function OnboardingStartPage() {
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
+          {error && <p className="text-xs text-red-500 bg-red-100 p-3 rounded-md">{error}</p>}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" placeholder="First name" {...register("firstName")} />
+              <Input id="firstName" placeholder="First name" {...register("firstName")} disabled={isSubmitting} />
               {errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" placeholder="Last name" {...register("lastName")} />
+              <Input id="lastName" placeholder="Last name" {...register("lastName")} disabled={isSubmitting} />
               {errors.lastName && <p className="text-xs text-red-500">{errors.lastName.message}</p>}
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="name@company.com" {...register("email")} />
+            <Input id="email" type="email" placeholder="name@company.com" {...register("email")} disabled={isSubmitting} />
             {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="Shhh..." {...register("password")} />
+            <Input id="password" type="password" placeholder="Shhh..." {...register("password")} disabled={isSubmitting} />
             {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full">Continue</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating Account...' : 'Continue'}
+          </Button>
         </CardFooter>
       </form>
     </Card>

@@ -62,6 +62,17 @@ CREATE TABLE public.price_intelligence (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT price_intelligence_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  first_name text,
+  last_name text,
+  avatar_url text,
+  email text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.projects (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid,
@@ -89,14 +100,4 @@ CREATE TABLE public.tasks (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT tasks_pkey PRIMARY KEY (id),
   CONSTRAINT tasks_phase_id_fkey FOREIGN KEY (phase_id) REFERENCES public.phases(id)
-);
-CREATE TABLE public.users (
-  id uuid NOT NULL,
-  full_name text,
-  avatar_url text,
-  email text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT users_pkey PRIMARY KEY (id),
-  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

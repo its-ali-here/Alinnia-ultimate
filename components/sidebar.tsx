@@ -21,7 +21,7 @@ const navigation = [
       { name: "Timeline", href: "/control-centre/timeline", icon: CalendarClock },
       { name: "Forecasting", href: "/control-centre/forecasting", icon: GitBranch },
       { name: "Credit Risk", href: "/control-centre/credit-risk", icon: Shield },
-      { name: "Inventory Flow", href: "/control-centre/inventory-flow", icon: Package },
+      { name: "Materials", href: "/control-centre/materials", icon: Package },
       { name: "Files", href: "/control-centre/files", icon: FileText },]
 
 export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {

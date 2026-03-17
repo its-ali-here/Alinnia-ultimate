@@ -24,7 +24,7 @@ export function CtaSection() {
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <Link href="/auth/signup">
               <Button size="lg" className="rounded-full h-12 px-8 text-base bg-black text-white hover:bg-black/80">
-                Request a Demo
+                Start Your Project
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>

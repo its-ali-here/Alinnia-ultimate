@@ -12,11 +12,21 @@ export default function LandingPage() {
     <div className="flex min-h-[100dvh] flex-col">
       <LandingHeader />
       <main className="flex-1">
-        <HeroSection />
-        <HowItWorksSection />
-        <FeaturesGridSection />
-        <PricingSection />
-        <FaqSection />
+        <div className="bg-[#EAE0D7]">
+          <HeroSection />
+        </div>
+        <div className="bg-white">
+          <HowItWorksSection />
+        </div>
+        <div className="bg-[#EAE0D7]">
+          <FeaturesGridSection />
+        </div>
+        <div className="bg-white">
+          <PricingSection />
+        </div>
+        <div className="bg-[#EAE0D7]">
+          <FaqSection />
+        </div>
         <CtaSection />
       </main>
       <LandingFooter />

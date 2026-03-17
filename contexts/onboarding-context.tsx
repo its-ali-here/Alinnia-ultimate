@@ -7,19 +7,36 @@ import { useRouter } from 'next/navigation';
 type DataLocation = 'cloud' | 'local' | 'other';
 
 interface OnboardingData {
+  // User registration data
   email?: string;
   password?: string;
   firstName?: string;
   lastName?: string;
   companyName?: string;
-  city?: string;
-  country?: string;
   industry?: string;
   dataLocation?: DataLocation;
   agreedToTerms?: boolean;
   plan?: string;
-  // We won't store actual payment details, just a flag
   paymentConfirmed?: boolean;
+  
+  // Project wizard data
+  projectName?: string;
+  siteType?: 'empty' | 'existing' | '';
+  projectType?: 'residential' | 'commercial' | '';
+  constructionPath?: 'masonry' | 'timber' | 'precision' | '';
+  scopeOfWork?: 'construction' | 'extension' | 'renovation' | '';
+  selectedPhases?: string[];
+  isProjectUnderway?: boolean;
+  completedPhases?: string[];
+  hasBasement?: boolean;
+  city?: string;
+  country?: string;
+  area?: string;
+  floors?: string;
+  hasDrawings?: boolean;
+  drawings?: File[];
+  budget?: string;
+  timeline?: string;
 }
 
 interface OnboardingContextType {
@@ -47,7 +64,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   const STEPS = [
     '/auth/signup/start',
-    '/auth/signup/payment',
+    '/auth/signup/wizard',
     '/auth/signup/setup',
   ];
 

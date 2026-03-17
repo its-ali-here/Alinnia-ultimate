@@ -18,7 +18,7 @@ export function HeroSection() {
                         Alinnia is the all-in-one platform for construction professionals. Manage your projects, from bidding to closeout, with a single, easy-to-use solution.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link href="/auth/signup"><Button size="lg" className="rounded-full h-12 px-8 text-base bg-[#FF5A13] text-black hover:bg-[#FF7A33]">Request a Demo <ArrowRight className="ml-2 size-4" /></Button></Link>
+                        <Link href="/auth/signup"><Button size="lg" className="rounded-full h-12 px-8 text-base bg-[#FF5A13] text-black hover:bg-[#FF7A33]">Start Your Project <ArrowRight className="ml-2 size-4" /></Button></Link>
                     </div>
                 </motion.div>
             </div>

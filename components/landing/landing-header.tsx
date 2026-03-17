@@ -103,7 +103,7 @@ export function LandingHeader() {
                             </Link>
                             <Link href="/auth/signup">
                                 <Button className="rounded-full bg-[#FF5A13] text-black hover:bg-[#FF7A33]">
-                                    Request a Demo <ChevronRight className="ml-1 size-4" />
+                                    Start Your Project <ChevronRight className="ml-1 size-4" />
                                 </Button>
                             </Link>
                         </>
@@ -147,7 +147,7 @@ export function LandingHeader() {
                                         Log in
                                     </Link>
                                     <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
-                                        <Button className="w-full rounded-full bg-[#FF5A13] text-black hover:bg-[#FF7A33]">Request a Demo</Button>
+                                        <Button className="w-full rounded-full bg-[#FF5A13] text-black hover:bg-[#FF7A33]">Start Your Project</Button>
                                     </Link>
                                 </>
                             )}
