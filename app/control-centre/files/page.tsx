@@ -1,117 +1,59 @@
 "use client"
 
 import { useState, useCallback, type ChangeEvent } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
-import { StorageBar } from "@/components/files/storage-bar"
-import { DataSourceList } from "@/components/files/data-source-list"
-import { GooglePanel } from "@/components/files/google-panel"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Upload, Loader2, RefreshCw, FileText, FileSpreadsheet } from "lucide-react"
-import { toast } from "sonner"
 
 export default function FilesPage() {
-  const { user, organizationId } = useAuth()
-  const { 
-    dataSources, 
-    storage, 
-    loading, 
-    error,
-    isGoogleConnected,
-    googleEmail,
-    refresh,
-    connectGoogle,
-    disconnectGoogle,
-    syncGoogleSheets,
-    deleteDataSource
-  } = ()
-
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  // Mock data for development
+  const storage = { used: 0, limit: 1000000000, percentage: 0 }
+  const dataSources: any[] = []
+  const error = null
+  const isGoogleConnected = false
+  const googleEmail = ""
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0]
-      // Check storage limit
-      if (storage.used + file.size > storage.limit) {
-        toast.error('Not enough storage space. Please upgrade your plan or delete some files.')
-        return
-      }
       setSelectedFile(file)
     }
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || !user || !organizationId) return
-
+    if (!selectedFile) return
     setUploading(true)
-    let datasourceId = ''
-
-    try {
-      // Create record
-      const { data: record, error: dbError } = await supabase
-        .from('datasources')
-        .insert({
-          file_name: selectedFile.name,
-          organization_id: organizationId,
-          uploaded_by_user_id: user.id,
-          status: 'uploading',
-          storage_path: 'pending',
-          file_size: selectedFile.size
-        })
-        .select('id')
-        .single()
-
-      if (dbError) throw dbError
-      datasourceId = record.id
-
-      const filePath = `${organizationId}/${datasourceId}/${selectedFile.name}`
-      const { error: uploadError } = await supabase.storage
-        .from('files')
-        .upload(filePath, selectedFile, { upsert: false })
-
-      if (uploadError) throw uploadError
-
-      await supabase
-        .from('datasources')
-        .update({ storage_path: filePath, status: 'processing' })
-        .eq('id', datasourceId)
-
-      const { error: fnError } = await supabase.functions.invoke('process-csv', {
-        body: { datasourceId }
-      })
-      if (fnError) throw fnError
-
-      toast.success(`"${selectedFile.name}" uploaded successfully`)
-      refresh()
-    } catch (err) {
-      console.error("Full upload error:", err)
-      toast.error(`Upload failed: ${(err as Error).message}`)
-      if (datasourceId) {
-        await supabase.from('datasources').delete().eq('id', datasourceId)
-      }
-    } finally {
+    
+    // Simulate upload
+    setTimeout(() => {
       setUploading(false)
       setSelectedFile(null)
       const input = document.getElementById('file-input') as HTMLInputElement
       if (input) input.value = ''
-    }
+      alert('File uploaded successfully (placeholder)')
+    }, 2000)
   }
 
   const handleDelete = async (id: string, source: string) => {
     if (!confirm('Are you sure you want to delete this data source?')) return
-    try {
-      await deleteDataSource(id, source)
-      toast.success('Data source deleted')
-    } catch (err) {
-      toast.error('Failed to delete')
-    }
+    alert('Delete functionality not implemented yet')
   }
+
+  const refresh = () => {
+    setLoading(true)
+    setTimeout(() => setLoading(false), 1000)
+  }
+
+  const connectGoogle = () => alert('Google Connect not implemented')
+  const disconnectGoogle = () => alert('Google Disconnect not implemented')
+  const syncGoogleSheets = () => alert('Google Sync not implemented')
 
   return (
     <div className="space-y-6">
@@ -126,8 +68,10 @@ export default function FilesPage() {
         </Button>
       </div>
 
-      {/* Storage Bar */}
-      <StorageBar used={storage.used} limit={storage.limit} percentage={storage.percentage} />
+      {/* Storage Bar Placeholder */}
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${storage.percentage}%` }}></div>
+      </div>
 
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -135,7 +79,7 @@ export default function FilesPage() {
         </div>
       )}
 
-      {/* Top cards: CSV Upload | Excel (coming soon) | Google Sheets */}
+      {/* Upload Cards */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* Upload CSV Card */}
         <Card>
@@ -189,24 +133,66 @@ export default function FilesPage() {
           </CardContent>
         </Card>
 
-        {/* Google Panel */}
-        <GooglePanel
-          connected={isGoogleConnected}
-          email={googleEmail}
-          onConnect={connectGoogle}
-          onDisconnect={disconnectGoogle}
-          onSync={syncGoogleSheets}
-        />
+        {/* Google Sheets Placeholder */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Google Sheets</CardTitle>
+            <CardDescription>Connect your Google account</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {isGoogleConnected ? `Connected as ${googleEmail}` : 'Not connected'}
+            </p>
+            <Button 
+              onClick={isGoogleConnected ? disconnectGoogle : connectGoogle}
+              variant={isGoogleConnected ? "destructive" : "default"}
+              className="w-full"
+            >
+              {isGoogleConnected ? 'Disconnect' : 'Connect Google'}
+            </Button>
+            {isGoogleConnected && (
+              <Button onClick={syncGoogleSheets} variant="outline" className="w-full">
+                Sync Sheets
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Unified data source list */}
+      {/* Data Sources List Placeholder */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin mr-2" />
           <span>Loading...</span>
         </div>
       ) : (
-        <DataSourceList dataSources={dataSources} onDelete={handleDelete} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Data Sources</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {dataSources.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No data sources yet. Upload a CSV or connect Google Sheets to get started.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {dataSources.map((source, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded">
+                    <span>{source.name}</span>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => handleDelete(source.id, source.source)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   )
