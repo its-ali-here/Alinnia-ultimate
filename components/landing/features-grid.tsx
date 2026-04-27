@@ -1,73 +1,136 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Projector, Banknote, Users, ShieldCheck, AreaChart, Smartphone } from "lucide-react";
-import React from "react";
+"use client"
+
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { TrendingUp, Package, CheckSquare, FileText, ListOrdered, CircleDollarSign } from 'lucide-react'
 
 const features = [
   {
-    icon: <Projector className="h-8 w-8 text-[#FF5A13]" />,
-    title: "Project Management",
-    description: "Plan, schedule, and track every phase of your project, from pre-construction to closeout.",
+    icon: TrendingUp,
+    label: 'Budget & Cash Flow',
+    headline: 'Know exactly where every dollar goes',
+    description:
+      'Track spending by category with a live budget vs. actual view. See committed costs, available funds, and every transaction — without touching a spreadsheet.',
+    bullets: ['Spend by category breakdown', 'Committed vs. available budget', 'Transaction history with receipts'],
   },
   {
-    icon: <Banknote className="h-8 w-8 text-[#FF5A13]" />,
-    title: "Financial Management",
-    description: "Manage budgets, track costs, and forecast with confidence. Connect your accounting system for seamless data flow.",
+    icon: Package,
+    label: 'Materials',
+    headline: 'Stop overpaying for materials',
+    description:
+      'Log every purchase and instantly compare your price against regional market averages. Get flagged when a supplier is charging above market rate.',
+    bullets: ['Per-item cost vs. market average', 'Quantity tracking by supplier', 'Shortage & delivery alerts'],
   },
   {
-    icon: <Users className="h-8 w-8 text-[#FF5A13]" />,
-    title: "Workforce Management",
-    description: "Optimize your field and office operations. Track time, manage schedules, and improve productivity.",
+    icon: ListOrdered,
+    label: 'Timeline',
+    headline: 'Phases and milestones, visualised',
+    description:
+      'Break your project into phases — demolition, rough-in, finishes — and track progress milestone by milestone. Spot delays before they cascade.',
+    bullets: ['Phase-by-phase progress', 'Milestone completion tracking', 'Overdue task alerts'],
   },
   {
-    icon: <ShieldCheck className="h-8 w-8 text-[#FF5A13]" />,
-    title: "Safety & Quality",
-    description: "Standardize your safety and quality processes. Conduct inspections, track issues, and mitigate risk.",
+    icon: CheckSquare,
+    label: 'Punch List',
+    headline: 'Nothing falls through the cracks',
+    description:
+      'The punch list is how you and your contractor agree work is done. Create items, assign status, attach photos, and share a signed-off report at handover.',
+    bullets: ['Open / In Progress / Done filters', 'Photo attachments per item', 'Shareable contractor report'],
   },
   {
-    icon: <AreaChart className="h-8 w-8 text-[#FF5A13]" />,
-    title: "Analytics & Reporting",
-    description: "Gain valuable insights into your projects and portfolio. Make data-driven decisions to improve performance.",
+    icon: FileText,
+    label: 'Files',
+    headline: 'Every document, always findable',
+    description:
+      'Upload drawings, permits, contracts, receipts, and site photos into one organised vault. Share with your contractor in one link.',
+    bullets: ['Plans, Permits, Contracts, Photos', 'Receipts linked to expenses', 'Cloud storage, any device'],
   },
   {
-    icon: <Smartphone className="h-8 w-8 text-[#FF5A13]" />,
-    title: "Mobile First",
-    description: "Access your project data from anywhere, on any device. Keep your team connected and productive in the field.",
+    icon: CircleDollarSign,
+    label: 'Price Check',
+    headline: 'Market pricing in your pocket',
+    description:
+      'Before you approve an invoice or place an order, look up regional benchmark pricing. Know whether the quote you got is fair.',
+    bullets: ['Budget / mid-range / premium tiers', 'Flagged above-market items', 'No signup or subscription needed to check'],
   },
-];
+]
 
 export function FeaturesGridSection() {
+  const [active, setActive] = useState(0)
+  const f = features[active]
+  const Icon = f.icon
+
   return (
-    <section className="w-full py-12 md:py-24 lg:py-32 bg-[#EAE0D7]">
+    <section id="features" className="w-full bg-muted py-20 md:py-28">
       <div className="container px-4 md:px-6">
-        <div className="flex flex-col items-center justify-center space-y-4 text-center">
-          <div className="space-y-2">
-            <div className="inline-block rounded-lg bg-[#FF5A13]/20 px-3 py-1 text-sm font-semibold text-[#FF5A13]">
-              Key Features
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mb-12 text-center"
+        >
+          <span className="mb-3 inline-block rounded-full bg-[hsl(var(--brand-soft))] px-3 py-1 text-xs font-medium text-primary">
+            Everything you need
+          </span>
+          <h2 className="font-serif text-3xl font-semibold text-foreground md:text-4xl">
+            One dashboard. Every module.
+          </h2>
+          <p className="mt-3 text-muted-foreground md:text-lg">
+            Built for the full lifecycle — from breaking ground to final sign-off.
+          </p>
+        </motion.div>
+
+        {/* Tab pills */}
+        <div className="mb-8 flex flex-wrap justify-center gap-2">
+          {features.map((feat, i) => {
+            const TabIcon = feat.icon
+            return (
+              <button
+                key={feat.label}
+                onClick={() => setActive(i)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                  active === i
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-card text-foreground/70 border border-border hover:border-primary/30 hover:text-primary'
+                }`}
+              >
+                <TabIcon className="h-3 w-3" strokeWidth={2} />
+                {feat.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Feature detail */}
+        <motion.div
+          key={active}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-sm"
+        >
+          <div className="flex items-start gap-5">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--brand-soft))]">
+              <Icon className="h-5 w-5 text-primary" strokeWidth={1.7} />
             </div>
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-black">
-              A Single Platform for the Entire Project Lifecycle
-            </h2>
-            <p className="max-w-[900px] text-black md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-              Alinnia connects your entire project team, from the office to the field, on a single platform.
-            </p>
+            <div className="flex-1">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{f.label}</p>
+              <h3 className="font-serif mt-1 text-xl font-semibold text-foreground">{f.headline}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.description}</p>
+              <ul className="mt-5 space-y-2">
+                {f.bullets.map((b) => (
+                  <li key={b} className="flex items-center gap-2 text-sm text-foreground">
+                    <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
-        <div className="mx-auto grid max-w-5xl items-start gap-6 py-12 lg:grid-cols-3 xl:gap-8">
-          {features.map((feature, index) => (
-            <Card key={index} className="flex flex-col items-center p-6 text-center bg-white shadow-md">
-              <CardHeader>
-                <div className="mb-4">{feature.icon}</div>
-                <CardTitle className="text-xl font-bold text-black">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-black">
-                  {feature.description}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        </motion.div>
       </div>
     </section>
-  );
+  )
 }

@@ -13,7 +13,7 @@ CREATE TABLE public.documents (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT documents_pkey PRIMARY KEY (id),
   CONSTRAINT documents_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id),
-  CONSTRAINT documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id)
+  CONSTRAINT documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.profiles(id)
 );
 CREATE TABLE public.expenses (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -33,6 +33,16 @@ CREATE TABLE public.expenses (
   CONSTRAINT expenses_phase_id_fkey FOREIGN KEY (phase_id) REFERENCES public.phases(id),
   CONSTRAINT expenses_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id),
   CONSTRAINT expenses_invoice_id_fkey FOREIGN KEY (invoice_id) REFERENCES public.documents(id)
+);
+CREATE TABLE public.phase_templates (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  construction_path text NOT NULL CHECK (construction_path = ANY (ARRAY['masonry'::text, 'timber'::text, 'precision'::text])),
+  phase_key text NOT NULL,
+  name text NOT NULL,
+  description text,
+  order_index integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT phase_templates_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.phases (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -64,14 +74,25 @@ CREATE TABLE public.price_intelligence (
 );
 CREATE TABLE public.profiles (
   id uuid NOT NULL,
-  first_name text,
-  last_name text,
   avatar_url text,
   email text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT users_pkey PRIMARY KEY (id),
+  first_name text,
+  last_name text,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.project_phases (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  project_id uuid NOT NULL,
+  phase_template_id uuid NOT NULL,
+  is_selected boolean DEFAULT false,
+  is_completed boolean DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT project_phases_pkey PRIMARY KEY (id),
+  CONSTRAINT project_phases_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id),
+  CONSTRAINT project_phases_phase_template_id_fkey FOREIGN KEY (phase_template_id) REFERENCES public.phase_templates(id)
 );
 CREATE TABLE public.projects (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -85,8 +106,20 @@ CREATE TABLE public.projects (
   status text NOT NULL DEFAULT 'planning'::text CHECK (status = ANY (ARRAY['planning'::text, 'in_progress'::text, 'completed'::text, 'on_hold'::text])),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  site_type text CHECK (site_type = ANY (ARRAY['empty'::text, 'existing'::text])),
+  project_type text CHECK (project_type = ANY (ARRAY['residential'::text, 'commercial'::text])),
+  construction_path text CHECK (construction_path = ANY (ARRAY['masonry'::text, 'timber'::text, 'precision'::text])),
+  scope_of_work text CHECK (scope_of_work = ANY (ARRAY['construction'::text, 'extension'::text, 'renovation'::text])),
+  is_project_underway boolean DEFAULT false,
+  has_basement boolean DEFAULT false,
+  city text,
+  country text,
+  total_area numeric,
+  number_of_floors integer,
+  has_drawings boolean DEFAULT false,
+  timeline_months integer,
   CONSTRAINT projects_pkey PRIMARY KEY (id),
-  CONSTRAINT projects_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT projects_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
 CREATE TABLE public.tasks (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),

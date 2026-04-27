@@ -16,9 +16,9 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['Archivo', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
-        serif: ['"IBM Plex Serif"', 'serif'],
-        mono: ['"Roboto Mono"', 'monospace'],
+        sans: ['"DM Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        serif: ['Fraunces', 'Georgia', 'serif'],
+        mono: ['"DM Mono"', '"Roboto Mono"', 'monospace'],
       }, // Close fontFamily
       colors: {
         border: "hsl(var(--border))",

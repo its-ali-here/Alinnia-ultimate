@@ -1,310 +1,85 @@
 "use client"
 
-import React from "react"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  BrickWall,
-  Package,
-  Truck,
-  ClipboardList,
-  Search,
-  Plus,
-  Download,
-  AlertTriangle,
-  PackageCheck,
-  DollarSign,
-} from "lucide-react"
+import { useState } from "react"
+import { AlertTriangle } from "lucide-react"
 
-// Hardcoded data for a home construction project
-const materialsData = [
-  {
-    id: "MAT-001",
-    name: "Cement Bags",
-    category: "Foundation",
-    quantity: 250,
-    required: 500,
-    unit: "bags",
-    status: "Shortage",
-  },
-  {
-    id: "MAT-002",
-    name: "A+ Quality Bricks",
-    category: "Structure",
-    quantity: 8000,
-    required: 10000,
-    unit: "pieces",
-    status: "Low",
-  },
-  {
-    id: "MAT-003",
-    name: "Steel Rebar (12mm)",
-    category: "Structure",
-    quantity: 15,
-    required: 15,
-    unit: "tons",
-    status: "Sufficient",
-  },
-  {
-    id: "MAT-004",
-    name: "White Paint",
-    category: "Finishing",
-    quantity: 20,
-    required: 15,
-    unit: "gallons",
-    status: "Sufficient",
-  },
-  {
-    id: "MAT-005",
-    name: "Floor Tiles (24x24)",
-    category: "Finishing",
-    quantity: 350,
-    required: 500,
-    unit: "sqft",
-    status: "Shortage",
-  },
+const materials = [
+  { item: "Porcelain tile 12×24", supplier: "Acme Supply · Jul 12", qty: "280 sqft", unit: "$4.20", total: "$1,176", market: "+18%", marketColor: "amber" },
+  { item: "Quartz countertop", supplier: "Stone World · Jul 8", qty: "42 sqft", unit: "$85.00", total: "$3,570", market: "~2%", marketColor: "neutral" },
+  { item: "Undermount sink", supplier: "Wayfair · Jul 5", qty: "1 unit", unit: "$340", total: "$340", market: "−12%", marketColor: "green" },
+  { item: "Cabinet pulls (32mm)", supplier: "Hardware Hub · Jul 4", qty: "24 pcs", unit: "$6.50", total: "$156", market: "~1%", marketColor: "neutral" },
+  { item: "Grout — sanded grey", supplier: "Home Depot · Jul 3", qty: "8 bags", unit: "$18.00", total: "$144", market: "+9%", marketColor: "amber" },
+  { item: "Hardibacker 3×5", supplier: "Lowe's · Jul 2", qty: "12 pcs", unit: "$14.00", total: "$168", market: "~3%", marketColor: "neutral" },
+  { item: "Drywall screws 1-5/8\"", supplier: "Lowe's · Jul 2", qty: "2 boxes", unit: "$8.50", total: "$17", market: "−5%", marketColor: "green" },
 ]
 
-const recentActivity = [
-    {
-      id: "ACT-101",
-      type: "Delivery",
-      item: "Steel Rebar (12mm)",
-      details: "15 tons received from Mughal Steel",
-      time: "3 hours ago",
-      status: "Completed"
-    },
-    {
-      id: "ACT-102",
-      type: "Usage",
-      item: "Cement Bags",
-      details: "100 bags used for foundation slab",
-      time: "Yesterday",
-      status: "Logged"
-    },
-    {
-      id: "ACT-103",
-      type: "Order",
-      item: "Floor Tiles (24x24)",
-      details: "Order placed for 150 sqft",
-      time: "This morning",
-      status: "Placed"
-    },
-  ]
-  
+const badgeClass: Record<string, string> = {
+  amber: "bg-amber-100 text-amber-700",
+  green: "bg-emerald-100 text-emerald-700",
+  neutral: "bg-muted text-muted-foreground",
+}
 
-export default function InventoryFlowPage() {
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Shortage":
-        return <Badge variant="destructive">Shortage</Badge>
-      case "Low":
-        return <Badge variant="destructive" className="bg-orange-500">Low</Badge>
-      case "Sufficient":
-        return <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 hover:bg-emerald-500/30">Sufficient</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "Delivery":
-        return <PackageCheck className="h-4 w-4 text-emerald-500" />
-      case "Usage":
-        return <BrickWall className="h-4 w-4 text-blue-500" />
-      case "Order":
-        return <ClipboardList className="h-4 w-4 text-amber-500" />
-      default:
-        return <Package className="h-4 w-4" />
-    }
-  }
+export default function MaterialsPage() {
+  const [search, setSearch] = useState("")
+  const filtered = materials.filter((m) =>
+    m.item.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
-    <div className="flex-col md:flex">
-      <div className="flex-1 space-y-6 p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Materials Management</h2>
-            <p className="text-muted-foreground">
-              Track material inventory, orders, and shortages for your project.
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export List
-            </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Material
-            </Button>
-          </div>
-        </div>
-
-        {/* Top KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Materials on Site</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">5 Types</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Covering Foundation, Structure & Finishing
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Material Shortages</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-rose-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-rose-600">2 Items</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Cement & Floor Tiles require procurement
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Upcoming Deliveries</CardTitle>
-              <Truck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">1 Order</div>
-              <p className="text-xs text-muted-foreground flex items-center mt-1">
-                Floor tiles expected this week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Material Budget</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">65% Used</div>
-              <Progress value={65} className="h-2 mt-2" />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          {/* Main Inventory Table */}
-          <Card className="col-span-5">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Material Inventory</CardTitle>
-                <CardDescription>Real-time stock levels on your construction site.</CardDescription>
-              </div>
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Filter materials..." className="pl-8" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">On Site</TableHead>
-                    <TableHead className="w-[150px]">Progress</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {materialsData.map((item) => {
-                    const fillPercentage = (item.quantity / item.required) * 100;
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          {item.name}
-                          <div className="text-xs text-muted-foreground">{item.id}</div>
-                        </TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {item.quantity} <span className="text-muted-foreground text-xs">/ {item.required} {item.unit}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress 
-                              value={fillPercentage} 
-                              className={`h-2 ${
-                                fillPercentage < 50 ? '[&>div]:bg-rose-500' : 
-                                fillPercentage < 80 ? '[&>div]:bg-amber-500' : 
-                                '[&>div]:bg-emerald-500'
-                              }`} 
-                            />
-                            <span className="text-xs text-muted-foreground">{Math.round(fillPercentage)}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {getStatusBadge(item.status)}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity Widget */}
-          <Card className="col-span-2">
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest material movements.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-4">
-                  <div className="mt-1 bg-muted p-2 rounded-full">
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="space-y-1 flex-1">
-                    <div className="text-sm font-medium leading-none flex justify-between">
-                      {activity.type}
-                      <span className="text-xs text-muted-foreground font-normal">{activity.time}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {activity.details}
-                    </p>
-                    <div className="flex items-center gap-2 pt-1">
-                      <Badge variant="outline" className="text-[10px] h-4 px-1 py-0">
-                        {activity.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+    <div className="space-y-3">
+      {/* Search + add */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Search materials…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:bg-card transition-colors"
+        />
+        <button className="rounded-lg bg-primary px-3 py-2 text-[11px] font-medium text-white hover:opacity-90 transition-opacity">
+          + Add item
+        </button>
       </div>
+
+      {/* Alert */}
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
+        <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+        <span>2 items priced above regional market average. Check Price Check for details.</span>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border bg-muted/60">
+              <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Item</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Qty</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unit cost</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">vs. Market</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filtered.map((m) => (
+              <tr key={m.item} className="hover:bg-muted/40 transition-colors">
+                <td className="px-3 py-2.5">
+                  <p className="text-foreground">{m.item}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{m.supplier}</p>
+                </td>
+                <td className="px-3 py-2.5 text-right font-mono text-[11px] text-foreground">{m.qty}</td>
+                <td className="px-3 py-2.5 text-right font-mono text-[11px] text-foreground">{m.unit}</td>
+                <td className="px-3 py-2.5 text-right font-mono text-[11px] text-foreground">{m.total}</td>
+                <td className="px-3 py-2.5 text-right">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass[m.marketColor]}`}>
+                    {m.market}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-muted-foreground">Market indicators use regional averages. Not a quote. Labor not included. ±20% variance expected.</p>
     </div>
   )
 }

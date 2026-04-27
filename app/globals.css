@@ -4,71 +4,81 @@
 
 @layer base {
   :root {
-    --background: 30 33% 91%;
-    --foreground: 0 0% 0%;
+    /* Warm white page background */
+    --background: 30 20% 97%;
+    --foreground: 20 6% 10%;
 
-    --muted: 220 14% 91%;
-    --muted-foreground: 220 9% 46%;
+    /* Warm gray for secondary surfaces / muted areas */
+    --muted: 30 14% 93%;
+    --muted-foreground: 25 6% 47%;
 
-    --popover: 30 33% 91%;
-    --popover-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 6% 10%;
 
+    /* Pure white cards */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 20 6% 10%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    /* Subtle warm border */
+    --border: 20 8% 88%;
+    --input: 20 8% 88%;
 
-    --primary: 16 100% 54%;
-    --primary-foreground: 0 0% 0%;
+    /* Terracotta primary */
+    --primary: 22 62% 47%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 32.6% 57.5%;
-    --secondary-foreground: 0 0% 0%;
+    /* Warm blue-gray secondary */
+    --secondary: 30 14% 93%;
+    --secondary-foreground: 20 6% 10%;
 
-    --accent: 217 32.6% 57.5%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 30 14% 93%;
+    --accent-foreground: 20 6% 10%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
 
-    --ring: 16 100% 54%;
+    --ring: 22 62% 47%;
+    --radius: 0.625rem;
 
-    --radius: 0.5rem;
-
+    /* Brand tints for active states / highlights */
+    --brand-light: 24 59% 73%;
+    --brand-soft: 28 62% 91%;
   }
 
   .dark {
-    --background: 0 0% 8%;
-    --foreground: 30 33% 91%;
+    --background: 20 6% 10%;
+    --foreground: 30 20% 91%;
 
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 14% 70%;
+    --muted: 20 6% 16%;
+    --muted-foreground: 25 6% 60%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 30 33% 91%;
+    --popover: 20 5% 13%;
+    --popover-foreground: 30 20% 91%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 30 33% 91%;
+    --card: 20 5% 13%;
+    --card-foreground: 30 20% 91%;
 
-    --border: 223 47% 11%;
-    --input: 223 47% 11%;
+    --border: 20 6% 18%;
+    --input: 20 6% 18%;
 
-    --primary: 16 100% 54%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 22 62% 47%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 32.6% 57.5%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 20 6% 18%;
+    --secondary-foreground: 30 20% 91%;
 
-    --accent: 217 32.6% 57.5%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 20 6% 18%;
+    --accent-foreground: 30 20% 91%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 0%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 0 0% 100%;
 
-    --ring: 16 100% 54%;
+    --ring: 22 62% 47%;
+
+    --brand-light: 24 40% 50%;
+    --brand-soft: 22 30% 20%;
   }
 
-  /* --- THIS IS THE COMBINED AND CORRECTED PART --- */
   * {
     @apply border-border;
   }

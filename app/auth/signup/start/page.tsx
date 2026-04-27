@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -45,8 +46,17 @@ export default function OnboardingStartPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Something went wrong');
+        const detail = errorData.error ? `: ${errorData.error}` : '';
+        throw new Error((errorData.message || 'Something went wrong') + detail);
       }
+
+      // Establish a browser session so server-side routes can identify the user
+      const supabase = createSupabaseBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+      if (signInError) throw new Error("Account created but sign-in failed: " + signInError.message);
 
       updateData(formData);
       nextStep();

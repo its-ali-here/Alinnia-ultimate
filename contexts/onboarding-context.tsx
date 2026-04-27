@@ -36,6 +36,7 @@ interface OnboardingData {
   hasDrawings?: boolean;
   drawings?: File[];
   budget?: string;
+  startDate?: string;
   timeline?: string;
 }
 

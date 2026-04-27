@@ -1,199 +1,95 @@
 "use client"
 
-import { useState, useCallback, type ChangeEvent } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
-import { Upload, Loader2, RefreshCw, FileText, FileSpreadsheet } from "lucide-react"
+import { useState } from "react"
+import { Plus } from "lucide-react"
+
+type Category = "Plans" | "Permits" | "Contracts" | "Photos" | "Receipts"
+
+const files: { name: string; category: Category; date: string }[] = [
+  { name: "Kitchen_FloorPlan_v3.pdf", category: "Plans", date: "Jul 15" },
+  { name: "Electrical_Permit_2042.pdf", category: "Permits", date: "Jul 10" },
+  { name: "Cabinet_Contract_KBF.pdf", category: "Contracts", date: "Jul 8" },
+  { name: "Demo_Day1_Photos.zip", category: "Photos", date: "Jul 2" },
+  { name: "Tile_Receipt_Acme.pdf", category: "Receipts", date: "Jul 12" },
+  { name: "Structural_Drawing_R2.pdf", category: "Plans", date: "Jun 28" },
+  { name: "Building_Permit_Main.pdf", category: "Permits", date: "Jun 20" },
+  { name: "GC_Contract_Signed.pdf", category: "Contracts", date: "Jun 15" },
+]
+
+const categoryStyle: Record<Category, { bg: string; icon: string; badge: string }> = {
+  Plans:     { bg: "bg-[hsl(var(--brand-soft))]", icon: "text-primary", badge: "bg-[hsl(var(--brand-soft))] text-primary" },
+  Permits:   { bg: "bg-amber-50", icon: "text-amber-600", badge: "bg-amber-100 text-amber-700" },
+  Contracts: { bg: "bg-blue-50", icon: "text-blue-600", badge: "bg-blue-100 text-blue-700" },
+  Photos:    { bg: "bg-emerald-50", icon: "text-emerald-600", badge: "bg-emerald-100 text-emerald-700" },
+  Receipts:  { bg: "bg-muted", icon: "text-muted-foreground", badge: "bg-muted text-muted-foreground" },
+}
+
+type FilterTab = "All" | Category
+
+const tabs: FilterTab[] = ["All", "Plans", "Permits", "Contracts", "Photos", "Receipts"]
+
+function FileIcon({ category }: { category: Category }) {
+  const s = categoryStyle[category]
+  return (
+    <div className={`flex h-9 w-7 items-center justify-center rounded-[5px] ${s.bg} mb-2`}>
+      <svg width="14" height="17" viewBox="0 0 14 17" fill="none" className={s.icon}>
+        <path d="M8.5 1.5H3C2.45 1.5 2 1.95 2 2.5V14.5C2 15.05 2.45 15.5 3 15.5H11C11.55 15.5 12 15.05 12 14.5V5L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+        <path d="M8.5 1.5V5H12" stroke="currentColor" strokeWidth="1.2" />
+        <path d="M4.5 8H9.5M4.5 10.5H8" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+    </div>
+  )
+}
 
 export default function FilesPage() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<FilterTab>("All")
 
-  // Mock data for development
-  const storage = { used: 0, limit: 1000000000, percentage: 0 }
-  const dataSources: any[] = []
-  const error = null
-  const isGoogleConnected = false
-  const googleEmail = ""
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const file = e.target.files[0]
-      setSelectedFile(file)
-    }
-  }
-
-  const handleUpload = async () => {
-    if (!selectedFile) return
-    setUploading(true)
-    
-    // Simulate upload
-    setTimeout(() => {
-      setUploading(false)
-      setSelectedFile(null)
-      const input = document.getElementById('file-input') as HTMLInputElement
-      if (input) input.value = ''
-      alert('File uploaded successfully (placeholder)')
-    }, 2000)
-  }
-
-  const handleDelete = async (id: string, source: string) => {
-    if (!confirm('Are you sure you want to delete this data source?')) return
-    alert('Delete functionality not implemented yet')
-  }
-
-  const refresh = () => {
-    setLoading(true)
-    setTimeout(() => setLoading(false), 1000)
-  }
-
-  const connectGoogle = () => alert('Google Connect not implemented')
-  const disconnectGoogle = () => alert('Google Disconnect not implemented')
-  const syncGoogleSheets = () => alert('Google Sync not implemented')
+  const visible = activeTab === "All" ? files : files.filter((f) => f.category === activeTab)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Data Sources</h1>
-          <p className="text-muted-foreground">Manage your CSV, Excel (coming soon), and Google Sheets</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+    <div className="space-y-3">
+      {/* Category tabs */}
+      <div className="flex gap-1 flex-wrap">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+              activeTab === tab
+                ? "bg-primary text-white"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
-      {/* Storage Bar Placeholder */}
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${storage.percentage}%` }}></div>
-      </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Upload Cards */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Upload CSV Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Upload CSV</CardTitle>
-            <CardDescription>Upload CSV files for analysis</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="file-input">Select File</Label>
-              <Input 
-                id="file-input" 
-                type="file" 
-                accept=".csv" 
-                onChange={handleFileChange}
-                disabled={uploading}
-              />
-            </div>
-            {selectedFile && (
-              <p className="text-sm text-muted-foreground">
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-              </p>
-            )}
-            {uploading && <Progress value={100} className="animate-pulse" />}
-            <Button onClick={handleUpload} disabled={!selectedFile || uploading} className="w-full">
-              {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-              {uploading ? 'Uploading...' : 'Upload'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Excel Card - Coming Soon */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center">
-                <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Excel</CardTitle>
-                <CardDescription className="text-xs">Import Excel spreadsheets (.xlsx)</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">Excel import is coming soon. Stay tuned.</p>
-            <Input type="file" accept=".xlsx,.xls" disabled />
-            <Button className="w-full" disabled>
-              Coming Soon
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Google Sheets Placeholder */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Google Sheets</CardTitle>
-            <CardDescription>Connect your Google account</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {isGoogleConnected ? `Connected as ${googleEmail}` : 'Not connected'}
-            </p>
-            <Button 
-              onClick={isGoogleConnected ? disconnectGoogle : connectGoogle}
-              variant={isGoogleConnected ? "destructive" : "default"}
-              className="w-full"
+      {/* File grid */}
+      <div className="grid grid-cols-3 gap-2.5">
+        {visible.map((file) => {
+          const s = categoryStyle[file.category]
+          return (
+            <div
+              key={file.name}
+              className="cursor-pointer rounded-lg border border-border bg-card p-3 transition-all hover:border-border/80 hover:shadow-sm"
             >
-              {isGoogleConnected ? 'Disconnect' : 'Connect Google'}
-            </Button>
-            {isGoogleConnected && (
-              <Button onClick={syncGoogleSheets} variant="outline" className="w-full">
-                Sync Sheets
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Data Sources List Placeholder */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
-          <span>Loading...</span>
-        </div>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Data Sources</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {dataSources.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No data sources yet. Upload a CSV or connect Google Sheets to get started.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {dataSources.map((source, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded">
-                    <span>{source.name}</span>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleDelete(source.id, source.source)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                ))}
+              <FileIcon category={file.category} />
+              <p className="text-[11px] font-medium text-foreground leading-snug mb-1.5 break-words">{file.name}</p>
+              <div className="flex items-center gap-1">
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${s.badge}`}>{file.category}</span>
+                <span className="text-[9px] text-muted-foreground">{file.date}</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          )
+        })}
+
+        {/* Upload tile */}
+        <div className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-border transition-colors hover:bg-muted">
+          <Plus className="h-5 w-5 text-muted-foreground/60" strokeWidth={1.5} />
+          <span className="text-[11px] text-muted-foreground">Upload file</span>
+        </div>
+      </div>
     </div>
   )
 }

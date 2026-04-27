@@ -1,76 +1,72 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  Home,
-  FileText,
-  ArrowRightLeft,
-  GitBranch,
+  LayoutGrid,
+  TrendingUp,
   Package,
-  Shield,
-  CalendarClock,
+  ListOrdered,
+  CheckSquare,
+  FileText,
+  CircleDollarSign,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
-const navigation = [
-  { name: "Overview", href: "/control-centre/overview", icon: Home },
-      { name: "Cash Flow", href: "/control-centre/cashflow", icon: ArrowRightLeft },
-      { name: "Timeline", href: "/control-centre/timeline", icon: CalendarClock },
-      { name: "Forecasting", href: "/control-centre/forecasting", icon: GitBranch },
-      { name: "Credit Risk", href: "/control-centre/credit-risk", icon: Shield },
-      { name: "Materials", href: "/control-centre/materials", icon: Package },
-      { name: "Files", href: "/control-centre/files", icon: FileText },]
+const mainNav = [
+  { name: "Overview", href: "/control-centre/overview", icon: LayoutGrid },
+  { name: "Cash Flow", href: "/control-centre/cashflow", icon: TrendingUp },
+  { name: "Materials", href: "/control-centre/materials", icon: Package },
+  { name: "Timeline", href: "/control-centre/timeline", icon: ListOrdered },
+  { name: "Punch List", href: "/control-centre/punch-list", icon: CheckSquare },
+  { name: "Files", href: "/control-centre/files", icon: FileText },
+]
+
+const utilNav = [
+  { name: "Price Check", href: "/control-centre/forecasting", icon: CircleDollarSign },
+]
 
 export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
   const pathname = usePathname()
 
-  const NavItem = ({ item }: { item: any }) => (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>
-        <Link
-          href={item.href}
-          className={cn(
-            // UPDATED: Increased padding (px-4 py-3) and font size (text-base)
-            "flex items-center rounded-md px-4 py-3 text-base font-medium transition-colors",
-            pathname === item.href
-              ? "bg-secondary text-secondary-foreground"
-              : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground",
-            isCollapsed && "justify-center px-2",
-          )}
-        >
-          {/* UPDATED: Increased icon size (h-6 w-6) and margin (mr-4) */}
-          <item.icon className={cn("h-6 w-6", !isCollapsed && "mr-4")} />
-          {!isCollapsed && <span>{item.name}</span>}
-        </Link>
-      </TooltipTrigger>
-      {isCollapsed && (
-        <TooltipContent side="right" className="flex items-center gap-4">
+  const NavItem = ({ item }: { item: typeof mainNav[0] }) => {
+    const isActive = pathname === item.href
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <Link
+            href={item.href}
+            className={cn(
+              "flex h-[38px] w-[38px] items-center justify-center rounded-[9px] transition-colors",
+              isActive
+                ? "bg-[hsl(var(--brand-soft))] text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <item.icon className="h-[17px] w-[17px]" strokeWidth={1.6} />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="text-xs">
           {item.name}
         </TooltipContent>
-      )}
-    </Tooltip>
-  )
+      </Tooltip>
+    )
+  }
 
   return (
     <TooltipProvider>
-      <div
-        className={cn(
-          "relative h-full border-r bg-background transition-all duration-300 ease-in-out",
-          isCollapsed ? "w-[72px]" : "w-72",
-        )}
-      >
-        <div className="flex h-full flex-col">
-          <div className="flex-1 overflow-auto">
-            <nav className="flex-1 space-y-1 px-2 py-4">
-              {navigation.map((item) => (
-                <NavItem key={item.name} item={item} />
-              ))}
-            </nav>
-          </div>
-        </div>
+      <div className="relative flex h-full w-14 flex-shrink-0 flex-col items-center border-r border-border bg-background py-3 gap-0.5">
+        {mainNav.map((item) => (
+          <NavItem key={item.name} item={item} />
+        ))}
+
+        {/* Separator */}
+        <div className="my-1.5 h-px w-6 bg-border" />
+
+        {utilNav.map((item) => (
+          <NavItem key={item.name} item={item} />
+        ))}
       </div>
     </TooltipProvider>
   )
