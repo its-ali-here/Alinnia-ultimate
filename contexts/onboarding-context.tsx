@@ -20,6 +20,7 @@ interface OnboardingData {
   paymentConfirmed?: boolean;
   
   // Project wizard data
+  buildType?: string;
   projectName?: string;
   siteType?: 'empty' | 'existing' | '';
   projectType?: 'residential' | 'commercial' | '';
@@ -31,6 +32,7 @@ interface OnboardingData {
   hasBasement?: boolean;
   city?: string;
   country?: string;
+  currency?: string;
   area?: string;
   floors?: string;
   hasDrawings?: boolean;

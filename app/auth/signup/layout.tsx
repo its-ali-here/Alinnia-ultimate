@@ -9,7 +9,7 @@ export default function SignupLayout({
 }) {
     return (
         <OnboardingProvider>
-            <div className="h-screen bg-gray-50 flex flex-col items-center justify-center">
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center">
                 {children}
             </div>
         </OnboardingProvider>

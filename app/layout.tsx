@@ -15,7 +15,7 @@ import { GlobalDateRangeProvider } from "@/contexts/GlobalDateRangeContext"
 import { DuckDBProvider } from "@/contexts/duckdb-context"
 
 export const metadata: Metadata = {
-  title: "Alinnia - Construction Management",
+  title: "Alinnia - Know What Comes Next",
   description: "The all-in-one app for owners to control their construction projects",
     generator: 'v0.dev'
 }

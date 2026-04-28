@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
-import { AuthCheckingScreen, OrganizationCheckingScreen } from "@/components/auth/auth-loading-screen"
+import { AuthCheckingScreen } from "@/components/auth/auth-loading-screen"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -22,20 +22,14 @@ export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const message = searchParams.get("message")
-  const { isSupabaseConfigured, user, organization, loading: authLoading } = useAuth()
+  const { isSupabaseConfigured, user, loading: authLoading } = useAuth()
 
   // Handle routing after successful login
   useEffect(() => {
     if (!authLoading && user) {
-      if (organization) {
-        // User has an organization, go to dashboard
-        router.push("/control-centre")
-      } else {
-        // User has no organization, go to onboarding
-        router.push("/auth/signup")
-      }
+      router.push("/control-centre")
     }
-  }, [user, organization, authLoading, router])
+  }, [user, authLoading, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

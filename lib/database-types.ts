@@ -149,7 +149,7 @@ export interface Database {
           project_id: string
           file_name: string
           file_path: string
-          file_type: 'invoice' | 'drawing' | 'receipt' | 'other'
+          file_type: 'drawing' | 'invoice' | 'receipt' | 'permit' | 'contract' | 'photo' | 'other'
           uploaded_at: string
           uploaded_by: string
         };
@@ -158,7 +158,7 @@ export interface Database {
           project_id: string
           file_name: string
           file_path: string
-          file_type: 'invoice' | 'drawing' | 'receipt' | 'other'
+          file_type: 'drawing' | 'invoice' | 'receipt' | 'permit' | 'contract' | 'photo' | 'other'
           uploaded_at?: string
           uploaded_by: string
         };
@@ -167,7 +167,7 @@ export interface Database {
           project_id?: string
           file_name?: string
           file_path?: string
-          file_type?: 'invoice' | 'drawing' | 'receipt' | 'other'
+          file_type?: 'drawing' | 'invoice' | 'receipt' | 'permit' | 'contract' | 'photo' | 'other'
           uploaded_at?: string
           uploaded_by?: string
         };

@@ -10,6 +10,7 @@ import {
   CheckSquare,
   FileText,
   CircleDollarSign,
+  FlagTriangleRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -25,6 +26,7 @@ const mainNav = [
 
 const utilNav = [
   { name: "Price Check", href: "/control-centre/forecasting", icon: CircleDollarSign },
+  { name: "Close-out", href: "/control-centre/closeout", icon: FlagTriangleRight },
 ]
 
 export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
