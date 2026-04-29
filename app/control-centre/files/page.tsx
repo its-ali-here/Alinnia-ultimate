@@ -6,7 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase"
 import { getProjectDocuments } from "@/lib/project-queries"
 import type { Document, FileType } from "@/lib/project-queries"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Upload } from "lucide-react"
+import { AlertTriangle, Plus, Upload } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,7 @@ export default function FilesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedType, setSelectedType] = useState<FileType>('drawing')
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadDocuments = async () => {
@@ -76,29 +77,27 @@ export default function FilesPage() {
   const handleUpload = async () => {
     if (!activeProject || !selectedFile) return
     setUploading(true)
-    const supabase = createSupabaseBrowserClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setUploading(false); return }
+    setUploadError(null)
 
-    const safeName = `${activeProject.id}/${Date.now()}-${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-    const { data: uploadData, error } = await supabase.storage
-      .from('documents')
-      .upload(safeName, selectedFile, { upsert: false })
+    const formData = new FormData()
+    formData.append("file", selectedFile)
+    formData.append("project_id", activeProject.id)
+    formData.append("file_type", selectedType)
 
-    if (!error && uploadData) {
-      await supabase.from('documents').insert({
-        project_id: activeProject.id,
-        file_name: selectedFile.name,
-        file_path: uploadData.path,
-        file_type: selectedType,
-        uploaded_by: user.id,
-      })
+    const res = await fetch("/api/upload", { method: "POST", body: formData })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Upload failed" }))
+      setUploadError(err.error ?? "Upload failed")
+      setUploading(false)
+      return
     }
 
     setSelectedFile(null)
     setUploadDialogOpen(false)
     setUploading(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    setUploadError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
     await loadDocuments()
   }
 
@@ -163,13 +162,21 @@ export default function FilesPage() {
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
 
       {/* Type picker dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+      <Dialog open={uploadDialogOpen} onOpenChange={v => { setUploadDialogOpen(v); if (!v) setUploadError(null) }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-serif">Upload document</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground truncate">{selectedFile?.name}</p>
+
+            {uploadError && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Document type</Label>
               <select

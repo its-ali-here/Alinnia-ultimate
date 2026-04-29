@@ -1,5 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config) => {
+    // Suppress "Critical dependency" warnings from packages that use dynamic require()
+    // internally (@supabase/realtime-js, @duckdb/duckdb-wasm). We cannot fix these
+    // inside the packages themselves.
+    config.ignoreWarnings = [
+      { module: /node_modules\/@supabase\/realtime-js/ },
+      { module: /node_modules\/@duckdb\/duckdb-wasm/ },
+    ]
+    return config
+  },
   async headers() {
     return [
       {

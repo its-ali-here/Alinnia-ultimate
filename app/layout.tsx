@@ -7,12 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
-import 'leaflet/dist/leaflet.css';
 import { GlobalDateRangeProvider } from "@/contexts/GlobalDateRangeContext"
-
-import { DuckDBProvider } from "@/contexts/duckdb-context"
 
 export const metadata: Metadata = {
   title: "Alinnia - Know What Comes Next",
@@ -41,13 +36,11 @@ export default function RootLayout({
         >
           <AuthProvider>
             <SettingsProvider>
-              <DuckDBProvider>
-                <TooltipProvider delayDuration={0}>
-                  <GlobalDateRangeProvider>
-                    {children}
-                  </GlobalDateRangeProvider>
-                </TooltipProvider>
-              </DuckDBProvider>
+              <TooltipProvider delayDuration={0}>
+                <GlobalDateRangeProvider>
+                  {children}
+                </GlobalDateRangeProvider>
+              </TooltipProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" fill="none">
+
+  <!-- Warm cream background -->
+  <rect width="480" height="480" fill="#FBF7F2"/>
+
+  <!-- House clip mask: chimney + roof + body combined -->
+  <defs>
+    <clipPath id="house">
+      <rect x="270" y="82" width="48" height="80"/>
+      <polygon points="240,104 428,264 52,264"/>
+      <rect x="78" y="258" width="324" height="168"/>
+    </clipPath>
+  </defs>
+
+  <!-- Three bold stripes, clipped to house silhouette -->
+  <g clip-path="url(#house)">
+    <rect x="0" y="136" width="480" height="62" fill="#C4622D"/>
+    <rect x="0" y="232" width="480" height="62" fill="#C4622D"/>
+    <rect x="0" y="328" width="480" height="62" fill="#C4622D"/>
+  </g>
+
+  <!-- Door cutout — background bleeds through -->
+  <rect x="204" y="366" width="72" height="60" rx="8" fill="#FBF7F2"/>
+
+</svg>

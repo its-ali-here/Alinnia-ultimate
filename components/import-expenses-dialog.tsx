@@ -21,6 +21,7 @@ interface ParsedRow {
   unit_rate: number | null
   quantity: number | null
   unit: string | null
+  notes: string | null
   _keep: boolean  // local toggle for preview
 }
 
@@ -37,14 +38,6 @@ interface Props {
   project: Project
   onImported: () => void
   trigger: React.ReactNode
-}
-
-function fmt(n: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency === "PKR" ? "USD" : currency, // Intl doesn't support PKR well; handle below
-    maximumFractionDigits: 0,
-  }).format(n).replace("US$", currency === "PKR" ? "Rs " : "")
 }
 
 function fmtAmt(n: number, currency: string) {
@@ -87,7 +80,7 @@ export function ImportExpensesDialog({ project, onImported, trigger }: Props) {
       }
       const result: ParseResult = await res.json()
       setParseResult(result)
-      setRows(result.expenses.map(e => ({ ...e, _keep: true })))
+      setRows(result.expenses.map(e => ({ ...e, notes: e.notes ?? null, _keep: true })))
       setStep("preview")
     } catch (err: any) {
       setError(err.message)
@@ -140,6 +133,7 @@ export function ImportExpensesDialog({ project, onImported, trigger }: Props) {
         unit_rate: r.unit_rate,
         quantity: r.quantity,
         unit: r.unit,
+        notes: r.notes,
       }))
       await supabase.from("expenses").insert(chunk)
     }
@@ -312,6 +306,9 @@ export function ImportExpensesDialog({ project, onImported, trigger }: Props) {
                         <p className="truncate text-foreground" title={row.description}>{row.description}</p>
                         {row.quantity && row.unit_rate && (
                           <p className="text-[10px] text-muted-foreground">{row.quantity} {row.unit ?? 'units'} @ {fmtAmt(row.unit_rate, currency)}</p>
+                        )}
+                        {row.notes && (
+                          <p className="text-[10px] text-muted-foreground truncate" title={row.notes}>{row.notes}</p>
                         )}
                       </td>
                       <td className="px-2 py-2">

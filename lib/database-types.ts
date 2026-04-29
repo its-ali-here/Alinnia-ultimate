@@ -117,6 +117,12 @@ export interface Database {
           category: string
           vendor?: string
           invoice_id?: string
+          unit_rate?: number
+          quantity?: number
+          unit?: string
+          notes?: string
+          payment_method?: string
+          paid_by?: string
         };
         Insert: {
           id?: string
@@ -129,6 +135,12 @@ export interface Database {
           category: string
           vendor?: string
           invoice_id?: string
+          unit_rate?: number
+          quantity?: number
+          unit?: string
+          notes?: string
+          payment_method?: string
+          paid_by?: string
         };
         Update: {
           id?: string
@@ -141,6 +153,12 @@ export interface Database {
           category?: string
           vendor?: string
           invoice_id?: string
+          unit_rate?: number
+          quantity?: number
+          unit?: string
+          notes?: string
+          payment_method?: string
+          paid_by?: string
         };
       };
       documents: {
