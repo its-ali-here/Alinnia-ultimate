@@ -12,12 +12,18 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
 import type { Project, Phase } from "@/lib/project-queries"
+import { upsertMaterialStock } from "@/lib/project-queries"
 
 const CATEGORIES = [
   'Bricks', 'Cement', 'Steel', 'Sand', 'Crush',
   'Labour', 'Plumbing', 'Electrical', 'Waterproofing',
   'Materials', 'Miscellaneous', 'Other',
 ]
+
+const MATERIAL_CATEGORIES = new Set([
+  'Bricks', 'Cement', 'Steel', 'Sand', 'Crush',
+  'Plumbing', 'Electrical', 'Waterproofing', 'Materials',
+])
 
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Cheque', 'Credit']
 
@@ -43,6 +49,8 @@ const EMPTY_FORM = {
   payment_method: 'Cash',
   paid_by: 'Self',
   paid_by_custom: '',
+  delivery_status: 'delivered',
+  expected_delivery_date: '',
 }
 
 export function AddExpenseDialog({ project, phases, previousVendors, onSaved, trigger }: Props) {
@@ -79,6 +87,8 @@ export function AddExpenseDialog({ project, phases, previousVendors, onSaved, tr
     setSubmitting(true)
     const supabase = createSupabaseBrowserClient()
 
+    const isMaterial = MATERIAL_CATEGORIES.has(form.category)
+
     const payload: Record<string, unknown> = {
       project_id: project.id,
       description: form.description,
@@ -96,7 +106,33 @@ export function AddExpenseDialog({ project, phases, previousVendors, onSaved, tr
     if (form.unit_rate) payload.unit_rate = parseFloat(form.unit_rate)
     if (form.unit) payload.unit = form.unit
 
+    if (isMaterial) {
+      payload.delivery_status = form.delivery_status
+      if (form.delivery_status === 'ordered' && form.expected_delivery_date) {
+        payload.expected_delivery_date = form.expected_delivery_date
+      }
+    }
+
     await supabase.from('expenses').insert(payload)
+
+    // When a material delivery is confirmed and has a quantity, increment on-hand stock
+    if (isMaterial && form.delivery_status === 'delivered' && form.quantity) {
+      const qty = parseFloat(form.quantity)
+      if (qty > 0) {
+        const { data: existing } = await supabase
+          .from('material_stock')
+          .select('on_hand_qty')
+          .eq('project_id', project.id)
+          .eq('material_name', form.category)
+          .maybeSingle()
+        if (existing) {
+          await upsertMaterialStock(supabase, project.id, form.category, {
+            unit: form.unit || existing.unit || '',
+            on_hand_qty: (existing.on_hand_qty ?? 0) + qty,
+          })
+        }
+      }
+    }
 
     setForm(EMPTY_FORM)
     setShowCustomPaidBy(false)
@@ -193,6 +229,33 @@ export function AddExpenseDialog({ project, phases, previousVendors, onSaved, tr
               />
             </div>
           </div>
+
+          {/* Delivery status — material categories only */}
+          {MATERIAL_CATEGORIES.has(form.category) && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Delivery status</Label>
+                <select
+                  value={form.delivery_status}
+                  onChange={e => set('delivery_status', e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="delivered">Delivered — on site</option>
+                  <option value="ordered">Ordered — not arrived yet</option>
+                </select>
+              </div>
+              {form.delivery_status === 'ordered' && (
+                <div className="space-y-1.5">
+                  <Label>Expected delivery</Label>
+                  <Input
+                    type="date"
+                    value={form.expected_delivery_date}
+                    onChange={e => set('expected_delivery_date', e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Supplier */}
           <div className="space-y-1.5">

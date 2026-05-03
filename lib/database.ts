@@ -32,89 +32,11 @@ export interface OrganizationUser {
   updated_at: string
 }
 
-export interface Account {
-  id: string
-  user_id: string
-  account_name: string
-  account_type: "checking" | "savings" | "credit" | "investment" | "loan"
-  balance: number
-  bank_name?: string
-  account_number?: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface Transaction {
-  id: string
-  user_id: string
-  account_id?: string
-  transaction_type: "income" | "expense" | "transfer"
-  category: string
-  amount: number
-  description?: string
-  merchant?: string
-  transaction_date: string
-  created_at: string
-}
-
-export interface BudgetCategory {
-  id: string
-  user_id: string
-  category_name: string
-  monthly_limit: number
-  current_spent: number
-  color: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface SavingsGoal {
-  id: string
-  user_id: string
-  goal_name: string
-  target_amount: number
-  current_amount: number
-  target_date?: string
-  description?: string
-  is_completed: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface Bill {
-  id: string
-  user_id: string
-  bill_name: string
-  amount: number
-  due_date: string
-  category: string
-  frequency: "weekly" | "monthly" | "quarterly" | "yearly" | "one-time"
-  is_paid: boolean
-  auto_pay: boolean
-  created_at: string
-  updated_at: string
-}
-
 export interface UserPermissionItem {
   permission_type: string
   can_read: boolean
   can_write: boolean
   can_delete: boolean
-}
-
-export interface UploadedFile {
-  id: string
-  organization_id: string
-  file_name: string
-  file_size: number
-  file_type: string
-  upload_path: string
-  status: "uploading" | "ready" | "processing" | "error"
-  uploaded_by: string
-  created_at: string
-  updated_at: string
 }
 
 export interface Project {
@@ -325,159 +247,6 @@ export async function joinOrganizationAndLinkUser(userId: string, userEmail: str
   return org as Organization
 }
 
-export async function createAccount(
-  userId: string,
-  accountData: {
-    account_name: string
-    account_type: Account["account_type"]
-    balance?: number
-    bank_name?: string
-    account_number?: string
-  },
-): Promise<Account | null> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { data, error } = await supabase
-    .from("accounts")
-    .insert({ user_id: userId, ...accountData })
-    .select()
-    .single()
-
-  if (error) {
-    console.error("DB:createAccount - Supabase error:", JSON.stringify(error, null, 2))
-    throw error
-  }
-  return data
-}
-
-// Transaction functions
-export async function getUserTransactions(userId: string, limit = 10): Promise<Transaction[]> {
-  if (!isSupabaseConfigured()) return []
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(`*, accounts(account_name, account_type)`)
-    .eq("user_id", userId)
-    .order("transaction_date", { ascending: false })
-    .limit(limit)
-
-  if (error) {
-    console.error("DB:getUserTransactions - Supabase error:", JSON.stringify(error, null, 2))
-    return []
-  }
-  return data || []
-}
-
-export async function createTransaction(
-  userId: string,
-  transactionData: {
-    account_id?: string
-    transaction_type: Transaction["transaction_type"]
-    category: string
-    amount: number
-    description?: string
-    merchant?: string
-    transaction_date: string
-  },
-): Promise<Transaction | null> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert({ user_id: userId, ...transactionData })
-    .select()
-    .single()
-
-  if (error) {
-    console.error("DB:createTransaction - Supabase error:", JSON.stringify(error, null, 2))
-    throw error
-  }
-  return data
-}
-
-// Budget functions
-export async function getUserBudgetCategories(userId: string): Promise<BudgetCategory[]> {
-  if (!isSupabaseConfigured()) return []
-  const { data, error } = await supabase
-    .from("budget_categories")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .order("category_name")
-
-  if (error) {
-    console.error("DB:getUserBudgetCategories - Supabase error:", JSON.stringify(error, null, 2))
-    return []
-  }
-  return data || []
-}
-
-// ... other functions ...
-
-// Account balance update function
-export async function updateAccountBalance(accountId: string, newBalance: number): Promise<Account | null> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { data, error } = await supabase
-    .from("accounts")
-    .update({ balance: newBalance, updated_at: new Date().toISOString() })
-    .eq("id", accountId)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("DB:updateAccountBalance - Supabase error:", JSON.stringify(error, null, 2))
-    throw error
-  }
-  return data
-}
-
-// Bills functions
-export async function getUserBills(userId: string): Promise<Bill[]> {
-  if (!isSupabaseConfigured()) return []
-  const { data, error } = await supabase
-    .from("bills")
-    .select("*")
-    .eq("user_id", userId)
-    .order("due_date", { ascending: true })
-
-  if (error) {
-    console.error("DB:getUserBills - Supabase error:", JSON.stringify(error, null, 2))
-    return []
-  }
-  return data || []
-}
-
-// Mark bill as paid function
-export async function markBillAsPaid(billId: string): Promise<Bill | null> {
-  if (!isSupabaseConfigured()) throw new Error("DB Error: Supabase is not configured.")
-  const { data, error } = await supabase
-    .from("bills")
-    .update({ is_paid: true, updated_at: new Date().toISOString() })
-    .eq("id", billId)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("DB:markBillAsPaid - Supabase error:", JSON.stringify(error, null, 2))
-    throw error
-  }
-  return data
-}
-
-// Savings goals functions
-export async function getUserSavingsGoals(userId: string): Promise<SavingsGoal[]> {
-  if (!isSupabaseConfigured()) return []
-  const { data, error } = await supabase
-    .from("savings_goals")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("is_completed", false)
-    .order("target_date", { ascending: true })
-
-  if (error) {
-    console.error("DB:getUserSavingsGoals - Supabase error:", JSON.stringify(error, null, 2))
-    return []
-  }
-  return data || []
-}
-
 // Organization members functions
 export async function getOrganizationMembers(
   organizationId: string,
@@ -529,201 +298,6 @@ export async function updateOrganizationMemberDesignation(
     throw error;
   }
   return data;
-}
-
-// ... other organization functions ...
-
-// --- CHAT FUNCTIONS ---
-
-export interface Channel {
-  id: string;
-  name?: string;
-  type: 'dm' | 'group' | 'organization';
-  organization_id: string;
-  created_at: string;
-  created_by?: string;
-  other_member?: OrganizationUser;
-}
-
-export interface Message {
-  id: number;
-  content: string;
-  created_at: string;
-  user_id: string;
-  channel_id: string;
-  author?: Pick<OrganizationUser, 'id' | 'full_name' | 'avatar_url'>;
-}
-
-export async function getChannelsForUser(userId: string): Promise<Channel[]> {
-  if (!isSupabaseConfigured()) return [];
-  const { data, error } = await supabase
-    .from('channel_members')
-    .select('channel:channels(*)')
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error("Error fetching user channels:", error);
-    return [];
-  }
-  const channels = data.map(item => item.channel) as Channel[];
-  return channels;
-}
-
-export async function getMessagesForChannel(channelId: string, organizationId: string): Promise<Message[]> {
-  if (!isSupabaseConfigured()) return [];
-
-  console.log("Fetching messages for channel:", channelId);
-
-  // First, try the query with the join using explicit column reference
-  const { data, error } = await supabase
-    .from('messages')
-    .select(`
-      *,
-      author:organization_members (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
-    .eq('channel_id', channelId)
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    // Fallback
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('channel_id', channelId)
-      .order('created_at', { ascending: true });
-
-    if (fallbackError) {
-      console.error("Fallback query also failed:", fallbackError);
-      return [];
-    }
-
-    console.log("Fallback query succeeded, fetching user profiles separately");
-
-    const messagesWithAuthors = await Promise.all(
-      (fallbackData || []).map(async (message) => {
-        const { data: author } = await supabase
-          .from('organization_members')
-          .select('id, full_name, avatar_url')
-          .eq('user_id', message.user_id)
-          .eq('organization_id', organizationId)
-          .single();
-
-        return {
-          ...message,
-          author: author || { id: message.user_id, full_name: 'Unknown User', avatar_url: null }
-        };
-      })
-    );
-
-    console.log("Messages with authors:", messagesWithAuthors);
-    return messagesWithAuthors;
-  }
-
-  console.log("Messages fetched successfully:", data);
-  return (data as any) || [];
-}
-
-export async function sendMessage(channelId: string, userId: string, content: string): Promise<Message> {
-  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
-
-  console.log("Sending message:", { channelId, userId, content });
-
-  const { data, error } = await supabase
-      .from('messages')
-      .insert({
-          channel_id: channelId,
-          user_id: userId,
-          content: content,
-      })
-      .select()
-      .single();
-
-  if (error) {
-      console.error("Error sending message:", error);
-      // Throw an error instead of returning null
-      throw new Error(`Could not send message: ${error.message}`);
-  }
-
-  console.log("Message sent successfully:", data);
-  // We are now guaranteed to have data if no error was thrown
-  return data;
-}
-
-// Function to get channel members with their profiles
-export async function getChannelMembers(channelId: string, organizationId: string): Promise<OrganizationUser[]> {
-  if (!isSupabaseConfigured()) return [];
-
-  const { data: memberIds, error: memberIdsError } = await supabase
-    .from('channel_members')
-    .select('user_id')
-    .eq('channel_id', channelId);
-
-  if (memberIdsError) {
-    console.error("Error fetching channel members:", memberIdsError);
-    return [];
-  }
-
-  const userIds = memberIds.map(m => m.user_id);
-
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select('*')
-    .in('user_id', userIds)
-    .eq('organization_id', organizationId)
-
-  if (error) {
-    console.error("DB:getChannelMembers - Supabase error:", JSON.stringify(error, null, 2));
-    return [];
-  }
-  return data || [];
-}
-
-// Uploaded files functions
-export async function getUploadedFilesForOrganization(organizationId: string): Promise<UploadedFile[]> {
-  if (!isSupabaseConfigured()) return []
-  const { data, error } = await supabase
-    .from("uploaded_files")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("DB:getUploadedFilesForOrganization - Supabase error:", JSON.stringify(error, null, 2))
-    return []
-  }
-  return data || []
-}
-
-// Function to get channel details with members
-export async function getChannelWithMembers(channelId: string, organizationId: string): Promise<Channel & { members?: OrganizationUser[] }> {
-  if (!isSupabaseConfigured()) throw new Error("Supabase is not configured.");
-
-  console.log("Fetching channel with members for:", channelId);
-
-  // Get channel details
-  const { data: channelData, error: channelError } = await supabase
-    .from('channels')
-    .select('*')
-    .eq('id', channelId)
-    .single();
-
-  if (channelError) {
-    console.error("Error fetching channel:", channelError);
-    throw new Error("Could not fetch channel details");
-  }
-
-  // Get channel members
-  const members = await getChannelMembers(channelId, organizationId);
-
-  return {
-    ...channelData,
-    members
-  };
 }
 
 // Helper function
@@ -778,5 +352,21 @@ export async function removeMember(memberId: string) {
   if (error) {
       console.error("DB:removeMember - Supabase error:", JSON.stringify(error, null, 2));
       throw new Error(`DB:removeMember - ${error.message}`);
+  }
+}
+
+export async function updateProfile(
+  userId: string,
+  updates: { full_name?: string; avatar_url?: string; phone?: string; timezone?: string },
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const { error } = await supabase
+    .from("organization_members")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("DB:updateProfile - Supabase error:", JSON.stringify(error, null, 2));
+    throw error;
   }
 }

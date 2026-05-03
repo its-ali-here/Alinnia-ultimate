@@ -11,7 +11,7 @@ import { GlobalDateRangeProvider } from "@/contexts/GlobalDateRangeContext"
 
 export const metadata: Metadata = {
   title: "Alinnia - Know What Comes Next",
-  description: "The all-in-one app for owners to control their construction projects",
+  description: "The all-in-one app for homeowners and contractors to manage their construction and renovation projects",
     generator: 'v0.dev'
 }
 

@@ -25,7 +25,7 @@ const mainNav = [
 ]
 
 const utilNav = [
-  { name: "Price Check", href: "/control-centre/forecasting", icon: CircleDollarSign },
+  { name: "Budget", href: "/control-centre/forecasting", icon: CircleDollarSign },
   { name: "Close-out", href: "/control-centre/closeout", icon: FlagTriangleRight },
 ]
 

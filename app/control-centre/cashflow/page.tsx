@@ -16,9 +16,12 @@ import { Upload } from "lucide-react"
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$' }
+
 function useCurrencyPrefix() {
   const { activeProject } = useActiveProject()
-  return activeProject?.country === 'PK' ? 'Rs ' : '$'
+  const code = activeProject?.currency?.toUpperCase() ?? 'USD'
+  return CURRENCY_SYMBOLS[code] ?? '$'
 }
 
 function fmtAmt(n: number, prefix: string) {
@@ -28,7 +31,7 @@ function fmtAmt(n: number, prefix: string) {
 }
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function weekStart() {
@@ -645,9 +648,6 @@ export default function CashflowPage() {
           <div className="flex gap-3">
             <button className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity shadow-sm">
               Download PDF
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
-              Share via WhatsApp
             </button>
           </div>
         </div>

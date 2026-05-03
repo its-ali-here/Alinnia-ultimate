@@ -6,6 +6,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase"
 import { searchPriceIntelligence, getProjectExpenses } from "@/lib/project-queries"
 import type { PriceIntelligence, Expense } from "@/lib/project-queries"
 import { Search } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { BudgetBuilder } from "@/components/budget-builder"
 
 function fmt(n: number, unit: string) {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/${unit}`
@@ -21,7 +23,7 @@ function tierFromResults(results: PriceIntelligence[]) {
   return { budget, mid, premium, unit, results }
 }
 
-export default function PriceCheckPage() {
+function PriceCheckContent() {
   const { activeProject } = useActiveProject()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PriceIntelligence[] | null>(null)
@@ -45,7 +47,6 @@ export default function PriceCheckPage() {
 
   const tiers = results ? tierFromResults(results) : null
 
-  // Cross-reference project expenses against results
   const aboveMarket = tiers
     ? expenses.filter(e => {
         if (!e.description.toLowerCase().includes(query.toLowerCase())) return false
@@ -62,7 +63,6 @@ export default function PriceCheckPage() {
 
   return (
     <div className="space-y-3">
-      {/* Search card */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <p className="text-sm font-semibold text-foreground mb-1">Price benchmark lookup</p>
         <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
@@ -90,7 +90,6 @@ export default function PriceCheckPage() {
         </div>
       </div>
 
-      {/* Results */}
       {searched && (
         <>
           {!tiers ? (
@@ -176,6 +175,25 @@ export default function PriceCheckPage() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+export default function BudgetPage() {
+  return (
+    <div className="space-y-3">
+      <Tabs defaultValue="budget-builder">
+        <TabsList className="mb-1">
+          <TabsTrigger value="budget-builder">Budget Builder</TabsTrigger>
+          <TabsTrigger value="price-check">Price Check</TabsTrigger>
+        </TabsList>
+        <TabsContent value="budget-builder">
+          <BudgetBuilder />
+        </TabsContent>
+        <TabsContent value="price-check">
+          <PriceCheckContent />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

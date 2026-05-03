@@ -207,9 +207,6 @@ const CURRENCIES = [
   { code: 'CAD', label: 'CAD — Canadian Dollar' },
   { code: 'GBP', label: 'GBP — British Pound' },
   { code: 'EUR', label: 'EUR — Euro' },
-  { code: 'AED', label: 'AED — UAE Dirham' },
-  { code: 'AUD', label: 'AUD — Australian Dollar' },
-  { code: 'SAR', label: 'SAR — Saudi Riyal' },
 ]
 
 const PHASES_BY_PATH: Record<string, { id: string; title: string; desc: string }[]> = {

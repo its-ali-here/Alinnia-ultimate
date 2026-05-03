@@ -7,15 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, MessageCircle, User, Loader2, PlusCircle, LayoutDashboard } from "lucide-react"
-import { ChartWidget } from "@/components/analytics/widgets/chart-widget"
-import { SingleValueWidget } from "@/components/analytics/widgets/single-value-widget"
+import { Send, MessageCircle, User, Loader2, PlusCircle } from "lucide-react"
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  widgetConfig?: any;
   timestamp: Date;
 }
 
@@ -24,10 +21,6 @@ export function AlinniaChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
-  // State for the Save Dialog
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
-  const [widgetToSave, setWidgetToSave] = useState<any>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +51,7 @@ export function AlinniaChatInterface() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
-          organizationId: organizationId 
+          organizationId: organizationId
         }),
       });
 
@@ -69,7 +62,6 @@ export function AlinniaChatInterface() {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.content,
-        widgetConfig: data.widgetConfig,
         timestamp: new Date()
       };
 
@@ -88,11 +80,6 @@ export function AlinniaChatInterface() {
     }
   };
 
-  const handleOpenSaveDialog = (config: any) => {
-    setWidgetToSave(config);
-    setIsSaveDialogOpen(true);
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <Card className="flex-1 flex flex-col shadow-none border-0 sm:border">
@@ -103,8 +90,8 @@ export function AlinniaChatInterface() {
                     <MessageCircle className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                    <CardTitle className="text-base">Alinnia Analyst</CardTitle>
-                    <p className="text-xs text-muted-foreground">Powered by Alinnia Intelligence</p>
+                    <CardTitle className="text-base">Alinnia Assistant</CardTitle>
+                    <p className="text-xs text-muted-foreground">Ask anything about your project</p>
                 </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setMessages([])} title="New Chat">
@@ -122,12 +109,12 @@ export function AlinniaChatInterface() {
                         <MessageCircle className="h-8 w-8 text-muted-foreground" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold">How can I help you analyze data?</h3>
+                        <h3 className="text-lg font-semibold">How can I help with your project?</h3>
                         <p className="text-sm text-muted-foreground mt-1">Try asking:</p>
                     </div>
                     <div className="flex flex-wrap gap-2 justify-center">
-                        <Button variant="outline" size="sm" onClick={() => { setInput("Show me total revenue by month"); }} className="text-xs">"Show total revenue by month"</Button>
-                        <Button variant="outline" size="sm" onClick={() => { setInput("What are the top selling products?"); }} className="text-xs">"Top selling products"</Button>
+                        <Button variant="outline" size="sm" onClick={() => setInput("Am I on track with my budget?")} className="text-xs">"Am I on track with my budget?"</Button>
+                        <Button variant="outline" size="sm" onClick={() => setInput("Which materials are running low?")} className="text-xs">"Which materials are running low?"</Button>
                     </div>
                 </div>
               )}
@@ -139,48 +126,11 @@ export function AlinniaChatInterface() {
                         {msg.role === 'user' ? <User className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className={`flex flex-col gap-2 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`rounded-2xl px-4 py-3 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted rounded-tl-none'}`}>
                         {msg.content}
                     </div>
-
-                    {msg.widgetConfig && (
-                        <div className="w-full bg-background border rounded-xl p-2 shadow-sm mt-1 overflow-hidden group relative">
-                            {/* The Widget */}
-                            <div className="h-[300px]">
-                                {msg.widgetConfig.widgetType === 'summary-card' ? (
-                                    <SingleValueWidget 
-                                        widgetConfig={{ title: msg.widgetConfig.title, query: msg.widgetConfig.query }} 
-                                        datasourceId={msg.widgetConfig.datasourceId} 
-                                        filters={{}} 
-                                    />
-                                ) : (
-                                    <ChartWidget 
-                                        widgetConfig={{
-                                            title: msg.widgetConfig.title,
-                                            chartType: msg.widgetConfig.chartType,
-                                            query: msg.widgetConfig.query
-                                        }} 
-                                        datasourceId={msg.widgetConfig.datasourceId} 
-                                        filters={{}} 
-                                    />
-                                )}
-                            </div>
-
-                            {/* The Pin Button (Appears on Hover or always visible) */}
-                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button 
-                                    size="sm" 
-                                    className="h-8 text-xs shadow-md" 
-                                    onClick={() => handleOpenSaveDialog(msg.widgetConfig)}
-                                >
-                                    <LayoutDashboard className="w-3 h-3 mr-2" />
-                                    Pin to Dashboard
-                                </Button>
-                            </div>
-                        </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -190,7 +140,7 @@ export function AlinniaChatInterface() {
                     <Avatar className="h-8 w-8 mt-1 border"><AvatarFallback className="bg-muted"><MessageCircle className="h-4 w-4" /></AvatarFallback></Avatar>
                     <div className="bg-muted rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-xs text-muted-foreground">Analyzing your data...</span>
+                        <span className="text-xs text-muted-foreground">Thinking...</span>
                     </div>
                 </div>
               )}
@@ -199,10 +149,10 @@ export function AlinniaChatInterface() {
 
           <div className="p-4 bg-background border-t">
             <form onSubmit={sendMessage} className="flex gap-2 max-w-3xl mx-auto">
-              <Input 
-                value={input} 
-                onChange={(e) => setInput(e.target.value)} 
-                placeholder="Ask questions about your data..." 
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about your project..."
                 className="flex-1"
                 disabled={isLoading}
               />

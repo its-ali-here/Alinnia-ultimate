@@ -19,6 +19,7 @@ export interface Project {
   has_basement: boolean
   city: string | null
   country: string | null
+  currency: string | null
   total_area: number | null
   number_of_floors: number | null
   has_drawings: boolean
@@ -43,7 +44,21 @@ export interface Expense {
   notes: string | null
   payment_method: string | null
   paid_by: string | null
+  delivery_status: 'ordered' | 'delivered' | 'consumed'
+  expected_delivery_date: string | null
+  confirmed_delivery_date: string | null
   created_at: string
+}
+
+export interface MaterialStock {
+  id: string
+  project_id: string
+  material_name: string
+  unit: string
+  on_hand_qty: number
+  reorder_threshold: number | null
+  lead_time_days: number
+  updated_at: string
 }
 
 export interface Phase {
@@ -301,4 +316,41 @@ export async function ensurePunchListPhase(
     .single()
 
   return created?.id ?? null
+}
+
+export async function getMaterialStock(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<MaterialStock[]> {
+  const { data } = await supabase
+    .from('material_stock')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('material_name', { ascending: true })
+  return (data as MaterialStock[]) ?? []
+}
+
+export async function upsertMaterialStock(
+  supabase: SupabaseClient,
+  projectId: string,
+  materialName: string,
+  updates: { unit?: string; on_hand_qty?: number; reorder_threshold?: number | null; lead_time_days?: number }
+): Promise<void> {
+  await supabase
+    .from('material_stock')
+    .upsert(
+      { project_id: projectId, material_name: materialName, ...updates, updated_at: new Date().toISOString() },
+      { onConflict: 'project_id,material_name' }
+    )
+}
+
+export async function updateExpenseDeliveryStatus(
+  supabase: SupabaseClient,
+  expenseId: string,
+  status: 'ordered' | 'delivered' | 'consumed',
+  confirmedDate?: string
+): Promise<void> {
+  const patch: Record<string, unknown> = { delivery_status: status }
+  if (status === 'delivered' && confirmedDate) patch.confirmed_delivery_date = confirmedDate
+  await supabase.from('expenses').update(patch).eq('id', expenseId)
 }

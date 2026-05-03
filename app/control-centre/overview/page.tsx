@@ -3,15 +3,24 @@
 import { useEffect, useState } from "react"
 import { useActiveProject } from "@/contexts/project-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
-import { getProjectExpenses, getProjectTasks } from "@/lib/project-queries"
-import type { Expense, Task } from "@/lib/project-queries"
+import { getProjectExpenses, getProjectTasks, getMaterialStock } from "@/lib/project-queries"
+import type { Expense, Task, MaterialStock } from "@/lib/project-queries"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AlertTriangle, Truck } from "lucide-react"
 import Link from "next/link"
+import { IndustryInsights } from "@/components/industry-insights"
 
-function fmt(n: number) {
-  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`
-  return `$${n.toFixed(0)}`
+const MATERIAL_CATEGORIES = new Set([
+  'Bricks', 'Cement', 'Steel', 'Sand', 'Crush',
+  'Plumbing', 'Electrical', 'Waterproofing', 'Materials',
+])
+
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$' }
+
+function fmt(n: number, symbol: string) {
+  if (n >= 1000000) return `${symbol}${(n / 1000000).toFixed(1)}M`
+  if (n >= 1000) return `${symbol}${(n / 1000).toFixed(1)}K`
+  return `${symbol}${n.toFixed(0)}`
 }
 
 function daysUntil(dateStr: string | null) {
@@ -22,8 +31,10 @@ function daysUntil(dateStr: string | null) {
 
 export default function OverviewPage() {
   const { activeProject, loading: projectLoading } = useActiveProject()
+  const currencySymbol = CURRENCY_SYMBOLS[(activeProject?.currency ?? 'USD').toUpperCase()] ?? '$'
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  const [materialStock, setMaterialStock] = useState<MaterialStock[]>([])
   const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
@@ -33,9 +44,11 @@ export default function OverviewPage() {
     Promise.all([
       getProjectExpenses(supabase, activeProject.id),
       getProjectTasks(supabase, activeProject.id),
-    ]).then(([exp, tsk]) => {
+      getMaterialStock(supabase, activeProject.id),
+    ]).then(([exp, tsk, stk]) => {
       setExpenses(exp)
       setTasks(tsk)
+      setMaterialStock(stk)
       setDataLoading(false)
     })
   }, [activeProject])
@@ -51,6 +64,17 @@ export default function OverviewPage() {
   const doneTasks = tasks.filter(t => t.status === 'done').length
   const todoTasks = tasks.filter(t => t.status === 'todo').slice(0, 3)
   const recentActivity = expenses.slice(0, 3)
+
+  const today = new Date().toISOString().split('T')[0]
+  const lowStockAlerts = materialStock.filter(
+    s => s.reorder_threshold !== null && s.on_hand_qty < s.reorder_threshold
+  )
+  const overdueDeliveries = expenses.filter(
+    e => MATERIAL_CATEGORIES.has(e.category)
+      && e.delivery_status === 'ordered'
+      && e.expected_delivery_date != null
+      && e.expected_delivery_date <= today
+  ).slice(0, 2)
 
   if (loading) {
     return (
@@ -81,8 +105,8 @@ export default function OverviewPage() {
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Budget used</p>
-          <p className="font-serif text-3xl font-semibold text-foreground leading-tight">{fmt(spent)}</p>
-          <p className="text-[10px] text-amber-600 mt-1">of {fmt(budget)} total · {spentPct}%</p>
+          <p className="font-serif text-3xl font-semibold text-foreground leading-tight">{fmt(spent, currencySymbol)}</p>
+          <p className="text-[10px] text-amber-600 mt-1">of {fmt(budget, currencySymbol)} total · {spentPct}%</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-muted-foreground mb-1">Days remaining</p>
@@ -111,29 +135,75 @@ export default function OverviewPage() {
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-foreground">Budget overview</p>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-            {fmt(Math.max(0, budget - spent))} remaining
+            {fmt(Math.max(0, budget - spent), currencySymbol)} remaining
           </span>
         </div>
         <div className="flex h-2.5 overflow-hidden rounded-full bg-muted mb-2">
           <div className="bg-primary transition-all" style={{ width: `${Math.min(spentPct, 100)}%` }} />
         </div>
         <div className="flex gap-4 text-[10px] text-muted-foreground">
-          <span><span className="text-primary">■</span> Spent {fmt(spent)}</span>
-          <span>■ Available {fmt(Math.max(0, budget - spent))}</span>
-          <span className="text-muted-foreground/60">Budget {fmt(budget)}</span>
+          <span><span className="text-primary">■</span> Spent {fmt(spent, currencySymbol)}</span>
+          <span>■ Available {fmt(Math.max(0, budget - spent), currencySymbol)}</span>
+          <span className="text-muted-foreground/60">Budget {fmt(budget, currencySymbol)}</span>
         </div>
       </div>
 
       {/* Needs attention */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <p className="text-sm font-semibold text-foreground mb-3">Needs attention</p>
-        {todoTasks.length === 0 ? (
+        {lowStockAlerts.length === 0 && overdueDeliveries.length === 0 && todoTasks.length === 0 ? (
           <p className="text-xs text-muted-foreground py-2">
-            No open tasks.{' '}
+            Nothing needs attention right now.{' '}
             <Link href="/control-centre/punch-list" className="text-primary hover:underline">Add items to the punch list →</Link>
           </p>
         ) : (
           <div className="divide-y divide-border">
+
+            {/* Low stock alerts */}
+            {lowStockAlerts.map(s => (
+              <div key={s.material_name} className="flex items-start gap-2.5 py-2.5">
+                <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded bg-destructive/10 flex items-center justify-center">
+                  <AlertTriangle className="h-2.5 w-2.5 text-destructive" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] text-foreground">{s.material_name} is running low</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-destructive/10 text-destructive">Materials</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {s.on_hand_qty.toLocaleString()} {s.unit} on hand
+                    </span>
+                  </div>
+                </div>
+                <Link href="/control-centre/materials" className="text-[10px] text-primary hover:underline flex-shrink-0 mt-0.5">
+                  Order →
+                </Link>
+              </div>
+            ))}
+
+            {/* Overdue deliveries */}
+            {overdueDeliveries.map(e => (
+              <div key={e.id} className="flex items-start gap-2.5 py-2.5">
+                <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded bg-amber-100 flex items-center justify-center">
+                  <Truck className="h-2.5 w-2.5 text-amber-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] text-foreground truncate">{e.description} — not arrived</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700">Materials</span>
+                    {e.expected_delivery_date && (
+                      <span className="text-[10px] text-muted-foreground">
+                        Expected {new Date(e.expected_delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Link href="/control-centre/materials" className="text-[10px] text-primary hover:underline flex-shrink-0 mt-0.5">
+                  Confirm →
+                </Link>
+              </div>
+            ))}
+
+            {/* Open tasks */}
             {todoTasks.map(task => {
               const due = task.due_date ? daysUntil(task.due_date) : null
               const isUrgent = due !== null && due <= 3
@@ -153,6 +223,7 @@ export default function OverviewPage() {
                 </div>
               )
             })}
+
           </div>
         )}
       </div>
@@ -177,13 +248,15 @@ export default function OverviewPage() {
                   </p>
                 </div>
                 <span className="font-mono text-[13px] font-medium text-foreground">
-                  −{fmt(exp.amount)}
+                  −{fmt(exp.amount, currencySymbol)}
                 </span>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <IndustryInsights />
     </div>
   )
 }
