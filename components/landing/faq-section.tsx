@@ -6,14 +6,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 const faqs = [
   {
     q: 'Who is Alinnia built for?',
-    a: 'Homeowners managing a renovation or new build, and small contractors who want to give clients a professional project view. No construction software experience needed.',
+    a: 'Homeowners managing a renovation. No construction software experience needed.',
   },
   {
     q: 'Do I need to install anything?',
     a: 'No. Alinnia is a web app — it works in any browser on any device. Pull it up on your phone at the job site or on your laptop at home.',
   },
   {
-    q: 'How does the 7-day free trial work?',
+    q: 'How does the 3-day free trial work?',
     a: 'Sign up and create your first project. Every feature is unlocked for 7 days. No credit card required to start.',
   },
   {

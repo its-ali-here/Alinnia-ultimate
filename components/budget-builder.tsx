@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useActiveProject } from "@/contexts/project-context"
-import { Layers, PaintBucket, ChefHat, Bath, Home, DoorOpen, Building2 } from "lucide-react"
+import { Layers, PaintBucket, ChefHat, Bath, DoorOpen, Building2, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 type Tier = {
@@ -65,17 +65,6 @@ const BUDGET_CATEGORIES: BudgetCategory[] = [
     ],
   },
   {
-    id: "roofing",
-    name: "Roofing",
-    icon: Home,
-    tiers: [
-      { label: "Basic", priceUSsqft: 4, priceUKsqm: 36, description: "Asphalt shingles / felt & batten" },
-      { label: "Mid-range", priceUSsqft: 8, priceUKsqm: 75, description: "Architectural shingles / concrete tile" },
-      { label: "Premium", priceUSsqft: 14, priceUKsqm: 130, description: "Metal roofing / natural slate" },
-      { label: "Luxury", priceUSsqft: 22, priceUKsqm: 200, description: "Standing seam metal / Welsh slate" },
-    ],
-  },
-  {
     id: "windows",
     name: "Windows & Doors",
     icon: DoorOpen,
@@ -87,14 +76,25 @@ const BUDGET_CATEGORIES: BudgetCategory[] = [
     ],
   },
   {
-    id: "structure",
-    name: "Structure & Frame",
+    id: "mep",
+    name: "MEP Services",
+    icon: Zap,
+    tiers: [
+      { label: "Basic", priceUSsqft: 8, priceUKsqm: 75, description: "Partial replumb / rewire, essentials only" },
+      { label: "Mid-range", priceUSsqft: 18, priceUKsqm: 170, description: "Full replumb and partial rewire" },
+      { label: "Premium", priceUSsqft: 32, priceUKsqm: 295, description: "Full rewire + underfloor heating" },
+      { label: "Luxury", priceUSsqft: 55, priceUKsqm: 510, description: "Smart home, HVAC, high-spec throughout" },
+    ],
+  },
+  {
+    id: "structural",
+    name: "Structural Work",
     icon: Building2,
     tiers: [
-      { label: "Basic", priceUSsqft: 20, priceUKsqm: 185, description: "Standard timber frame / block & beam" },
-      { label: "Mid-range", priceUSsqft: 40, priceUKsqm: 370, description: "Engineered timber / reinforced masonry" },
-      { label: "Premium", priceUSsqft: 70, priceUKsqm: 650, description: "Steel portal frame / ICF" },
-      { label: "Luxury", priceUSsqft: 110, priceUKsqm: 1000, description: "Cross-laminated timber / hybrid system" },
+      { label: "Basic", priceUSsqft: 5, priceUKsqm: 46, description: "Minor wall removal, standard RSJ" },
+      { label: "Mid-range", priceUSsqft: 12, priceUKsqm: 110, description: "Multiple beams, chimney breast removal" },
+      { label: "Premium", priceUSsqft: 25, priceUKsqm: 230, description: "Load-bearing restructure, underpinning" },
+      { label: "Luxury", priceUSsqft: 45, priceUKsqm: 415, description: "Basement dig, major structural overhaul" },
     ],
   },
 ]
@@ -226,7 +226,7 @@ export function BudgetBuilder() {
               <p className="font-serif text-2xl font-semibold text-foreground">{fmtMoney(grandTotal)}</p>
             </div>
             <p className="mt-3 text-[10px] text-muted-foreground leading-relaxed">
-              Estimates are based on 2024/2025 market averages for the {isGBP ? "UK" : "US"} and exclude labour, permits, MEP services, and site-specific conditions. Actual costs may vary. Use this as a starting point, not a fixed quote.
+              Estimates are based on 2024/2025 market averages for the {isGBP ? "UK" : "US"} and exclude contingency, permits, and site-specific conditions. Actual costs may vary significantly for older homes. Use this as a starting point, not a fixed quote.
             </p>
           </>
         )}

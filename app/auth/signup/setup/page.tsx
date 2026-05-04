@@ -4,6 +4,15 @@ import Link from 'next/link'
 import { CheckCircle2, LayoutGrid, TrendingUp, ListOrdered, CheckSquare } from 'lucide-react'
 import { useOnboarding } from '@/contexts/onboarding-context'
 
+const BUILD_LABELS: Record<string, string> = {
+  'kitchen':    'Kitchen remodel',
+  'bathroom':   'Bathroom remodel',
+  'full-reno':  'Full home renovation',
+  'addition':   'Extension / Addition',
+  'bedroom':    'Bedroom renovation',
+  'multi-room': 'Multi-room renovation',
+}
+
 export default function OnboardingSetupPage() {
   const { data } = useOnboarding()
 
@@ -49,11 +58,11 @@ export default function OnboardingSetupPage() {
       </div>
 
       {/* Project summary if data available */}
-      {(data.city || data.budget || data.constructionPath) && (
+      {(data.city || data.budget || data.buildType) && (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {data.constructionPath && (
-            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground capitalize">
-              {data.constructionPath} build
+          {data.buildType && (
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              {BUILD_LABELS[data.buildType] ?? data.buildType}
             </span>
           )}
           {data.city && data.country && (

@@ -129,7 +129,7 @@ export function HeroSection() {
             className="flex flex-col gap-6"
           >
             <span className="inline-flex w-fit items-center rounded-full border border-primary/30 bg-[hsl(var(--brand-soft))] px-3 py-1 text-xs font-medium text-primary">
-              Built for homeowners & contractors worldwide
+              Built for homeowners around the globe
             </span>
 
             <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-5xl lg:text-6xl">
@@ -138,7 +138,7 @@ export function HeroSection() {
             </h1>
 
             <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
-              Alinnia is the all-in-one construction dashboard for homeowners and small contractors — track budgets, materials, timelines, and punch lists from a single, beautiful interface.
+              Alinnia is the all-in-one remodelling dashboard for homeowners — track budgets, materials, timelines, and punch lists from a single, beautiful interface.
             </p>
 
             <ul className="space-y-2">

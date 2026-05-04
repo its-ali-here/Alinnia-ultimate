@@ -12,7 +12,7 @@ const features = [
   'Punch list with photo attachments',
   'Document vault (plans, permits, contracts)',
   'Price Check — market benchmarks',
-  '7-day free trial, no card required',
+  '3-day free trial, no card required',
 ]
 
 export function PricingSection() {
@@ -88,7 +88,7 @@ export function PricingSection() {
               <p className="mt-1 text-xs text-emerald-600">Billed annually. ${annualPrice * 12}/yr.</p>
             )}
 
-            <p className="mt-3 text-xs font-medium text-primary">7-day free trial for your first project.</p>
+            <p className="mt-3 text-xs font-medium text-primary">3-day free trial for your first project.</p>
 
             <ul className="mt-6 space-y-2.5">
               {features.map((feat) => (

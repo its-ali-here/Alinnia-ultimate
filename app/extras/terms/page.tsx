@@ -56,7 +56,7 @@ export default function TermsPage() {
             </PolicySection>
 
             <PolicySection icon={<CreditCard />} title="3. Trial & Subscriptions">
-              <p>We offer a <strong>7-day free trial</strong> per organization. Continued use requires a monthly or yearly paid subscription. Features and pricing may change with notice.</p>
+              <p>We offer a <strong>3-day free trial</strong> per organization. Continued use requires a monthly or yearly paid subscription. Features and pricing may change with notice.</p>
             </PolicySection>
 
             <PolicySection icon={<Users />} title="4. Accounts & Organizations">

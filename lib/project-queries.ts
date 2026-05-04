@@ -24,6 +24,9 @@ export interface Project {
   number_of_floors: number | null
   has_drawings: boolean
   timeline_months: number | null
+  home_type: string | null
+  home_era: string | null
+  contingency_pct: number | null
   created_at: string
 }
 

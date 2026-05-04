@@ -17,15 +17,15 @@ export async function POST(request: Request) {
     projectType,
     scopeOfWork,
     constructionPath,
+    homeType,
+    homeEra,
+    contingencyPct,
     selectedPhases = [],
     isProjectUnderway = false,
     completedPhases = [],
-    hasBasement = false,
     city,
     country,
     currency,
-    area,
-    floors,
     hasDrawings = false,
     budget,
     startDate,
@@ -52,19 +52,19 @@ export async function POST(request: Request) {
       start_date: start.toISOString(),
       end_date: end.toISOString(),
       status: isProjectUnderway ? 'in_progress' : 'planning',
-      site_type: siteType || null,
-      project_type: projectType || null,
+      site_type: siteType || 'existing',
+      project_type: projectType || 'residential',
       scope_of_work: scopeOfWork || null,
       construction_path: constructionPath || null,
       is_project_underway: isProjectUnderway,
-      has_basement: hasBasement,
       city: city || null,
       country: country || null,
       currency: currency || 'USD',
-      total_area: area ? parseFloat(area) : null,
-      number_of_floors: floors ? parseInt(floors, 10) : null,
       has_drawings: hasDrawings,
       timeline_months: parseInt(timeline, 10),
+      home_type: homeType || null,
+      home_era: homeEra || null,
+      contingency_pct: contingencyPct != null ? parseFloat(contingencyPct) : 15,
     })
     .select()
     .single()
@@ -112,11 +112,11 @@ export async function POST(request: Request) {
 
   // ── 3. Record uploaded documents ─────────────────────────────────────────
   if (uploadedFiles.length > 0) {
-    const documentsData = uploadedFiles.map((file: { path: string; name: string }) => ({
+    const documentsData = uploadedFiles.map((file: { path: string; name: string; fileType?: string }) => ({
       project_id: project.id,
       file_name: file.name,
       file_path: file.path,
-      file_type: 'drawing',
+      file_type: file.fileType || 'drawing',
       uploaded_by: user.id,
     }))
 

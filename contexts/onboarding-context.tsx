@@ -22,19 +22,19 @@ interface OnboardingData {
   // Project wizard data
   buildType?: string;
   projectName?: string;
-  siteType?: 'empty' | 'existing' | '';
-  projectType?: 'residential' | 'commercial' | '';
-  constructionPath?: 'masonry' | 'timber' | 'precision' | '';
-  scopeOfWork?: 'construction' | 'extension' | 'renovation' | '';
+  siteType?: 'existing' | '';
+  projectType?: 'residential' | '';
+  constructionPath?: 'kitchen-reno' | 'bathroom-reno' | 'full-reno' | 'extension' | 'bedroom-reno' | 'multi-room' | '';
+  scopeOfWork?: 'extension' | 'renovation' | '';
+  homeType?: string;
+  homeEra?: string;
+  contingencyPct?: number;
   selectedPhases?: string[];
   isProjectUnderway?: boolean;
   completedPhases?: string[];
-  hasBasement?: boolean;
   city?: string;
   country?: string;
   currency?: string;
-  area?: string;
-  floors?: string;
   hasDrawings?: boolean;
   drawings?: File[];
   budget?: string;
