@@ -1,6 +1,26 @@
 import { Layers, PaintBucket, ChefHat, Bath, DoorOpen, Building2, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
+// Which category ids are shown per construction path. Null/unknown = show all.
+export const SCOPE_CATEGORIES: Record<string, string[]> = {
+  "kitchen-reno":  ["flooring", "walls", "kitchen", "mep"],
+  "bathroom-reno": ["flooring", "walls", "bathrooms", "mep"],
+  "full-reno":     ["flooring", "walls", "kitchen", "bathrooms", "windows", "mep", "structural"],
+  "extension":     ["flooring", "walls", "windows", "mep", "structural"],
+  "bedroom-reno":  ["flooring", "walls", "mep"],
+  "multi-room":    ["flooring", "walls", "kitchen", "bathrooms", "mep"],
+}
+
+// Typical area defaults when total_area is unknown, keyed by construction_path
+export const DEFAULT_AREA: Record<string, { sqft: number; sqm: number; label: string }> = {
+  "kitchen-reno":  { sqft: 200,  sqm: 18,  label: "typical kitchen" },
+  "bathroom-reno": { sqft: 80,   sqm: 7,   label: "typical bathroom" },
+  "full-reno":     { sqft: 1200, sqm: 110, label: "typical 3-bed home" },
+  "extension":     { sqft: 320,  sqm: 30,  label: "typical single-storey extension" },
+  "bedroom-reno":  { sqft: 200,  sqm: 18,  label: "typical bedroom" },
+  "multi-room":    { sqft: 650,  sqm: 60,  label: "typical multi-room scope" },
+}
+
 export type MaterialVariant = {
   id: string
   label: string

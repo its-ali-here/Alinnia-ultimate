@@ -107,7 +107,7 @@ export function LandingHeader() {
                   Log in
                 </button>
               </Link>
-              <Link href="/auth/signup">
+              <Link href="/start">
                 <button className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90">
                   Start free
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -172,7 +172,7 @@ export function LandingHeader() {
                       className="rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">
                       Log in
                     </Link>
-                    <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/start" onClick={() => setMobileMenuOpen(false)}>
                       <button className="w-full rounded-full bg-primary px-4 py-2 text-sm font-medium text-white">
                         Start free
                       </button>

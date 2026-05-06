@@ -152,7 +152,7 @@ export function HeroSection() {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/auth/signup"
+                href="/start"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
               >
                 Start your project free

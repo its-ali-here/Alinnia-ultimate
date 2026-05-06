@@ -13,34 +13,24 @@ export async function POST(request: Request) {
 
   const {
     projectName,
-    siteType,
-    projectType,
-    scopeOfWork,
-    constructionPath,
+    roomType,
     homeType,
-    homeEra,
-    contingencyPct,
-    selectedPhases = [],
-    isProjectUnderway = false,
-    completedPhases = [],
+    zipCode,
     city,
     country,
     currency,
-    hasDrawings = false,
     budget,
-    startDate,
-    timeline,
-    uploadedFiles = [],
+    totalArea,
+    inspirationText,
+    // Legacy wizard fields (kept for backwards compat during transition)
+    constructionPath,
+    selectedPhases = [],
+    completedPhases = [],
   } = body
 
-  // Validate required fields
-  if (!projectName || !budget || !timeline || !startDate) {
+  if (!projectName || !budget) {
     return NextResponse.json({ message: 'Missing required project fields' }, { status: 400 })
   }
-
-  const start = new Date(startDate)
-  const end = new Date(start)
-  end.setMonth(end.getMonth() + parseInt(timeline, 10))
 
   // ── 1. Create the project ────────────────────────────────────────────────
   const { data: project, error: projectError } = await supabase
@@ -49,22 +39,15 @@ export async function POST(request: Request) {
       user_id: user.id,
       name: projectName,
       budget: parseFloat(budget),
-      start_date: start.toISOString(),
-      end_date: end.toISOString(),
-      status: isProjectUnderway ? 'in_progress' : 'planning',
-      site_type: siteType || 'existing',
-      project_type: projectType || 'residential',
-      scope_of_work: scopeOfWork || null,
-      construction_path: constructionPath || null,
-      is_project_underway: isProjectUnderway,
+      status: 'planning',
+      room_type: roomType || constructionPath || null,
+      zip_code: zipCode || null,
       city: city || null,
       country: country || null,
       currency: currency || 'USD',
-      has_drawings: hasDrawings,
-      timeline_months: parseInt(timeline, 10),
+      total_area: totalArea ?? null,
       home_type: homeType || null,
-      home_era: homeEra || null,
-      contingency_pct: contingencyPct != null ? parseFloat(contingencyPct) : 15,
+      inspiration_text: inspirationText || null,
     })
     .select()
     .single()
@@ -74,9 +57,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Could not create project.' }, { status: 500 })
   }
 
-  // ── 2. Persist phase selections to project_phases ────────────────────────
+  // ── 2. Link phase templates if a construction path was given ─────────────
   if (constructionPath && (selectedPhases.length > 0 || completedPhases.length > 0)) {
-    // Look up all phase templates for this construction path ordered by order_index
     const { data: phaseTemplates, error: templateError } = await supabase
       .from('phase_templates')
       .select('id, order_index, phase_key')
@@ -84,7 +66,6 @@ export async function POST(request: Request) {
       .order('order_index', { ascending: true })
 
     if (!templateError && phaseTemplates && phaseTemplates.length > 0) {
-      // Wizard phase IDs are like 'masonry-1', 'timber-3' — the trailing number is order_index
       const getOrder = (phaseId: string) =>
         parseInt(phaseId.split('-').pop() ?? '0', 10)
 
@@ -104,29 +85,8 @@ export async function POST(request: Request) {
         .insert(projectPhasesData)
 
       if (phasesError) {
-        // Non-fatal — project was created, phases just weren't linked
         console.error('Error saving project phases:', phasesError.message)
       }
-    }
-  }
-
-  // ── 3. Record uploaded documents ─────────────────────────────────────────
-  if (uploadedFiles.length > 0) {
-    const documentsData = uploadedFiles.map((file: { path: string; name: string; fileType?: string }) => ({
-      project_id: project.id,
-      file_name: file.name,
-      file_path: file.path,
-      file_type: file.fileType || 'drawing',
-      uploaded_by: user.id,
-    }))
-
-    const { error: docsError } = await supabase
-      .from('documents')
-      .insert(documentsData)
-
-    if (docsError) {
-      // Non-fatal
-      console.error('Error saving documents:', docsError.message)
     }
   }
 

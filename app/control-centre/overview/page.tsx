@@ -3,260 +3,312 @@
 import { useEffect, useState } from "react"
 import { useActiveProject } from "@/contexts/project-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
-import { getProjectExpenses, getProjectTasks, getMaterialStock } from "@/lib/project-queries"
-import type { Expense, Task, MaterialStock } from "@/lib/project-queries"
-import { Skeleton } from "@/components/ui/skeleton"
-import { AlertTriangle, Truck } from "lucide-react"
-import Link from "next/link"
-import { IndustryInsights } from "@/components/industry-insights"
+import { cn } from "@/lib/utils"
 
-const MATERIAL_CATEGORIES = new Set([
-  'Bricks', 'Cement', 'Steel', 'Sand', 'Crush',
-  'Plumbing', 'Electrical', 'Waterproofing', 'Materials',
-])
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$' }
-
-function fmt(n: number, symbol: string) {
-  if (n >= 1000000) return `${symbol}${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `${symbol}${(n / 1000).toFixed(1)}K`
-  return `${symbol}${n.toFixed(0)}`
+interface Analysis {
+  achievable_pct: number
+  fits_budget: string[]
+  doesnt_fit_budget: string[]
 }
 
-function daysUntil(dateStr: string | null) {
-  if (!dateStr) return null
-  const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
-  return diff
+interface Contractor {
+  trade: string
+  when?: string
 }
+
+// ─── Stage derivation ─────────────────────────────────────────────────────────
+
+type Stage = { label: string; step: number }
+
+function deriveStage(guidePurchased: boolean, status: string): Stage {
+  if (status === "completed")                   return { label: "Done",          step: 4 }
+  if (status === "in_progress")                 return { label: "Underway",       step: 3 }
+  if (guidePurchased && status === "planning")  return { label: "Getting quotes", step: 2 }
+  return                                               { label: "Planning",        step: 1 }
+}
+
+// ─── Default contractor slots by room type ────────────────────────────────────
+
+const CONTRACTOR_DEFAULTS: Record<string, string[]> = {
+  bathroom:      ["Plumber", "Tiler", "Electrician"],
+  kitchen:       ["General contractor", "Electrician", "Plumber"],
+  bedroom:       ["Painter / Decorator", "Carpenter", "Electrician"],
+  "living-room": ["General contractor", "Electrician"],
+  "full-home":   ["General contractor", "Electrician", "Plumber", "Decorator"],
+  "multi-room":  ["General contractor", "Electrician", "Plumber", "Decorator"],
+  extension:     ["General contractor", "Structural engineer", "Electrician", "Plumber"],
+  outdoor:       ["Landscaper", "General contractor"],
+}
+
+// ─── Next steps by stage ──────────────────────────────────────────────────────
+
+const NEXT_STEPS: Record<number, string[]> = {
+  1: [
+    "Get 3 quotes — your BOQ tells you exactly what to ask for",
+    "Upload a quote to check if the price is fair",
+    "Add your contractor's name and payment terms",
+  ],
+  2: [
+    "Get 3 quotes — your BOQ tells you exactly what to ask for",
+    "Upload a quote to check if the price is fair",
+    "Add your contractor's name and payment terms",
+  ],
+  3: [
+    "Log this week's invoice",
+    "Check your budget remaining",
+    "Upload your latest receipt",
+  ],
+  4: [
+    "Complete the closeout checklist",
+    "Download your project record",
+  ],
+}
+
+// ─── Feasibility bar ──────────────────────────────────────────────────────────
+
+function FeasibilityBar({ pct }: { pct: number }) {
+  const color = pct >= 70 ? "#22c55e" : pct >= 45 ? "#f59e0b" : "#ef4444"
+  return (
+    <div className="h-2.5 w-full rounded-full bg-black/10 overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-700"
+        style={{ width: `${pct}%`, backgroundColor: color }}
+      />
+    </div>
+  )
+}
+
+// ─── Stage progress bar ───────────────────────────────────────────────────────
+
+function StageBar({ step }: { step: number }) {
+  return (
+    <div className="flex gap-1 mt-2">
+      {[1, 2, 3, 4].map((s) => (
+        <div
+          key={s}
+          className={cn(
+            "h-1 flex-1 rounded-full transition-colors",
+            s <= step ? "bg-primary" : "bg-muted"
+          )}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OverviewPage() {
   const { activeProject, loading: projectLoading } = useActiveProject()
-  const currencySymbol = CURRENCY_SYMBOLS[(activeProject?.currency ?? 'USD').toUpperCase()] ?? '$'
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [materialStock, setMaterialStock] = useState<MaterialStock[]>([])
+  const supabase = createSupabaseBrowserClient()
+
+  const [analysis, setAnalysis]       = useState<Analysis | null>(null)
+  const [contractors, setContractors] = useState<string[]>([])
+  const [totalSpent, setTotalSpent]   = useState(0)
   const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
     if (!activeProject) { setDataLoading(false); return }
-    const supabase = createSupabaseBrowserClient()
-    setDataLoading(true)
-    Promise.all([
-      getProjectExpenses(supabase, activeProject.id),
-      getProjectTasks(supabase, activeProject.id),
-      getMaterialStock(supabase, activeProject.id),
-    ]).then(([exp, tsk, stk]) => {
-      setExpenses(exp)
-      setTasks(tsk)
-      setMaterialStock(stk)
+
+    const load = async () => {
+      setDataLoading(true)
+
+      // Latest analysis
+      const { data: an } = await supabase
+        .from("renovation_analyses")
+        .select("achievable_pct, fits_budget, doesnt_fit_budget")
+        .eq("project_id", activeProject.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (an) setAnalysis(an as Analysis)
+
+      // Guide contractors if purchased
+      const { data: guide } = await supabase
+        .from("renovation_guides")
+        .select("contractors_needed")
+        .eq("project_id", activeProject.id)
+        .maybeSingle()
+
+      if (guide?.contractors_needed && Array.isArray(guide.contractors_needed)) {
+        setContractors(
+          (guide.contractors_needed as Contractor[]).map((c) =>
+            typeof c === "string" ? c : c.trade
+          )
+        )
+      } else {
+        setContractors(
+          CONTRACTOR_DEFAULTS[activeProject.room_type ?? ""] ?? ["General contractor", "Electrician"]
+        )
+      }
+
+      // Total spent
+      const { data: expenses } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("project_id", activeProject.id)
+
+      if (expenses) {
+        setTotalSpent(
+          expenses.reduce((s: number, e: { amount: number }) => s + (e.amount ?? 0), 0)
+        )
+      }
+
       setDataLoading(false)
-    })
-  }, [activeProject])
+    }
 
-  const loading = projectLoading || dataLoading
+    load()
+  }, [activeProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Derived stats
-  const budget = activeProject?.budget ?? 0
-  const spent = expenses.reduce((s, e) => s + e.amount, 0)
-  const spentPct = budget > 0 ? Math.round((spent / budget) * 100) : 0
-  const daysLeft = daysUntil(activeProject?.end_date ?? null)
-  const totalTasks = tasks.length
-  const doneTasks = tasks.filter(t => t.status === 'done').length
-  const todoTasks = tasks.filter(t => t.status === 'todo').slice(0, 3)
-  const recentActivity = expenses.slice(0, 3)
+  // ── Loading skeleton ────────────────────────────────────────────────────────
 
-  const today = new Date().toISOString().split('T')[0]
-  const lowStockAlerts = materialStock.filter(
-    s => s.reorder_threshold !== null && s.on_hand_qty < s.reorder_threshold
-  )
-  const overdueDeliveries = expenses.filter(
-    e => MATERIAL_CATEGORIES.has(e.category)
-      && e.delivery_status === 'ordered'
-      && e.expected_delivery_date != null
-      && e.expected_delivery_date <= today
-  ).slice(0, 2)
-
-  if (loading) {
+  if (projectLoading || dataLoading) {
     return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      <div className="space-y-4 max-w-2xl animate-pulse">
+        <div className="h-8 w-56 bg-muted rounded-lg" />
+        <div className="h-40 bg-muted rounded-[16px]" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-28 bg-muted rounded-[16px]" />
+          <div className="h-28 bg-muted rounded-[16px]" />
         </div>
-        <Skeleton className="h-28 rounded-xl" />
-        <Skeleton className="h-40 rounded-xl" />
+        <div className="h-36 bg-muted rounded-[16px]" />
+        <div className="h-32 bg-muted rounded-[16px]" />
       </div>
     )
   }
 
   if (!activeProject) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-muted-foreground mb-4">You don't have a project yet.</p>
-        <Link href="/auth/signup/wizard" className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-white">
-          Create your first project
-        </Link>
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <p className="text-[15px] font-semibold text-foreground">No project yet</p>
+        <p className="text-[13px] text-muted-foreground">
+          Complete the analysis wizard to get started.
+        </p>
       </div>
     )
   }
 
+  const budget    = Number(activeProject.budget)
+  const remaining = budget - totalSpent
+  const location  = activeProject.zip_code ?? ""
+  const city      = location.split(",")[0] ?? location
+  const stage     = deriveStage(activeProject.guide_purchased, activeProject.status ?? "planning")
+  const roomLabel = (activeProject.room_type ?? "renovation").replace(/-/g, " ")
+
   return (
-    <div className="space-y-3">
-      {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Budget used</p>
-          <p className="font-serif text-3xl font-semibold text-foreground leading-tight">{fmt(spent, currencySymbol)}</p>
-          <p className="text-[10px] text-amber-600 mt-1">of {fmt(budget, currencySymbol)} total · {spentPct}%</p>
+    <div className="space-y-4 max-w-2xl">
+
+      {/* ── Project header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-[26px] font-semibold text-foreground leading-tight">
+            {activeProject.name}
+          </h1>
+          {location && (
+            <p className="text-[13px] text-muted-foreground mt-0.5">
+              {location} · £{budget.toLocaleString()} budget
+            </p>
+          )}
         </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Days remaining</p>
-          <p className="font-serif text-3xl font-semibold text-foreground leading-tight">
-            {daysLeft !== null ? (daysLeft > 0 ? daysLeft : 'Overdue') : '—'}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {activeProject.end_date
-              ? `Target ${new Date(activeProject.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-              : 'No end date set'}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground mb-1">Tasks complete</p>
-          <p className="font-serif text-3xl font-semibold text-foreground leading-tight">
-            {totalTasks === 0 ? '—' : `${doneTasks}/${totalTasks}`}
-          </p>
-          <p className={`text-[10px] mt-1 ${totalTasks === 0 ? 'text-muted-foreground' : 'text-emerald-600'}`}>
-            {totalTasks === 0 ? 'No tasks yet' : `${Math.round((doneTasks / totalTasks) * 100)}% complete`}
-          </p>
-        </div>
+        <span className="flex-shrink-0 mt-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[hsl(var(--brand-soft))] text-primary">
+          {stage.label}
+        </span>
       </div>
 
-      {/* Budget bar */}
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-foreground">Budget overview</p>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-            {fmt(Math.max(0, budget - spent), currencySymbol)} remaining
-          </span>
-        </div>
-        <div className="flex h-2.5 overflow-hidden rounded-full bg-muted mb-2">
-          <div className="bg-primary transition-all" style={{ width: `${Math.min(spentPct, 100)}%` }} />
-        </div>
-        <div className="flex gap-4 text-[10px] text-muted-foreground">
-          <span><span className="text-primary">■</span> Spent {fmt(spent, currencySymbol)}</span>
-          <span>■ Available {fmt(Math.max(0, budget - spent), currencySymbol)}</span>
-          <span className="text-muted-foreground/60">Budget {fmt(budget, currencySymbol)}</span>
-        </div>
-      </div>
-
-      {/* Needs attention */}
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <p className="text-sm font-semibold text-foreground mb-3">Needs attention</p>
-        {lowStockAlerts.length === 0 && overdueDeliveries.length === 0 && todoTasks.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">
-            Nothing needs attention right now.{' '}
-            <Link href="/control-centre/punch-list" className="text-primary hover:underline">Add items to the punch list →</Link>
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-
-            {/* Low stock alerts */}
-            {lowStockAlerts.map(s => (
-              <div key={s.material_name} className="flex items-start gap-2.5 py-2.5">
-                <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded bg-destructive/10 flex items-center justify-center">
-                  <AlertTriangle className="h-2.5 w-2.5 text-destructive" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] text-foreground">{s.material_name} is running low</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-destructive/10 text-destructive">Materials</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {s.on_hand_qty.toLocaleString()} {s.unit} on hand
-                    </span>
-                  </div>
-                </div>
-                <Link href="/control-centre/materials" className="text-[10px] text-primary hover:underline flex-shrink-0 mt-0.5">
-                  Order →
-                </Link>
-              </div>
-            ))}
-
-            {/* Overdue deliveries */}
-            {overdueDeliveries.map(e => (
-              <div key={e.id} className="flex items-start gap-2.5 py-2.5">
-                <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded bg-amber-100 flex items-center justify-center">
-                  <Truck className="h-2.5 w-2.5 text-amber-700" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] text-foreground truncate">{e.description} — not arrived</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700">Materials</span>
-                    {e.expected_delivery_date && (
-                      <span className="text-[10px] text-muted-foreground">
-                        Expected {new Date(e.expected_delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Link href="/control-centre/materials" className="text-[10px] text-primary hover:underline flex-shrink-0 mt-0.5">
-                  Confirm →
-                </Link>
-              </div>
-            ))}
-
-            {/* Open tasks */}
-            {todoTasks.map(task => {
-              const due = task.due_date ? daysUntil(task.due_date) : null
-              const isUrgent = due !== null && due <= 3
-              return (
-                <div key={task.id} className="flex items-start gap-2.5 py-2.5">
-                  <div className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-[1.5px] border-muted-foreground/40" />
-                  <div>
-                    <p className="text-[12.5px] text-foreground">{task.name}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {due !== null && (
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isUrgent ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground'}`}>
-                          {due === 0 ? 'Due today' : due < 0 ? `${Math.abs(due)}d overdue` : `${due}d left`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-
+      {/* ── Feasibility card ── */}
+      {analysis ? (
+        <div className="rounded-[16px] bg-[hsl(var(--brand-soft))] border border-primary/15 p-5 space-y-3">
+          <div>
+            <p className="text-[14px] font-medium text-foreground">
+              With £{budget.toLocaleString()} in {city} you can achieve
+            </p>
+            <p className="text-[22px] font-bold text-primary mt-0.5">
+              {Math.round(analysis.achievable_pct)}% of your inspiration look
+            </p>
           </div>
-        )}
-      </div>
-
-      {/* Recent activity */}
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-        <p className="text-sm font-semibold text-foreground mb-3">Recent activity</p>
-        {recentActivity.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">
-            No expenses logged yet.{' '}
-            <Link href="/control-centre/cashflow" className="text-primary hover:underline">Add your first expense →</Link>
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-            {recentActivity.map(exp => (
-              <div key={exp.id} className="flex items-center justify-between py-2.5">
-                <div>
-                  <p className="text-[12.5px] text-foreground">{exp.description}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {new Date(exp.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {exp.vendor ? ` · ${exp.vendor}` : ''} · {exp.category}
-                  </p>
-                </div>
-                <span className="font-mono text-[13px] font-medium text-foreground">
-                  −{fmt(exp.amount, currencySymbol)}
-                </span>
-              </div>
+          <FeasibilityBar pct={analysis.achievable_pct} />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 pt-1">
+            {analysis.fits_budget.map((item, i) => (
+              <p key={i} className="flex items-start gap-1.5 text-[12px] text-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-1.5" />
+                {item}
+              </p>
+            ))}
+            {analysis.doesnt_fit_budget.map((item, i) => (
+              <p key={i} className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0 mt-1.5" />
+                {item}
+              </p>
             ))}
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="rounded-[16px] bg-muted p-5 text-center text-[13px] text-muted-foreground">
+          Analysis not available yet.
+        </div>
+      )}
+
+      {/* ── Budget remaining + Project stage ── */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-[16px] border border-border bg-card p-4">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+            Budget remaining
+          </p>
+          <p className="text-[26px] font-bold text-foreground font-mono leading-none">
+            £{remaining.toLocaleString()}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            £{totalSpent.toLocaleString()} committed so far
+          </p>
+        </div>
+        <div className="rounded-[16px] border border-border bg-card p-4">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+            Project stage
+          </p>
+          <p className="text-[18px] font-semibold text-foreground">{stage.label}</p>
+          <p className="text-[11px] text-muted-foreground">Step {stage.step} of 4</p>
+          <StageBar step={stage.step} />
+        </div>
       </div>
 
-      <IndustryInsights />
+      {/* ── YOUR TEAM ── */}
+      <div className="rounded-[16px] border border-border bg-card p-4 space-y-3">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          Your team — pre-set for a {roomLabel}
+        </p>
+        <ul className="divide-y divide-border/50">
+          {contractors.map((trade, i) => (
+            <li key={i} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/25 flex-shrink-0" />
+                <span className="text-[13px] text-foreground">{trade}</span>
+              </div>
+              <button type="button" className="text-[11.5px] text-primary font-medium hover:underline">
+                + Add details
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ── DO THESE NEXT ── */}
+      <div className="rounded-[16px] border border-border bg-card p-4 space-y-3">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          Do these next
+        </p>
+        <ul className="space-y-2.5">
+          {(NEXT_STEPS[stage.step] ?? NEXT_STEPS[1]).map((item, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <div className="w-4 h-4 rounded border border-border flex-shrink-0 mt-0.5" />
+              <span className="text-[13px] text-foreground">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
     </div>
   )
 }

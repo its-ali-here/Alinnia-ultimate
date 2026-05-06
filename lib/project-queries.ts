@@ -4,29 +4,24 @@ export type FileType = 'drawing' | 'invoice' | 'receipt' | 'permit' | 'contract'
 
 export interface Project {
   id: string
-  user_id: string
+  user_id: string | null
+  session_id: string | null
   name: string
   description: string | null
   budget: number
   status: 'planning' | 'in_progress' | 'completed' | 'on_hold'
-  start_date: string
+  start_date: string | null
   end_date: string | null
-  site_type: string | null
-  project_type: string | null
-  construction_path: string | null
-  scope_of_work: string | null
-  is_project_underway: boolean
-  has_basement: boolean
+  room_type: string | null
+  zip_code: string | null
+  inspiration_text: string | null
+  guide_purchased: boolean
+  guide_purchased_at: string | null
   city: string | null
   country: string | null
   currency: string | null
   total_area: number | null
-  number_of_floors: number | null
-  has_drawings: boolean
-  timeline_months: number | null
   home_type: string | null
-  home_era: string | null
-  contingency_pct: number | null
   created_at: string
 }
 
@@ -106,14 +101,13 @@ export interface ProjectPhaseWithTemplate {
   }
 }
 
-export interface Document {
+export interface ProjectImage {
   id: string
   project_id: string
-  file_name: string
-  file_path: string
-  file_type: FileType
-  uploaded_by: string
-  uploaded_at: string
+  session_id: string | null
+  image_type: 'current' | 'inspiration'
+  storage_path: string
+  display_order: number
   created_at: string
 }
 
@@ -254,17 +248,17 @@ export async function getProjectPhases(
   return (data as ProjectPhaseWithTemplate[]) ?? []
 }
 
-export async function getProjectDocuments(
+export async function getProjectImages(
   supabase: SupabaseClient,
   projectId: string
-): Promise<Document[]> {
+): Promise<ProjectImage[]> {
   const { data } = await supabase
-    .from('documents')
+    .from('project_images')
     .select('*')
     .eq('project_id', projectId)
-    .order('uploaded_at', { ascending: false })
+    .order('display_order', { ascending: true })
 
-  return (data as Document[]) ?? []
+  return (data as ProjectImage[]) ?? []
 }
 
 export async function searchPriceIntelligence(
@@ -301,7 +295,7 @@ export async function ensurePunchListPhase(
   if (existing) return existing.id
 
   const today = new Date().toISOString()
-  const endDate = project.end_date ?? today
+  const endDate = project.end_date ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: created } = await supabase
     .from('phases')

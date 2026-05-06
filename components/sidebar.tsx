@@ -4,29 +4,25 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutGrid,
-  TrendingUp,
-  Package,
-  ListOrdered,
   CheckSquare,
   FileText,
   CircleDollarSign,
   FlagTriangleRight,
+  Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 const mainNav = [
-  { name: "Overview", href: "/control-centre/overview", icon: LayoutGrid },
-  { name: "Cash Flow", href: "/control-centre/cashflow", icon: TrendingUp },
-  { name: "Materials", href: "/control-centre/materials", icon: Package },
-  { name: "Timeline", href: "/control-centre/timeline", icon: ListOrdered },
+  { name: "Overview",   href: "/control-centre/overview",   icon: LayoutGrid },
   { name: "Punch List", href: "/control-centre/punch-list", icon: CheckSquare },
-  { name: "Files", href: "/control-centre/files", icon: FileText },
+  { name: "Files",      href: "/control-centre/files",      icon: FileText },
 ]
 
 const utilNav = [
-  { name: "Budget", href: "/control-centre/forecasting", icon: CircleDollarSign },
-  { name: "Close-out", href: "/control-centre/closeout", icon: FlagTriangleRight },
+  { name: "Budget",    href: "/control-centre/forecasting", icon: CircleDollarSign },
+  { name: "Close-out", href: "/control-centre/closeout",    icon: FlagTriangleRight },
+  { name: "Settings",  href: "/control-centre/settings",    icon: Settings },
 ]
 
 export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
@@ -63,7 +59,6 @@ export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {
           <NavItem key={item.name} item={item} />
         ))}
 
-        {/* Separator */}
         <div className="my-1.5 h-px w-6 bg-border" />
 
         {utilNav.map((item) => (

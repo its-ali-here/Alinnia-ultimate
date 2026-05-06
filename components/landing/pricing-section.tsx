@@ -99,7 +99,7 @@ export function PricingSection() {
               ))}
             </ul>
 
-            <Link href="/auth/signup" className="mt-7 block">
+            <Link href="/start" className="mt-7 block">
               <button className="w-full rounded-full bg-primary py-3 text-sm font-medium text-white transition-opacity hover:opacity-90">
                 Start your free trial
               </button>

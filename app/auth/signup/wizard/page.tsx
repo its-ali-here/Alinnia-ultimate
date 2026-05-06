@@ -1,55 +1,41 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
-import { useOnboarding } from "@/contexts/onboarding-context"
-import { Input } from "@/components/ui/input"
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from "next/navigation"
-import { createSupabaseBrowserClient } from '@/lib/supabase'
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Upload, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Input } from "@/components/ui/input"
+import Image from "next/image"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type RoomType =
+  | 'bathroom' | 'kitchen' | 'bedroom' | 'living-room'
+  | 'outdoor' | 'full-home' | 'extension' | 'multi-room'
+
 interface ProjectData {
-  buildType: string
+  roomType: RoomType | ''
   projectName: string
-  siteType: 'existing' | ''
-  projectType: 'residential' | ''
-  scopeOfWork: 'extension' | 'renovation' | ''
-  constructionPath: 'kitchen-reno' | 'bathroom-reno' | 'full-reno' | 'extension' | 'bedroom-reno' | 'multi-room' | ''
   homeType: string
-  homeEra: string
-  contingencyPct: number
-  selectedPhases: string[]
-  isProjectUnderway: boolean
-  completedPhases: string[]
-  city: string
-  country: string
-  currency: string
-  quoteFile: File | null
-  hasDrawings: boolean
-  drawings: File[]
+  currentPhotos: File[]
+  inspirationPhotos: File[]
+  lengthFt: string
+  widthFt: string
+  heightFt: string
+  inspirationText: string
   budget: string
-  startDate: string
-  timeline: string
+  currency: string
+  state: string
+  city: string
 }
 
 // ─── Option card ──────────────────────────────────────────────────────────────
 
 function OptionCard({
-  emoji,
-  title,
-  subtitle,
-  selected,
-  onClick,
-  small,
+  emoji, title, subtitle, selected, onClick, small,
 }: {
-  emoji: string
-  title: string
-  subtitle: string
-  selected: boolean
-  onClick: () => void
-  small?: boolean
+  emoji: string; title: string; subtitle: string
+  selected: boolean; onClick: () => void; small?: boolean
 }) {
   return (
     <button
@@ -94,18 +80,92 @@ function WizardNote({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ─── Generating step ──────────────────────────────────────────────────────────
+// ─── Image drop zone ──────────────────────────────────────────────────────────
 
-function GeneratingStep({ projectName, error, onRetry }: { projectName: string; error: string | null; onRetry: () => void }) {
+function ImageDropZone({
+  label, hint, files, onChange, maxFiles = 3,
+}: {
+  label: string; hint: string; files: File[]
+  onChange: (files: File[]) => void; maxFiles?: number
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+
+  const addFiles = useCallback((newFiles: FileList | null) => {
+    if (!newFiles) return
+    const valid = Array.from(newFiles).filter(f => f.type.startsWith("image/"))
+    onChange([...files, ...valid].slice(0, maxFiles))
+  }, [files, maxFiles, onChange])
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">{label}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>
+      </div>
+
+      {files.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          {files.map((f, i) => {
+            const url = URL.createObjectURL(f)
+            return (
+              <div key={i} className="relative w-20 h-20 rounded-[10px] overflow-hidden border border-border flex-shrink-0">
+                <Image src={url} alt="" fill className="object-cover" />
+                <button
+                  type="button"
+                  onClick={() => onChange(files.filter((_, j) => j !== i))}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {files.length < maxFiles && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={e => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files) }}
+          className={cn(
+            "w-full border-[1.5px] border-dashed rounded-[12px] py-5 flex flex-col items-center gap-1.5 transition-colors",
+            dragging
+              ? "border-primary bg-[hsl(var(--brand-soft))]"
+              : "border-border hover:border-primary/50 hover:bg-muted/30"
+          )}
+        >
+          <Upload className="w-4 h-4 text-muted-foreground" />
+          <span className="text-[12px] text-muted-foreground">
+            {files.length === 0 ? "Click or drag to upload" : "Add another"}
+          </span>
+        </button>
+      )}
+
+      <input
+        ref={inputRef} type="file" accept="image/*"
+        multiple={maxFiles > 1} className="hidden"
+        onChange={e => addFiles(e.target.files)}
+      />
+    </div>
+  )
+}
+
+// ─── Analysing step ───────────────────────────────────────────────────────────
+
+function AnalysingStep({ error, onRetry }: { error: string | null; onRetry: () => void }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [doneSet, setDoneSet] = useState<Set<number>>(new Set())
 
   const items = [
-    "Setting up your renovation plan",
-    "Loading your phase checklist",
-    "Setting up your budget tracker",
-    "Getting your materials list ready",
-    "Almost there",
+    "Uploading your photos",
+    "Reading your space",
+    "Checking local material costs",
+    "Calculating what fits your budget",
+    "Building your analysis",
   ]
 
   useEffect(() => {
@@ -113,9 +173,9 @@ function GeneratingStep({ projectName, error, onRetry }: { projectName: string; 
     const timer = setTimeout(() => {
       setDoneSet(prev => new Set(Array.from(prev).concat(activeIdx)))
       setActiveIdx(prev => prev + 1)
-    }, 650)
+    }, 800)
     return () => clearTimeout(timer)
-  }, [activeIdx, error])
+  }, [activeIdx, error, items.length])
 
   if (error) {
     return (
@@ -138,10 +198,8 @@ function GeneratingStep({ projectName, error, onRetry }: { projectName: string; 
     <div className="px-8 py-12">
       <div className="text-center mb-8">
         <div className="w-11 h-11 border-[3px] border-[hsl(var(--brand-soft))] border-t-primary rounded-full animate-spin mx-auto mb-4" />
-        <h2 className="font-serif text-[22px] font-semibold text-foreground mb-1.5">
-          {projectName ? `Setting up "${projectName}"` : 'Setting up your renovation'}
-        </h2>
-        <p className="text-[13px] text-muted-foreground">Just a moment.</p>
+        <h2 className="font-serif text-[22px] font-semibold text-foreground mb-1.5">Analysing your space…</h2>
+        <p className="text-[13px] text-muted-foreground">Usually takes 10–20 seconds.</p>
       </div>
       <div className="space-y-3 max-w-[260px] mx-auto">
         {items.map((item, i) => {
@@ -170,660 +228,446 @@ function GeneratingStep({ projectName, error, onRetry }: { projectName: string; 
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const BUILD_TYPES = [
-  {
-    id: 'kitchen', emoji: '🍳', title: 'Kitchen remodel', subtitle: 'Full or partial kitchen renovation',
-    set: { siteType: 'existing' as const, projectType: 'residential' as const, scopeOfWork: 'renovation' as const, constructionPath: 'kitchen-reno' as const },
-  },
-  {
-    id: 'bathroom', emoji: '🚿', title: 'Bathroom remodel', subtitle: 'Full or partial bathroom renovation',
-    set: { siteType: 'existing' as const, projectType: 'residential' as const, scopeOfWork: 'renovation' as const, constructionPath: 'bathroom-reno' as const },
-  },
-  {
-    id: 'full-reno', emoji: '🔨', title: 'Full home renovation', subtitle: 'Whole home or multiple floors',
-    set: { siteType: 'existing' as const, projectType: 'residential' as const, scopeOfWork: 'renovation' as const, constructionPath: 'full-reno' as const },
-  },
-  {
-    id: 'addition', emoji: '➕', title: 'Extension / Addition', subtitle: 'Expanding your home footprint',
-    set: { siteType: 'existing' as const, projectType: 'residential' as const, scopeOfWork: 'extension' as const, constructionPath: 'extension' as const },
-  },
-  {
-    id: 'bedroom', emoji: '🛏️', title: 'Bedroom / Living space', subtitle: 'Single-room renovation',
-    set: { siteType: 'existing' as const, projectType: 'residential' as const, scopeOfWork: 'renovation' as const, constructionPath: 'bedroom-reno' as const },
-  },
-  {
-    id: 'multi-room', emoji: '🏠', title: 'Multi-room renovation', subtitle: 'Several rooms being tackled together',
-    set: { siteType: 'existing' as const, projectType: 'residential' as const, scopeOfWork: 'renovation' as const, constructionPath: 'multi-room' as const },
-  },
+const ROOM_TYPES: { id: RoomType; emoji: string; title: string; subtitle: string }[] = [
+  { id: 'bathroom',    emoji: '🛁', title: 'Bathroom',        subtitle: 'Shower, tiling, vanity, fixtures' },
+  { id: 'kitchen',     emoji: '🍳', title: 'Kitchen',         subtitle: 'Cabinets, countertops, appliances' },
+  { id: 'bedroom',     emoji: '🛏️', title: 'Bedroom',         subtitle: 'Layout, flooring, closets' },
+  { id: 'living-room', emoji: '🛋️', title: 'Living Room',     subtitle: 'Open plan, flooring, fireplace' },
+  { id: 'full-home',   emoji: '🏠', title: 'Full Home',       subtitle: 'Whole-house renovation' },
+  { id: 'extension',   emoji: '🏗️', title: 'Extension',       subtitle: 'Adding square footage' },
+  { id: 'outdoor',     emoji: '🌿', title: 'Outdoor / Patio', subtitle: 'Deck, landscaping, pool' },
+  { id: 'multi-room',  emoji: '🔑', title: 'Multiple Rooms',  subtitle: 'Two or more spaces' },
 ]
 
 const HOME_TYPES = [
-  { id: 'house',     emoji: '🏡', title: 'House',              subtitle: 'Detached or semi-detached' },
-  { id: 'apartment', emoji: '🏢', title: 'Apartment',          subtitle: 'Flat in a block or building' },
-  { id: 'flat',      emoji: '🚪', title: 'Flat / Maisonette',  subtitle: 'Ground-floor or multi-level' },
-  { id: 'townhouse', emoji: '🏘️', title: 'Townhouse',          subtitle: 'Multi-storey, terraced' },
-  { id: 'period',    emoji: '🏛️', title: 'Period home',        subtitle: 'Victorian, Edwardian, Art Deco' },
-  { id: 'heritage',  emoji: '🏰', title: 'Heritage / Listed',  subtitle: 'Special conditions may apply' },
+  { id: 'house',     emoji: '🏡', title: 'House',       subtitle: 'Detached or semi-detached' },
+  { id: 'apartment', emoji: '🏢', title: 'Apartment',   subtitle: 'Unit in a block or high-rise' },
+  { id: 'townhouse', emoji: '🏘️', title: 'Townhouse',   subtitle: 'Multi-storey, terraced' },
+  { id: 'condo',     emoji: '🚪', title: 'Condo',       subtitle: 'Condominium unit' },
 ]
 
-const HOME_ERAS = [
-  { id: 'pre-1950',     label: 'Built before 1950',  subtitle: 'Higher chance of asbestos, lead paint, old wiring' },
-  { id: '1950-1980',    label: '1950 – 1980',         subtitle: 'Post-war build — artex, early cavity walls' },
-  { id: '1980-2000',    label: '1980 – 2000',         subtitle: 'Modern services but variable insulation' },
-  { id: '2000-present', label: '2000 onwards',        subtitle: 'Contemporary build standards' },
-]
+const UK_COUNTRIES = ['England', 'Scotland', 'Wales', 'Northern Ireland']
 
-const CURRENCIES = [
-  { code: 'USD', label: 'USD — US Dollar' },
-  { code: 'CAD', label: 'CAD — Canadian Dollar' },
-  { code: 'GBP', label: 'GBP — British Pound' },
-  { code: 'AED', label: 'AED — UAE Dirham' },
-  { code: 'SAR', label: 'SAR — Saudi Riyal' },
-]
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', CAD: '$', GBP: '£', EUR: '€', AUD: '$', AED: 'د.إ', SAR: '﷼',
-}
-
-const PHASES_BY_PATH: Record<string, { id: string; title: string; desc: string }[]> = {
-  'kitchen-reno': [
-    { id: 'kitchen-reno-1', title: 'Planning & Permits',             desc: 'Drawings, approvals, contractor selection' },
-    { id: 'kitchen-reno-2', title: 'Demolition & Strip-out',         desc: 'Remove existing units, services, finishes' },
-    { id: 'kitchen-reno-3', title: 'Plumbing & Electrical Rough-ins', desc: 'First-fix trades before boarding' },
-    { id: 'kitchen-reno-4', title: 'Fitting & Waterproofing',        desc: 'Unit install, splashback, sink, appliances' },
-    { id: 'kitchen-reno-5', title: 'Finishing & Snag',               desc: 'Paint, hardware, commissioning, punch list' },
-  ],
-  'bathroom-reno': [
-    { id: 'bathroom-reno-1', title: 'Planning & Permits',            desc: 'Drawings, wet-area regs, contractor quotes' },
-    { id: 'bathroom-reno-2', title: 'Demolition & Strip-out',        desc: 'Remove fittings, tiles, screed, services' },
-    { id: 'bathroom-reno-3', title: 'Waterproofing & Plumbing',      desc: 'Tanking membrane, first-fix plumbing' },
-    { id: 'bathroom-reno-4', title: 'Tiling & Substrate',            desc: 'Wall/floor tiles, screed, heated floor' },
-    { id: 'bathroom-reno-5', title: 'Fitting, Finishing & Snag',     desc: 'Sanitaryware, screens, fixtures, punch list' },
-  ],
-  'full-reno': [
-    { id: 'full-reno-1', title: 'Discovery & Planning',              desc: 'Survey, hazmat checks, design, permits' },
-    { id: 'full-reno-2', title: 'Demolition & Strip-out',            desc: 'Strip to shell; hazardous material removal' },
-    { id: 'full-reno-3', title: 'Structural Work',                   desc: 'Beams, load-bearing changes, underpinning' },
-    { id: 'full-reno-4', title: 'MEP Rough-ins',                     desc: 'Plumbing, electrical, mechanical first fix' },
-    { id: 'full-reno-5', title: 'Insulation & Waterproofing',        desc: 'Thermal and moisture envelope' },
-    { id: 'full-reno-6', title: 'Fix-out & Joinery',                 desc: 'Drywall, cabinetry, staircase, joinery' },
-    { id: 'full-reno-7', title: 'Finishing, Snag & Closeout',        desc: 'Paint, floors, hardware, final sign-off' },
-  ],
-  'extension': [
-    { id: 'extension-1', title: 'Planning & Permits',                desc: 'Permitted development / planning permission' },
-    { id: 'extension-2', title: 'Groundworks & Foundation',          desc: 'Excavation, drainage diversion, slab / piles' },
-    { id: 'extension-3', title: 'Structure & Weatherproofing',       desc: 'Frame, roof, windows to watertight stage' },
-    { id: 'extension-4', title: 'MEP Rough-ins',                     desc: 'Services integration with existing structure' },
-    { id: 'extension-5', title: 'Fix-out & Finishing',               desc: 'Insulation, drywall, joinery, decoration' },
-    { id: 'extension-6', title: 'Integration & Snag',                desc: 'Opening up to main house, snagging, sign-off' },
-  ],
-  'bedroom-reno': [
-    { id: 'bedroom-reno-1', title: 'Planning & Strip-out',           desc: 'Scope finalised, strip finishes' },
-    { id: 'bedroom-reno-2', title: 'Structural & Rough-ins',         desc: 'Wall changes; electrical / data rough-in' },
-    { id: 'bedroom-reno-3', title: 'Boarding & Insulation',          desc: 'Drywall, sound insulation, skimming' },
-    { id: 'bedroom-reno-4', title: 'Finishing & Decoration',         desc: 'Flooring, paint, fitted furniture, hardware' },
-  ],
-  'multi-room': [
-    { id: 'multi-room-1', title: 'Planning & Phasing Strategy',      desc: 'Sequence rooms to keep home liveable' },
-    { id: 'multi-room-2', title: 'Demolition (by area)',             desc: 'Phased strip-out room by room' },
-    { id: 'multi-room-3', title: 'Structural & MEP Rough-ins',       desc: 'Structural changes and first-fix trades' },
-    { id: 'multi-room-4', title: 'Waterproofing & Substrate',        desc: 'Wet-area tanking, screed, boarding' },
-    { id: 'multi-room-5', title: 'Fix-out & Joinery',                desc: 'Drywall, fitted furniture, stairs if applicable' },
-    { id: 'multi-room-6', title: 'Finishing & Snag',                 desc: 'Decoration, floors, punch list, sign-off' },
-  ],
-}
-
-const BUILD_LABELS: Record<string, string> = {
-  'kitchen':    'kitchen remodel',
-  'bathroom':   'bathroom remodel',
-  'full-reno':  'full home renovation',
-  'addition':   'extension / addition',
-  'bedroom':    'bedroom / living space renovation',
-  'multi-room': 'multi-room renovation',
-}
-
-function defaultContingency(buildType: string, homeEra: string): number {
-  if (homeEra === 'pre-1950') return 25
-  if (buildType === 'addition') return 25
-  if (buildType === 'full-reno' || buildType === 'multi-room') return 20
-  return 15
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main wizard ──────────────────────────────────────────────────────────────
 
 export default function ProjectWizardPage() {
-  const { updateData, data } = useOnboarding()
   const router = useRouter()
-
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const [pd, setPd] = useState<ProjectData>({
-    buildType: data.buildType || '',
-    projectName: data.projectName || '',
-    siteType: (data.siteType as 'existing' | '') || '',
-    projectType: (data.projectType as 'residential' | '') || '',
-    scopeOfWork: (data.scopeOfWork as 'extension' | 'renovation' | '') || '',
-    constructionPath: (data.constructionPath as ProjectData['constructionPath']) || '',
-    homeType: data.homeType || '',
-    homeEra: data.homeEra || '',
-    contingencyPct: data.contingencyPct ?? 15,
-    selectedPhases: data.selectedPhases || [],
-    isProjectUnderway: data.isProjectUnderway || false,
-    completedPhases: data.completedPhases || [],
-    city: data.city || '',
-    country: data.country || '',
-    currency: data.currency || 'USD',
-    quoteFile: null,
-    hasDrawings: false,
-    drawings: [],
-    budget: data.budget || '',
-    startDate: data.startDate || new Date().toISOString().split('T')[0],
-    timeline: data.timeline || '6',
+    roomType: '',
+    projectName: '',
+    homeType: '',
+    currentPhotos: [],
+    inspirationPhotos: [],
+    lengthFt: '',
+    widthFt: '',
+    heightFt: '',
+    inspirationText: '',
+    budget: '',
+    currency: 'GBP',
+    state: '',
+    city: '',
   })
 
   const upd = (updates: Partial<ProjectData>) => setPd(prev => ({ ...prev, ...updates }))
-  const getPhases = () => PHASES_BY_PATH[pd.constructionPath] || []
 
-  useEffect(() => {
-    if (pd.constructionPath) {
-      const phases = PHASES_BY_PATH[pd.constructionPath] || []
-      upd({ selectedPhases: phases.map(p => p.id) })
-    }
-  }, [pd.constructionPath])
+  // ── Submit ─────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    upd({ contingencyPct: defaultContingency(pd.buildType, pd.homeEra) })
-  }, [pd.buildType, pd.homeEra])
-
-  useEffect(() => {
-    if (step === 5) handleComplete()
-  }, [step])
-
-  const handleComplete = async () => {
+  const handleSubmit = useCallback(async () => {
     setError(null)
     try {
-      const supabase = createSupabaseBrowserClient()
-      const uploadedFiles: { path: string; name: string; fileType?: string }[] = []
-
-      if (pd.hasDrawings && pd.drawings.length > 0) {
-        for (const file of pd.drawings) {
-          const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents')
-            .upload(`drawings/${safeName}`, file, { cacheControl: '3600', upsert: false })
-          if (!uploadError && uploadData) uploadedFiles.push({ path: uploadData.path, name: file.name })
-        }
+      const uploadImage = async (file: File, imageType: "current" | "inspiration") => {
+        const fd = new FormData()
+        fd.append("file", file)
+        fd.append("image_type", imageType)
+        const res = await fetch("/api/images/upload", { method: "POST", body: fd })
+        if (!res.ok) throw new Error("Image upload failed")
+        return (await res.json()).path as string
       }
 
-      if (pd.quoteFile) {
-        const safeName = `${Date.now()}-${pd.quoteFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(`quotes/${safeName}`, pd.quoteFile, { cacheControl: '3600', upsert: false })
-        if (!uploadError && uploadData) {
-          uploadedFiles.push({ path: uploadData.path, name: pd.quoteFile.name, fileType: 'invoice' })
-        }
-      }
+      const [currentPaths, inspirationPaths] = await Promise.all([
+        Promise.all(pd.currentPhotos.map(f => uploadImage(f, "current"))),
+        Promise.all(pd.inspirationPhotos.map(f => uploadImage(f, "inspiration"))),
+      ])
 
-      const { drawings: _f, quoteFile: _q, ...serializable } = pd
-      updateData({ ...serializable })
+      const lengthM = parseFloat(pd.lengthFt) || 0
+      const widthM  = parseFloat(pd.widthFt)  || 0
+      const heightM = parseFloat(pd.heightFt) || 0
+      const floorAreaSqm = lengthM > 0 && widthM > 0 ? Math.round(lengthM * widthM * 10) / 10 : undefined
 
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...serializable, uploadedFiles }),
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomType: pd.roomType,
+          budget: Number(pd.budget.replace(/,/g, '')),
+          state: pd.state,
+          city: pd.city,
+          inspirationText: pd.inspirationText || undefined,
+          currentImagePaths: currentPaths,
+          inspirationImagePaths: inspirationPaths,
+          measurements: { lengthFt: lengthM, widthFt: widthM, heightFt: heightM, floorAreaSqft: floorAreaSqm },
+          homeType: pd.homeType || undefined,
+          currency: pd.currency,
+          projectName: pd.projectName || undefined,
+        }),
       })
 
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.message || 'Something went wrong')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || "Analysis failed")
       }
 
-      updateData({ projectName: pd.projectName })
-      router.push('/auth/signup/setup')
+      const { sessionId } = await res.json()
+      router.push(`/results/${sessionId}`)
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || "Something went wrong")
     }
-  }
+  }, [pd, router])
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (step === 5) handleSubmit()
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+
+  const lengthM = parseFloat(pd.lengthFt) || 0
+  const widthM  = parseFloat(pd.widthFt)  || 0
+  const heightM = parseFloat(pd.heightFt) || 0
+  const floorAreaSqm = lengthM > 0 && widthM > 0 ? Math.round(lengthM * widthM * 10) / 10 : null
+  const wallAreaSqm  = (lengthM > 0 && widthM > 0 && heightM > 0)
+    ? Math.round(2 * (lengthM + widthM) * heightM * 10) / 10
+    : null
 
   const budgetNum = parseFloat(pd.budget.replace(/,/g, '')) || 0
-  const reserve = Math.round(budgetNum * pd.contingencyPct / 100)
-  const workingBudget = budgetNum - reserve
-  const currencySymbol = CURRENCY_SYMBOLS[pd.currency] || '$'
+  const currencySymbol = '£'
 
-  // ── Validation ────────────────────────────────────────────────────────────
+  // ── Validation ─────────────────────────────────────────────────────────────
 
   const valid = [
-    !!pd.buildType && pd.projectName.trim().length > 0,
-    !!pd.homeType && !!pd.homeEra && pd.city.trim().length > 0 && pd.country.trim().length > 0,
-    true,
-    !!pd.budget && !!pd.startDate,
+    // Step 0 — room type required; name optional
+    !!pd.roomType,
+    // Step 1 — at least one current photo
+    pd.currentPhotos.length > 0,
+    // Step 2 — all three measurements
+    pd.lengthFt !== '' && pd.widthFt !== '' && pd.heightFt !== '',
+    // Step 3 — budget + state + city
+    pd.budget !== '' && budgetNum >= 1000 && pd.state !== '' && pd.city.trim().length > 0,
+    // Step 4 — review (always valid)
     true,
   ]
 
-  // ── Step definitions ──────────────────────────────────────────────────────
+  // ── Step content ───────────────────────────────────────────────────────────
 
-  const steps = [
+  const STEP_META = [
     {
       label: 'Step 1 of 5',
-      title: 'What are you renovating?',
-      subtitle: "We'll set up your renovation plan, budget tracker, and timeline automatically.",
-      content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2.5">
-            {BUILD_TYPES.map(bt => (
-              <OptionCard
-                key={bt.id}
-                emoji={bt.emoji}
-                title={bt.title}
-                subtitle={bt.subtitle}
-                selected={pd.buildType === bt.id}
-                onClick={() => upd({ buildType: bt.id, ...bt.set })}
-              />
-            ))}
-          </div>
-          {pd.buildType && (
-            <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">
-                Give it a name
-              </label>
-              <Input
-                placeholder='e.g. "Our kitchen" or "Master bathroom 2025"'
-                value={pd.projectName}
-                onChange={e => upd({ projectName: e.target.value })}
-                className="bg-muted border-border focus:border-primary text-[13px]"
-                autoFocus
-              />
-            </div>
-          )}
-        </div>
-      ),
+      title: 'What are you remodeling?',
+      subtitle: "Pick the space and give your project a name — we'll tailor everything to it.",
     },
     {
       label: 'Step 2 of 5',
-      title: 'Tell us about your home',
-      subtitle: 'This helps us tailor your renovation plan and flag anything to watch out for.',
-      content: (
-        <div className="space-y-4">
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-2">
-              What type of home is it?
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {HOME_TYPES.map(ht => (
+      title: 'Show us your space',
+      subtitle: 'Upload a photo of how it looks today, and one of the look you want to achieve.',
+    },
+    {
+      label: 'Step 3 of 5',
+      title: 'Measure your space',
+      subtitle: 'A quick measurement helps us calculate materials and costs accurately.',
+    },
+    {
+      label: 'Step 4 of 5',
+      title: "What's your budget?",
+      subtitle: 'Be honest — we figure out exactly how much of your goal is achievable in your area.',
+    },
+    {
+      label: 'Step 5 of 5',
+      title: 'Review and analyse',
+      subtitle: "Looks good — here's what we'll analyse. Hit the button when you're ready.",
+    },
+  ]
+
+  const renderStep = () => {
+    switch (step) {
+      // ── Step 0: Room type ────────────────────────────────────────────────
+      case 0:
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2.5">
+              {ROOM_TYPES.map(rt => (
                 <OptionCard
-                  key={ht.id}
-                  emoji={ht.emoji}
-                  title={ht.title}
-                  subtitle={ht.subtitle}
-                  selected={pd.homeType === ht.id}
-                  onClick={() => upd({ homeType: ht.id })}
-                  small
+                  key={rt.id}
+                  emoji={rt.emoji}
+                  title={rt.title}
+                  subtitle={rt.subtitle}
+                  selected={pd.roomType === rt.id}
+                  onClick={() => upd({ roomType: rt.id })}
                 />
               ))}
             </div>
-          </div>
-          {pd.homeType && (
-            <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-2">
-                Roughly when was it built?
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {HOME_ERAS.map(era => (
-                  <button
-                    key={era.id}
-                    type="button"
-                    onClick={() => upd({ homeEra: era.id })}
-                    className={cn(
-                      "w-full text-left p-3 rounded-[12px] border-[1.5px] transition-all",
-                      pd.homeEra === era.id
-                        ? "border-primary bg-[hsl(var(--brand-soft))] shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]"
-                        : "border-border bg-card hover:border-primary/40 hover:bg-muted/30"
-                    )}
-                  >
-                    <p className="text-[12px] font-semibold text-foreground">{era.label}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{era.subtitle}</p>
-                  </button>
-                ))}
+            {pd.roomType && (
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">
+                  Give it a name <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <Input
+                  placeholder='e.g. "Master bathroom" or "Our new kitchen"'
+                  value={pd.projectName}
+                  onChange={e => upd({ projectName: e.target.value })}
+                  className="bg-muted border-border focus:border-primary text-[13px]"
+                  autoFocus
+                />
               </div>
-              {pd.homeEra === 'pre-1950' && (
-                <div className="mt-3">
-                  <WizardNote>
-                    Older homes often hide surprises — asbestos, lead paint, or outdated wiring. We've set your contingency reserve higher to account for this.
-                  </WizardNote>
+            )}
+          </div>
+        )
+
+      // ── Step 1: Photos ───────────────────────────────────────────────────
+      case 1:
+        return (
+          <div className="space-y-5">
+            <ImageDropZone
+              label="Current photos"
+              hint="How the space looks right now (up to 3 photos)"
+              files={pd.currentPhotos}
+              onChange={f => upd({ currentPhotos: f })}
+              maxFiles={3}
+            />
+            <div className="h-px bg-border" />
+            <ImageDropZone
+              label="Inspiration photo"
+              hint="A Pinterest pin, magazine image, or screenshot of the look you want"
+              files={pd.inspirationPhotos}
+              onChange={f => upd({ inspirationPhotos: f })}
+              maxFiles={1}
+            />
+            <WizardNote>
+              No inspiration photo? No problem — skip it and we'll base the analysis on your current space and budget.
+            </WizardNote>
+          </div>
+        )
+
+      // ── Step 2: Measurements ─────────────────────────────────────────────
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { key: 'lengthFt' as const, label: 'Length', icon: '↔️', placeholder: '3.5' },
+                { key: 'widthFt'  as const, label: 'Width',  icon: '↕️', placeholder: '2.5' },
+                { key: 'heightFt' as const, label: 'Height', icon: '↑',  placeholder: '2.4' },
+              ].map(({ key, label, icon, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">
+                    {icon} {label}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder={placeholder}
+                      value={pd[key]}
+                      onChange={e => upd({ [key]: e.target.value })}
+                      className="bg-muted border-border focus:border-primary text-[13px] font-mono pr-7"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">m</span>
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {floorAreaSqm !== null && (
+              <div className="rounded-[12px] bg-muted p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-muted-foreground">Floor area</span>
+                  <span className="font-mono font-semibold text-foreground">{floorAreaSqm} m²</span>
+                </div>
+                {wallAreaSqm !== null && (
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-muted-foreground">Wall area (approx)</span>
+                    <span className="font-mono font-semibold text-foreground">{wallAreaSqm} m²</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="h-px bg-border" />
+
+            <div>
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">
+                What would you like to change? <span className="normal-case font-normal">(optional)</span>
+              </label>
+              <textarea
+                rows={3}
+                placeholder='"New shower, better storage, feels dated — want it to feel modern and spa-like"'
+                value={pd.inspirationText}
+                onChange={e => upd({ inspirationText: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-[10px] border border-border bg-muted text-[13px] text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
+            </div>
+          </div>
+        )
+
+      // ── Step 3: Budget + location ─────────────────────────────────────────
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">Total budget</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground">£</span>
+                <Input
+                  placeholder="8,000"
+                  value={pd.budget}
+                  onChange={e => upd({ budget: e.target.value })}
+                  className="bg-muted border-border focus:border-primary text-[13px] pl-6"
+                />
+              </div>
+              {pd.budget && budgetNum < 1000 && (
+                <p className="text-[11px] text-destructive mt-1">Minimum £1,000</p>
               )}
             </div>
-          )}
-          {pd.homeEra && (
+
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">Your city</label>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">Country</label>
+                <select
+                  value={pd.state}
+                  onChange={e => upd({ state: e.target.value })}
+                  className="w-full bg-muted border-[1.5px] border-border rounded-[10px] px-3 py-[9px] text-[13px] text-foreground font-sans outline-none focus:border-primary transition-colors"
+                >
+                  <option value="">Select country</option>
+                  {UK_COUNTRIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">City / Town</label>
                 <Input
-                  placeholder="e.g. London"
+                  placeholder="e.g. Manchester"
                   value={pd.city}
                   onChange={e => upd({ city: e.target.value })}
                   className="bg-muted border-border focus:border-primary text-[13px]"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">Country</label>
-                <Input
-                  placeholder="e.g. UK"
-                  value={pd.country}
-                  onChange={e => upd({ country: e.target.value })}
-                  className="bg-muted border-border focus:border-primary text-[13px]"
-                />
-              </div>
             </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      label: 'Step 3 of 5',
-      title: 'Where are you in the project?',
-      subtitle: "You can join mid-renovation — we'll catch up to where you are.",
-      content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2.5">
-            <OptionCard
-              emoji="🌱"
-              title="Just starting out"
-              subtitle="Planning or about to begin demo"
-              selected={!pd.isProjectUnderway}
-              onClick={() => upd({ isProjectUnderway: false, completedPhases: [] })}
-            />
-            <OptionCard
-              emoji="🔧"
-              title="Already in progress"
-              subtitle="Work has already started"
-              selected={pd.isProjectUnderway}
-              onClick={() => upd({ isProjectUnderway: true })}
-            />
-          </div>
-          {pd.isProjectUnderway && (
-            <div className="space-y-3">
-              <WizardNote>
-                No worries — we'll mark earlier phases as complete and start tracking from where you are now.
-              </WizardNote>
-              <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-2">
-                  Which phases are done?
-                </p>
-                <div className="space-y-1.5">
-                  {getPhases().map(phase => {
-                    const done = pd.completedPhases.includes(phase.id)
-                    return (
-                      <button
-                        key={phase.id}
-                        type="button"
-                        onClick={() => {
-                          const updated = done
-                            ? pd.completedPhases.filter(id => id !== phase.id)
-                            : [...pd.completedPhases, phase.id]
-                          upd({ completedPhases: updated })
-                        }}
-                        className={cn(
-                          "w-full flex items-center gap-3 p-3 rounded-[10px] border-[1.5px] text-left transition-all",
-                          done
-                            ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800"
-                            : "border-border hover:border-primary/30"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-5 h-5 rounded-full border-[2px] flex items-center justify-center flex-shrink-0 transition-all",
-                          done ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground/30"
-                        )}>
-                          {done && <Check size={11} className="text-white" strokeWidth={3} />}
-                        </div>
-                        <div>
-                          <div className={cn(
-                            "text-[12px] font-medium",
-                            done ? "line-through text-muted-foreground" : "text-foreground"
-                          )}>
-                            {phase.title}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">{phase.desc}</div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      label: 'Step 4 of 5',
-      title: "What's your budget?",
-      subtitle: 'Be honest here — we help you protect a contingency reserve for the surprises.',
-      content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">Total budget</label>
-              <Input
-                placeholder="e.g. 55,000"
-                value={pd.budget}
-                onChange={e => upd({ budget: e.target.value })}
-                className="bg-muted border-border focus:border-primary text-[13px]"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">Currency</label>
-              <select
-                value={pd.currency}
-                onChange={e => upd({ currency: e.target.value })}
-                className="w-full bg-muted border-[1.5px] border-border rounded-[10px] px-3 py-[9px] text-[13px] text-foreground font-sans outline-none focus:border-primary transition-colors"
-              >
-                {CURRENCIES.map(c => (
-                  <option key={c.code} value={c.code}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          {budgetNum > 0 && (
-            <div className="rounded-[12px] bg-muted p-4 space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[12px] font-semibold text-foreground">Contingency reserve</p>
-                  <p className="text-[11px] text-muted-foreground">Set aside for unexpected costs</p>
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <input
-                    type="number" min="0" max="50" step="1"
-                    value={pd.contingencyPct}
-                    onChange={e => upd({ contingencyPct: Math.min(50, Math.max(0, parseInt(e.target.value) || 0)) })}
-                    className="w-12 bg-background border border-border rounded-lg px-2 py-1 text-[13px] text-center font-mono focus:outline-none focus:border-primary"
+            <div className="h-px bg-border" />
+
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-2">
+                Type of home <span className="normal-case font-normal">(optional)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {HOME_TYPES.map(ht => (
+                  <OptionCard
+                    key={ht.id}
+                    emoji={ht.emoji}
+                    title={ht.title}
+                    subtitle={ht.subtitle}
+                    selected={pd.homeType === ht.id}
+                    onClick={() => upd({ homeType: pd.homeType === ht.id ? '' : ht.id })}
+                    small
                   />
-                  <span className="text-[12px] text-muted-foreground">%</span>
-                  <span className="text-[12px] font-mono text-muted-foreground">=</span>
-                  <span className="text-[12px] font-mono font-semibold text-foreground">
-                    {currencySymbol}{reserve.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="h-px bg-border" />
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] text-muted-foreground">Working budget</span>
-                <span className="text-[14px] font-semibold font-mono text-foreground">
-                  {currencySymbol}{workingBudget.toLocaleString()}
-                </span>
+                ))}
               </div>
             </div>
-          )}
-
-          <WizardNote>
-            Renovations typically run 10–25% over initial estimates. Your contingency reserve stays protected and only gets used when something unexpected comes up.
-          </WizardNote>
-
-          <div className="h-px bg-border" />
-
-          <div>
-            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">When do you plan to start?</label>
-            <Input
-              type="date"
-              value={pd.startDate}
-              onChange={e => upd({ startDate: e.target.value })}
-              className="bg-muted border-border focus:border-primary text-[13px]"
-            />
           </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-1.5">How long do you expect it to take?</label>
-            <input
-              type="range" min="1" max="12" step="1"
-              value={pd.timeline}
-              onChange={e => upd({ timeline: e.target.value })}
-              className="w-full accent-primary"
-            />
-            <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5">
-              <span>1 month</span>
-              <span className="font-semibold text-foreground">
-                {pd.timeline} month{parseInt(pd.timeline) !== 1 ? 's' : ''}
-              </span>
-              <span>12 months</span>
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      label: 'Step 5 of 5',
-      title: "Got a quote? Let’s check it.",
-      subtitle: "Drop a contractor quote below and we'll flag any line items that look above market rate. Completely optional — you can do this from your dashboard anytime.",
-      content: (
-        <div className="space-y-4">
-          <label className={cn(
-            "block w-full rounded-[14px] border-[2px] border-dashed cursor-pointer transition-all text-center py-8 px-4",
-            pd.quoteFile
-              ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
-              : "border-border hover:border-primary/50 hover:bg-muted/30"
-          )}>
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.heic,.webp"
-              className="sr-only"
-              onChange={e => upd({ quoteFile: e.target.files?.[0] || null })}
-            />
-            {pd.quoteFile ? (
-              <div className="space-y-2">
-                <div className="text-2xl">📄</div>
-                <p className="text-[13px] font-semibold text-foreground">{pd.quoteFile.name}</p>
-                <p className="text-[11px] text-emerald-600 font-medium">Ready to analyse ✓</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-2xl text-muted-foreground">📂</div>
-                <p className="text-[13px] font-medium text-foreground">Click to upload a contractor quote</p>
-                <p className="text-[11px] text-muted-foreground">PDF or image · your data stays private</p>
-              </div>
-            )}
-          </label>
-          {pd.quoteFile && (
-            <button
-              type="button"
-              onClick={() => upd({ quoteFile: null })}
-              className="text-[11px] text-muted-foreground hover:text-foreground underline block"
-            >
-              Remove file
-            </button>
-          )}
-          <WizardNote>
-            We compare each line item against current rates for your area — labour, tiling, plastering, electrical, and more. Most overcharging happens on labour rates.
-          </WizardNote>
+        )
 
-          <div className="bg-muted rounded-[12px] p-4">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3">
-              Your renovation plan
-            </p>
-            <div>
-              {getPhases().map((phase, i) => (
-                <div
-                  key={phase.id}
-                  className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0 last:pb-0"
-                >
-                  <div className="w-[20px] h-[20px] rounded-full bg-card border border-border flex items-center justify-center text-[10px] font-semibold text-muted-foreground flex-shrink-0">
-                    {i + 1}
-                  </div>
-                  <div>
-                    <div className="text-[12px] font-medium text-foreground">{phase.title}</div>
-                    <div className="text-[11px] text-muted-foreground">{phase.desc}</div>
-                  </div>
+      // ── Step 4: Review ────────────────────────────────────────────────────
+      case 4:
+        return (
+          <div className="space-y-4">
+            <div className="rounded-[12px] bg-muted p-4 space-y-2.5">
+              {[
+                {
+                  label: 'Space',
+                  value: ROOM_TYPES.find(r => r.id === pd.roomType)?.title ?? pd.roomType,
+                },
+                pd.projectName ? { label: 'Name', value: pd.projectName } : null,
+                {
+                  label: 'Photos',
+                  value: [
+                    pd.currentPhotos.length > 0 ? `${pd.currentPhotos.length} current` : null,
+                    pd.inspirationPhotos.length > 0 ? `${pd.inspirationPhotos.length} inspiration` : null,
+                  ].filter(Boolean).join(', ') || 'None uploaded',
+                },
+                floorAreaSqm !== null ? {
+                  label: 'Measurements',
+                  value: `${pd.lengthFt} × ${pd.widthFt} × ${pd.heightFt} m  ·  ${floorAreaSqm} m² floor`,
+                } : null,
+                {
+                  label: 'Budget',
+                  value: `£${budgetNum.toLocaleString()}`,
+                },
+                (pd.city || pd.state) ? { label: 'Location', value: [pd.city, pd.state].filter(Boolean).join(', ') } : null,
+                pd.homeType ? {
+                  label: 'Home type',
+                  value: HOME_TYPES.find(h => h.id === pd.homeType)?.title ?? pd.homeType,
+                } : null,
+                pd.inspirationText ? { label: 'Goals', value: `"${pd.inspirationText}"` } : null,
+              ].filter(Boolean).map((row, i) => (
+                <div key={i} className="flex items-start justify-between gap-4 text-[12px]">
+                  <span className="text-muted-foreground flex-shrink-0">{row!.label}</span>
+                  <span className="font-medium text-foreground text-right">{row!.value}</span>
                 </div>
               ))}
             </div>
-          </div>
 
-          {budgetNum > 0 && (
-            <div className="flex items-center justify-between rounded-[10px] bg-[hsl(var(--brand-soft))] border border-primary/15 px-3.5 py-2.5">
-              <p className="text-[11.5px] text-foreground/80">
-                {pd.contingencyPct}% contingency reserve locked in
-              </p>
-              <p className="text-[12px] font-semibold font-mono text-foreground">
-                Working budget {currencySymbol}{workingBudget.toLocaleString()}
-              </p>
-            </div>
-          )}
-        </div>
-      ),
-    },
-  ]
+            <WizardNote>
+              We'll analyse your space and tell you exactly what you can achieve — in about 15 seconds.
+            </WizardNote>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const progressPct = step >= 5 ? 100 : Math.round(((step + 1) / 5) * 100)
-  const isGenerating = step === 5
+  const isAnalysing = step === 5
 
   return (
     <div className="w-full max-w-[520px] px-4 py-6">
-      {/* Top progress bar */}
-      <div className="h-[3px] bg-muted rounded-full overflow-hidden">
+      <div className="h-[3px] bg-muted rounded-full overflow-hidden mb-0">
         <div
           className="h-full bg-primary rounded-full transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
           style={{ width: `${progressPct}%` }}
         />
       </div>
 
-      {/* Card */}
       <div className="bg-card rounded-[18px] shadow-[0_8px_40px_rgba(28,25,23,0.10),0_2px_8px_rgba(28,25,23,0.05)] overflow-hidden">
-
-        {isGenerating ? (
-          <GeneratingStep
-            projectName={pd.projectName}
+        {isAnalysing ? (
+          <AnalysingStep
             error={error}
-            onRetry={() => {
-              setError(null)
-              setStep(4)
-            }}
+            onRetry={() => { setError(null); setStep(4) }}
           />
         ) : (
           <>
-            {/* Header */}
             <div className="px-8 pt-8 pb-0 text-center">
               <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-2">
-                {steps[step].label}
+                {STEP_META[step].label}
               </div>
               <h1 className="font-serif text-[26px] font-semibold text-foreground leading-tight mb-2">
-                {steps[step].title}
+                {STEP_META[step].title}
               </h1>
               <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[340px] mx-auto">
-                {steps[step].subtitle}
+                {STEP_META[step].subtitle}
               </p>
             </div>
 
-            {/* Body */}
             <div className="px-8 py-6">
-              {steps[step].content}
+              {renderStep()}
             </div>
 
-            {/* Footer */}
             <div className="px-8 pb-8 flex items-center justify-between">
               {step > 0 ? (
                 <button
@@ -831,8 +675,7 @@ export default function ProjectWizardPage() {
                   onClick={() => setStep(s => s - 1)}
                   className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <ChevronLeft size={14} />
-                  Back
+                  <ChevronLeft size={14} /> Back
                 </button>
               ) : <div />}
 
@@ -847,7 +690,10 @@ export default function ProjectWizardPage() {
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 )}
               >
-                {step < 4 ? <>Continue <ChevronRight size={14} /></> : <>Build my renovation <ChevronRight size={14} /></>}
+                {step < 4
+                  ? <><span>Continue</span> <ChevronRight size={14} /></>
+                  : <><span>Analyse my space</span> <ChevronRight size={14} /></>
+                }
               </button>
             </div>
           </>

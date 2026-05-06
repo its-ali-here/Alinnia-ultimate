@@ -3,200 +3,140 @@
 import { useEffect, useRef, useState } from "react"
 import { useActiveProject } from "@/contexts/project-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
-import { getProjectDocuments } from "@/lib/project-queries"
-import type { Document, FileType } from "@/lib/project-queries"
+import { getProjectImages } from "@/lib/project-queries"
+import type { ProjectImage } from "@/lib/project-queries"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertTriangle, Plus, Upload } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Plus } from "lucide-react"
+import Image from "next/image"
 
-type FilterTab = 'All' | 'Plans' | 'Permits' | 'Contracts' | 'Photos' | 'Receipts' | 'Other'
+type FilterTab = 'All' | 'Current' | 'Inspiration'
 
-const FILE_TYPE_TO_CATEGORY: Record<FileType, FilterTab> = {
-  drawing: 'Plans',
-  permit: 'Permits',
-  contract: 'Contracts',
-  photo: 'Photos',
-  invoice: 'Receipts',
-  receipt: 'Receipts',
-  other: 'Other',
-}
-
-const CATEGORY_STYLE: Record<string, { bg: string; stroke: string; badge: string }> = {
-  Plans:    { bg: 'bg-[hsl(var(--brand-soft))]', stroke: 'text-primary', badge: 'bg-[hsl(var(--brand-soft))] text-primary' },
-  Permits:  { bg: 'bg-amber-50', stroke: 'text-amber-600', badge: 'bg-amber-100 text-amber-700' },
-  Contracts:{ bg: 'bg-blue-50', stroke: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
-  Photos:   { bg: 'bg-emerald-50', stroke: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
-  Receipts: { bg: 'bg-muted', stroke: 'text-muted-foreground', badge: 'bg-muted text-muted-foreground' },
-  Other:    { bg: 'bg-muted', stroke: 'text-muted-foreground', badge: 'bg-muted text-muted-foreground' },
-}
-
-const FILE_TYPE_OPTIONS: { value: FileType; label: string }[] = [
-  { value: 'drawing',  label: 'Plan / Drawing' },
-  { value: 'permit',   label: 'Permit' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'photo',    label: 'Photo' },
-  { value: 'invoice',  label: 'Invoice / Receipt' },
-  { value: 'other',    label: 'Other' },
-]
-
-const TABS: FilterTab[] = ['All', 'Plans', 'Permits', 'Contracts', 'Photos', 'Receipts', 'Other']
+const TABS: FilterTab[] = ['All', 'Current', 'Inspiration']
 
 export default function FilesPage() {
   const { activeProject } = useActiveProject()
-  const [documents, setDocuments] = useState<Document[]>([])
+  const supabase = createSupabaseBrowserClient()
+  const [images, setImages] = useState<ProjectImage[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<FilterTab>('All')
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [selectedType, setSelectedType] = useState<FileType>('drawing')
   const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [pendingType, setPendingType] = useState<'current' | 'inspiration'>('current')
 
-  const loadDocuments = async () => {
+  const loadImages = async () => {
     if (!activeProject) return
-    const supabase = createSupabaseBrowserClient()
-    const data = await getProjectDocuments(supabase, activeProject.id)
-    setDocuments(data)
+    const data = await getProjectImages(supabase, activeProject.id)
+    setImages(data)
     setLoading(false)
   }
 
-  useEffect(() => { setLoading(true); loadDocuments() }, [activeProject])
+  useEffect(() => { setLoading(true); loadImages() }, [activeProject]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) { setSelectedFile(file); setUploadDialogOpen(true) }
+    if (!file || !activeProject) return
+
+    setUploading(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("image_type", pendingType)
+
+    try {
+      const res = await fetch("/api/images/upload", { method: "POST", body: fd })
+      if (!res.ok) return
+      const { path } = await res.json()
+
+      const { error } = await supabase.from("project_images").insert({
+        project_id: activeProject.id,
+        image_type: pendingType,
+        storage_path: path,
+        display_order: images.length,
+      })
+
+      if (!error) await loadImages()
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
   }
 
-  const handleUpload = async () => {
-    if (!activeProject || !selectedFile) return
-    setUploading(true)
-    setUploadError(null)
-
-    const formData = new FormData()
-    formData.append("file", selectedFile)
-    formData.append("project_id", activeProject.id)
-    formData.append("file_type", selectedType)
-
-    const res = await fetch("/api/upload", { method: "POST", body: formData })
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Upload failed" }))
-      setUploadError(err.error ?? "Upload failed")
-      setUploading(false)
-      return
-    }
-
-    setSelectedFile(null)
-    setUploadDialogOpen(false)
-    setUploading(false)
-    setUploadError(null)
-    if (fileInputRef.current) fileInputRef.current.value = ""
-    await loadDocuments()
+  const getPublicUrl = (path: string) => {
+    const { data } = supabase.storage.from("project-images").getPublicUrl(path)
+    return data.publicUrl
   }
 
   const visible = activeTab === 'All'
-    ? documents
-    : documents.filter(d => FILE_TYPE_TO_CATEGORY[d.file_type] === activeTab)
+    ? images
+    : images.filter(img => img.image_type === activeTab.toLowerCase())
 
   if (loading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-10 rounded-lg" />
-        <div className="grid grid-cols-3 gap-2.5">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}</div>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 flex-wrap">
-        {TABS.map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${activeTab === tab ? 'bg-primary text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
-            {tab}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1 flex-wrap">
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+                activeTab === tab ? 'bg-primary text-white' : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setPendingType('current'); fileInputRef.current?.click() }}
+            disabled={uploading}
+            className="text-[11px] px-3 py-1.5 rounded-[8px] border border-border bg-card hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            + Current photo
           </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-3 gap-2.5">
-        {visible.map(doc => {
-          const cat = FILE_TYPE_TO_CATEGORY[doc.file_type]
-          const s = CATEGORY_STYLE[cat]
-          return (
-            <div key={doc.id} className="cursor-pointer rounded-lg border border-border bg-card p-3 transition-all hover:shadow-sm hover:border-border/60">
-              <div className={`flex h-9 w-7 items-center justify-center rounded-[5px] ${s.bg} mb-2`}>
-                <svg width="14" height="17" viewBox="0 0 14 17" fill="none" className={s.stroke}>
-                  <path d="M8.5 1.5H3C2.45 1.5 2 1.95 2 2.5V14.5C2 15.05 2.45 15.5 3 15.5H11C11.55 15.5 12 15.05 12 14.5V5L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  <path d="M8.5 1.5V5H12" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </div>
-              <p className="text-[11px] font-medium text-foreground leading-snug mb-1.5 break-words">{doc.file_name}</p>
-              <div className="flex items-center gap-1">
-                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${s.badge}`}>{cat}</span>
-                <span className="text-[9px] text-muted-foreground">
-                  {new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Upload tile */}
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-border transition-colors hover:bg-muted"
-        >
-          <Plus className="h-5 w-5 text-muted-foreground/60" strokeWidth={1.5} />
-          <span className="text-[11px] text-muted-foreground">Upload file</span>
+          <button
+            onClick={() => { setPendingType('inspiration'); fileInputRef.current?.click() }}
+            disabled={uploading}
+            className="text-[11px] px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-50"
+          >
+            + Inspiration photo
+          </button>
         </div>
       </div>
 
-      {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
-
-      {/* Type picker dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={v => { setUploadDialogOpen(v); if (!v) setUploadError(null) }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-serif">Upload document</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground truncate">{selectedFile?.name}</p>
-
-            {uploadError && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                <span>{uploadError}</span>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label>Document type</Label>
-              <select
-                value={selectedType}
-                onChange={e => setSelectedType(e.target.value as FileType)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              >
-                {FILE_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+      <div className="grid grid-cols-3 gap-2.5">
+        {visible.map(img => (
+          <div key={img.id} className="relative group rounded-[12px] overflow-hidden border border-border aspect-[4/3] bg-muted">
+            <Image
+              src={getPublicUrl(img.storage_path)}
+              alt={img.image_type}
+              fill
+              className="object-cover"
+            />
+            <div className="absolute bottom-0 inset-x-0 px-2 py-1.5 bg-gradient-to-t from-black/60 to-transparent">
+              <span className="text-[10px] text-white font-medium capitalize">{img.image_type}</span>
             </div>
-            <button
-              onClick={handleUpload}
-              disabled={uploading}
-              className="w-full rounded-full bg-primary py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-            >
-              {uploading ? 'Uploading…' : <span className="flex items-center justify-center gap-2"><Upload className="h-4 w-4" /> Upload</span>}
-            </button>
           </div>
-        </DialogContent>
-      </Dialog>
+        ))}
+
+        {visible.length === 0 && (
+          <div className="col-span-3 py-16 text-center text-[13px] text-muted-foreground">
+            No {activeTab === 'All' ? '' : activeTab.toLowerCase() + ' '}photos yet
+          </div>
+        )}
+      </div>
+
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
     </div>
   )
 }

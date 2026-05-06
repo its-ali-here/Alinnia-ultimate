@@ -22,7 +22,7 @@ export function CtaSection() {
             Start your first project free. No card required. Up and running in minutes.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link href="/auth/signup">
+            <Link href="/start">
               <button className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-semibold text-primary transition-opacity hover:opacity-90">
                 Start your project
                 <ArrowRight className="h-4 w-4" />
