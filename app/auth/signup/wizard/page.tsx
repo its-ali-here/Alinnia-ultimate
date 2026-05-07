@@ -243,7 +243,7 @@ const HOME_TYPES = [
   { id: 'house',     emoji: '🏡', title: 'House',       subtitle: 'Detached or semi-detached' },
   { id: 'apartment', emoji: '🏢', title: 'Apartment',   subtitle: 'Unit in a block or high-rise' },
   { id: 'townhouse', emoji: '🏘️', title: 'Townhouse',   subtitle: 'Multi-storey, terraced' },
-  { id: 'condo',     emoji: '🚪', title: 'Condo',       subtitle: 'Condominium unit' },
+  { id: 'flat',      emoji: '🚪', title: 'Flat',         subtitle: 'Ground-floor or maisonette' },
 ]
 
 const UK_COUNTRIES = ['England', 'Scotland', 'Wales', 'Northern Ireland']

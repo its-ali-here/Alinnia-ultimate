@@ -9,20 +9,22 @@ import {
   CircleDollarSign,
   FlagTriangleRight,
   Settings,
+  Waypoints,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 const mainNav = [
-  { name: "Overview",   href: "/control-centre/overview",   icon: LayoutGrid },
-  { name: "Punch List", href: "/control-centre/punch-list", icon: CheckSquare },
-  { name: "Files",      href: "/control-centre/files",      icon: FileText },
+  { name: "Overview",   href: "/control-centre/overview",    icon: LayoutGrid },
+  { name: "Timeline",   href: "/control-centre/timeline",    icon: Waypoints },
+  { name: "Punch List", href: "/control-centre/punch-list",  icon: CheckSquare },
+  { name: "Budget",     href: "/control-centre/budget", icon: CircleDollarSign },
+  { name: "Files",      href: "/control-centre/files",       icon: FileText },
 ]
 
 const utilNav = [
-  { name: "Budget",    href: "/control-centre/forecasting", icon: CircleDollarSign },
-  { name: "Close-out", href: "/control-centre/closeout",    icon: FlagTriangleRight },
-  { name: "Settings",  href: "/control-centre/settings",    icon: Settings },
+  { name: "Close-out", href: "/control-centre/closeout",  icon: FlagTriangleRight },
+  { name: "Settings",  href: "/control-centre/settings",  icon: Settings },
 ]
 
 export function Sidebar({ isCollapsed }: { isCollapsed: boolean }) {

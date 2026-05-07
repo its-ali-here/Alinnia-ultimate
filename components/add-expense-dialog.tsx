@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
 import type { Project, Phase } from "@/lib/project-queries"
-import { upsertMaterialStock } from "@/lib/project-queries"
 
 const CATEGORIES = [
   'Bricks', 'Cement', 'Steel', 'Sand', 'Crush',
@@ -115,26 +114,7 @@ export function AddExpenseDialog({ project, phases, previousVendors, onSaved, tr
 
     await supabase.from('expenses').insert(payload)
 
-    // When a material delivery is confirmed and has a quantity, increment on-hand stock
-    if (isMaterial && form.delivery_status === 'delivered' && form.quantity) {
-      const qty = parseFloat(form.quantity)
-      if (qty > 0) {
-        const { data: existing } = await supabase
-          .from('material_stock')
-          .select('on_hand_qty')
-          .eq('project_id', project.id)
-          .eq('material_name', form.category)
-          .maybeSingle()
-        if (existing) {
-          await upsertMaterialStock(supabase, project.id, form.category, {
-            unit: form.unit || existing.unit || '',
-            on_hand_qty: (existing.on_hand_qty ?? 0) + qty,
-          })
-        }
-      }
-    }
-
-    setForm(EMPTY_FORM)
+setForm(EMPTY_FORM)
     setShowCustomPaidBy(false)
     setSubmitting(false)
     setOpen(false)

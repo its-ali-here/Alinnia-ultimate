@@ -48,16 +48,6 @@ export interface Expense {
   created_at: string
 }
 
-export interface MaterialStock {
-  id: string
-  project_id: string
-  material_name: string
-  unit: string
-  on_hand_qty: number
-  reorder_threshold: number | null
-  lead_time_days: number
-  updated_at: string
-}
 
 export interface Phase {
   id: string
@@ -84,22 +74,6 @@ export interface Task {
   category?: string
 }
 
-export interface ProjectPhaseWithTemplate {
-  id: string
-  project_id: string
-  phase_template_id: string
-  is_selected: boolean
-  is_completed: boolean
-  created_at: string
-  phase_templates: {
-    id: string
-    construction_path: string
-    phase_key: string
-    name: string
-    description: string | null
-    order_index: number
-  }
-}
 
 export interface ProjectImage {
   id: string
@@ -140,32 +114,7 @@ export async function getProjectPhasesDirectly(
     .eq('project_id', projectId)
     .order('start_date', { ascending: true })
 
-  if (data && data.length > 0) return data as Phase[]
-
-  // No direct phases yet — bootstrap from project_phases + phase_templates
-  const { data: projPhases } = await supabase
-    .from('project_phases')
-    .select('*, phase_templates(*)')
-    .eq('project_id', projectId)
-    .eq('is_selected', true)
-    .order('phase_templates(order_index)', { ascending: true })
-
-  if (!projPhases || projPhases.length === 0) return []
-
-  const today = new Date().toISOString()
-  const toInsert = projPhases.map((pp: ProjectPhaseWithTemplate) => ({
-    project_id: projectId,
-    name: pp.phase_templates.name,
-    description: pp.phase_templates.description ?? null,
-    start_date: today,
-    end_date: today,
-    budget: 0,
-    status: pp.is_completed ? 'completed' : 'not_started',
-    completion_percentage: pp.is_completed ? 100 : 0,
-  }))
-
-  const { data: created } = await supabase.from('phases').insert(toInsert).select('*')
-  return (created as Phase[]) ?? []
+  return (data as Phase[]) ?? []
 }
 
 export async function getSupplierSummary(
@@ -235,18 +184,6 @@ export async function getProjectTasks(
   return (tasks as Task[]) ?? []
 }
 
-export async function getProjectPhases(
-  supabase: SupabaseClient,
-  projectId: string
-): Promise<ProjectPhaseWithTemplate[]> {
-  const { data } = await supabase
-    .from('project_phases')
-    .select('*, phase_templates(*)')
-    .eq('project_id', projectId)
-    .order('phase_templates(order_index)', { ascending: true })
-
-  return (data as ProjectPhaseWithTemplate[]) ?? []
-}
 
 export async function getProjectImages(
   supabase: SupabaseClient,
@@ -315,31 +252,6 @@ export async function ensurePunchListPhase(
   return created?.id ?? null
 }
 
-export async function getMaterialStock(
-  supabase: SupabaseClient,
-  projectId: string
-): Promise<MaterialStock[]> {
-  const { data } = await supabase
-    .from('material_stock')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('material_name', { ascending: true })
-  return (data as MaterialStock[]) ?? []
-}
-
-export async function upsertMaterialStock(
-  supabase: SupabaseClient,
-  projectId: string,
-  materialName: string,
-  updates: { unit?: string; on_hand_qty?: number; reorder_threshold?: number | null; lead_time_days?: number }
-): Promise<void> {
-  await supabase
-    .from('material_stock')
-    .upsert(
-      { project_id: projectId, material_name: materialName, ...updates, updated_at: new Date().toISOString() },
-      { onConflict: 'project_id,material_name' }
-    )
-}
 
 export async function updateExpenseDeliveryStatus(
   supabase: SupabaseClient,

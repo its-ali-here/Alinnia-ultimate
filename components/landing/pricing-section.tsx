@@ -80,12 +80,12 @@ export function PricingSection() {
                 animate={{ opacity: 1, y: 0 }}
                 className="font-serif text-5xl font-semibold text-foreground"
               >
-                ${annual ? annualPrice : monthlyPrice}
+                £{annual ? annualPrice : monthlyPrice}
               </motion.span>
               <span className="mb-1.5 text-sm text-muted-foreground">/ project</span>
             </div>
             {annual && (
-              <p className="mt-1 text-xs text-emerald-600">Billed annually. ${annualPrice * 12}/yr.</p>
+              <p className="mt-1 text-xs text-emerald-600">Billed annually. £{annualPrice * 12}/yr.</p>
             )}
 
             <p className="mt-3 text-xs font-medium text-primary">3-day free trial for your first project.</p>

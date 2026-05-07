@@ -17,7 +17,7 @@ export default function LoginPage() {
           <h2 className="mt-6 text-3xl font-bold tracking-tight">Sign in to your account</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Or{" "}
-            <Link href="/auth/signup/start" className="font-medium text-primary hover:underline">
+            <Link href="/start" className="font-medium text-primary hover:underline">
               create a new account
             </Link>
           </p>

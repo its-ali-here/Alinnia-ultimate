@@ -35,9 +35,34 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    const rows = (data as Project[]) ?? []
+    let rows = (data as Project[]) ?? []
+
+    // Link any pending anonymous project from the wizard flow
+    if (rows.length === 0) {
+      const pendingSessionId = typeof window !== 'undefined'
+        ? localStorage.getItem('pendingSessionId')
+        : null
+
+      if (pendingSessionId) {
+        const res = await fetch('/api/link-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: pendingSessionId }),
+        })
+        if (res.ok) {
+          localStorage.removeItem('pendingSessionId')
+          // Refetch now that the project is linked
+          const { data: linked } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+          rows = (linked as Project[]) ?? []
+        }
+      }
+    }
+
     setProjects(rows)
-    // Keep the current selection if still valid, otherwise auto-pick the newest
     setActiveProject(prev => {
       if (prev && rows.some(r => r.id === prev.id)) {
         return rows.find(r => r.id === prev.id) ?? rows[0] ?? null

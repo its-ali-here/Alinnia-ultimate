@@ -15,7 +15,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { useActiveProject } from "@/contexts/project-context"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Notifications } from "@/components/notifications"
-import { AlinniaChatButton } from "@/components/ai/alinnia-chat-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -23,13 +22,9 @@ import Link from "next/link"
 export function TopNav({
   isCollapsed,
   setIsCollapsed,
-  isChatOpen,
-  setIsChatOpen,
 }: {
   isCollapsed: boolean
   setIsCollapsed: (v: boolean) => void
-  isChatOpen: boolean
-  setIsChatOpen: (v: boolean) => void
 }) {
   const { signOut } = useAuth()
   const { projects, activeProject, setActiveProject, loading } = useActiveProject()
@@ -128,7 +123,6 @@ export function TopNav({
             className="w-52 bg-muted pl-8 shadow-none border-0 text-sm h-8"
           />
         </div>
-        <AlinniaChatButton onClick={() => setIsChatOpen(!isChatOpen)} />
         <Notifications />
         <ModeToggle />
         <DropdownMenu>

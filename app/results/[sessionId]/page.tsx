@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
 import { ArrowRight, Check, X } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,7 +44,7 @@ function FeasibilityBar({ pct }: { pct: number }) {
 
 // ─── Paywall card ─────────────────────────────────────────────────────────────
 
-function PaywallCard({ projectId, sessionId }: { projectId: string; sessionId: string }) {
+function PaywallCard({ sessionId }: { projectId: string; sessionId: string }) {
   const router = useRouter()
   const VALUE_POINTS = [
     "Exact materials list with quantities — tiles, adhesive, grout, fixtures",
@@ -77,13 +76,16 @@ function PaywallCard({ projectId, sessionId }: { projectId: string; sessionId: s
       </ul>
 
       <div className="flex items-baseline gap-2">
-        <span className="text-[28px] font-bold text-foreground">$79</span>
+        <span className="text-[28px] font-bold text-foreground">£79</span>
         <span className="text-[12px] text-muted-foreground">one-time · yours forever</span>
       </div>
 
       <button
         type="button"
-        onClick={() => router.push("/control-centre")}
+        onClick={() => {
+          localStorage.setItem("pendingSessionId", sessionId)
+          router.push(`/auth/register?session=${sessionId}`)
+        }}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-[14px] font-semibold bg-primary text-primary-foreground shadow-[0_2px_12px_hsl(var(--primary)/0.35)] hover:opacity-90 transition-all"
       >
         Start 3-day free trial <ArrowRight className="w-4 h-4" />

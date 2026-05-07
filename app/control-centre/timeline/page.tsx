@@ -1,297 +1,308 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useActiveProject } from "@/contexts/project-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase"
-import { getProjectPhases, getMaterialStock } from "@/lib/project-queries"
-import type { ProjectPhaseWithTemplate, MaterialStock } from "@/lib/project-queries"
-import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, AlertTriangle, Check, CheckCircle2, Package } from "lucide-react"
-import Link from "next/link"
+import { cn } from "@/lib/utils"
+import { Check } from "lucide-react"
 
-const fmt = (d: string) =>
-  new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function getPhaseStatus(
-  phase: ProjectPhaseWithTemplate,
-  index: number,
-  all: ProjectPhaseWithTemplate[]
-): "complete" | "in_progress" | "upcoming" {
-  if (phase.is_completed) return "complete"
-  const prevComplete = all.slice(0, index).every(p => p.is_completed)
-  if (prevComplete && phase.is_selected) return "in_progress"
+interface WorkStep {
+  step: number
+  title: string
+  description: string
+  why: string
+}
+
+// ─── Default stages by room type ─────────────────────────────────────────────
+
+const DEFAULT_STAGES: Record<string, { title: string; description: string }[]> = {
+  bathroom: [
+    { title: "Plan & design",         description: "Confirm layout, choose fixtures, get quotes from plumber and tiler" },
+    { title: "Demolition & strip-out",description: "Remove old suite, tiles, and screed — expose the shell" },
+    { title: "Waterproofing & plumbing", description: "Tanking membrane, first-fix plumbing, waste positions set" },
+    { title: "Tiling & screeding",    description: "Wall and floor tiles laid, floor screed poured" },
+    { title: "Fit-out",               description: "Suite, shower, mirrors, heated towel rail, and accessories installed" },
+    { title: "Snagging & sign-off",   description: "Check everything works, fix minor defects, final clean" },
+  ],
+  kitchen: [
+    { title: "Plan & design",         description: "Finalise layout, select units and appliances, get contractor quotes" },
+    { title: "Demolition & strip-out",description: "Remove old kitchen, expose plumbing and electrical routes" },
+    { title: "Plumbing & electrical rough-in", description: "First-fix trades before boarding — pipes, cables, extraction" },
+    { title: "Units & worktops",      description: "Fit carcasses, hang doors, install worktops and splashback" },
+    { title: "Appliances & finishing",description: "Connect appliances, fit lighting, paint, final hardware" },
+    { title: "Snagging & sign-off",   description: "Check all appliances, fix gaps, final clean" },
+  ],
+  bedroom: [
+    { title: "Plan & design",         description: "Confirm layout, storage plan, flooring and finish choices" },
+    { title: "Preparation",           description: "Strip existing finishes, electrical rough-in if needed" },
+    { title: "Boarding & plastering", description: "Drywall, sound insulation, skim plaster" },
+    { title: "Flooring",              description: "Lay flooring, fit skirting boards" },
+    { title: "Decoration & joinery",  description: "Paint, fitted furniture, wardrobes, lighting" },
+    { title: "Snagging & sign-off",   description: "Punch list, touch-ups, final clean" },
+  ],
+  "living-room": [
+    { title: "Plan & design",         description: "Confirm scope — flooring, walls, fireplace, storage" },
+    { title: "Preparation",           description: "Strip out, any structural work, electrical rough-in" },
+    { title: "Flooring",              description: "Subfloor prep and floor finish laid" },
+    { title: "Walls & decoration",    description: "Plaster, paint, feature wall or panelling" },
+    { title: "Joinery & finishing",   description: "Built-ins, lighting, skirting, architrave" },
+    { title: "Snagging & sign-off",   description: "Punch list, touch-ups, final clean" },
+  ],
+  "full-home": [
+    { title: "Plan & surveys",        description: "Full design package, structural survey, permissions" },
+    { title: "Demolition",            description: "Phased strip-out room by room" },
+    { title: "Structural work",       description: "Beams, load-bearing changes, underpinning if needed" },
+    { title: "MEP rough-in",          description: "Plumbing, electrical, and mechanical first fix throughout" },
+    { title: "Boarding & plastering", description: "Drywall, insulation, skimming across all rooms" },
+    { title: "Fit-out & joinery",     description: "Kitchen, bathrooms, joinery, staircase" },
+    { title: "Decoration & flooring", description: "Paint, floor finishes, tiles, fixtures throughout" },
+    { title: "Snagging & sign-off",   description: "Full punch list, final inspections, handover" },
+  ],
+  extension: [
+    { title: "Planning permission",   description: "Submit drawings, await approval — typically 8 weeks" },
+    { title: "Groundworks",           description: "Excavation, drainage, and foundation poured" },
+    { title: "Structure",             description: "Walls, roof structure, windows to watertight stage" },
+    { title: "MEP rough-in",          description: "Services integrated with existing structure" },
+    { title: "Fit-out & finishing",   description: "Insulation, drywall, joinery, decoration" },
+    { title: "Integration & sign-off",description: "Open up to main house, snagging, building regs sign-off" },
+  ],
+  outdoor: [
+    { title: "Plan & design",         description: "Layout, materials, landscaping brief, contractor quotes" },
+    { title: "Groundworks",           description: "Excavation, drainage, base preparation" },
+    { title: "Hard landscaping",      description: "Paving, decking, retaining walls, fencing" },
+    { title: "Services",              description: "Outdoor electrics, irrigation, lighting" },
+    { title: "Soft landscaping",      description: "Planting, lawn, soil preparation" },
+    { title: "Finishing & sign-off",  description: "Final touches, clean-up, handover" },
+  ],
+  "multi-room": [
+    { title: "Plan & phasing",        description: "Sequence rooms to keep the home liveable during works" },
+    { title: "Demolition by area",    description: "Phased strip-out room by room" },
+    { title: "Structural & MEP",      description: "Structural changes and first-fix trades" },
+    { title: "Wet areas",             description: "Waterproofing, tiling, and screeding in bathrooms" },
+    { title: "Fit-out & joinery",     description: "Kitchen, bedrooms, living spaces fitted out" },
+    { title: "Decoration & flooring", description: "Paint, floor finishes, fixtures throughout" },
+    { title: "Snagging & sign-off",   description: "Full punch list, final clean, handover" },
+  ],
+}
+
+const FALLBACK_STAGES = DEFAULT_STAGES.bathroom
+
+// ─── Stage status ─────────────────────────────────────────────────────────────
+
+type StepState = "done" | "active" | "upcoming"
+
+function getStepState(idx: number, currentStep: number, total: number): StepState {
+  if (idx < currentStep) return "done"
+  if (idx === currentStep) return "active"
   return "upcoming"
 }
 
-function lineStyle(status: string, nextStatus: string | null): React.CSSProperties {
-  if (status === "complete" && nextStatus === "complete")
-    return { background: "rgb(34 197 94)" }
-  if (status === "complete" && nextStatus === "in_progress")
-    return { background: "linear-gradient(180deg, rgb(34 197 94) 0%, hsl(var(--primary)) 100%)" }
-  if (status === "in_progress")
-    return { background: "linear-gradient(180deg, hsl(var(--primary)) 0%, rgb(203 213 225 / 0.35) 100%)" }
-  return { background: "rgb(203 213 225 / 0.3)" }
+// ─── Current step derivation ──────────────────────────────────────────────────
+
+function deriveCurrentStep(
+  guidePurchased: boolean,
+  status: string,
+  totalSteps: number,
+  totalExpenses: number
+): number {
+  if (status === "completed") return totalSteps // all done
+  if (status === "in_progress") {
+    // Estimate progress through stages based on expense activity
+    const midway = Math.floor(totalSteps / 2)
+    return totalExpenses > 0 ? Math.min(midway + 1, totalSteps - 2) : midway
+  }
+  if (guidePurchased) return 1 // Getting quotes = about to start step 2 (index 1)
+  return 0 // Planning
 }
+
+// ─── Node component ───────────────────────────────────────────────────────────
+
+function TimelineNode({
+  state,
+  idx,
+  isLast,
+  title,
+  description,
+}: {
+  state: StepState
+  idx: number
+  isLast: boolean
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex gap-4">
+      {/* Line + dot column */}
+      <div className="flex flex-col items-center flex-shrink-0">
+        {/* Dot */}
+        <div className={cn(
+          "w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+          state === "done"
+            ? "border-primary bg-primary"
+            : state === "active"
+              ? "border-primary bg-[hsl(var(--brand-soft))] shadow-[0_0_0_4px_hsl(var(--primary)/0.12)]"
+              : "border-border bg-background"
+        )}>
+          {state === "done" ? (
+            <Check className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={2.5} />
+          ) : state === "active" ? (
+            <div className="w-2 h-2 rounded-full bg-primary" />
+          ) : (
+            <span className="text-[10px] font-semibold text-muted-foreground/50">{idx + 1}</span>
+          )}
+        </div>
+        {/* Connecting line */}
+        {!isLast && (
+          <div className={cn(
+            "w-0.5 flex-1 min-h-[2rem] mt-1",
+            state === "done" ? "bg-primary/30" : "bg-border"
+          )} />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className={cn(
+        "pb-8 flex-1 min-w-0",
+        isLast && "pb-0"
+      )}>
+        <p className={cn(
+          "text-[14px] font-semibold leading-snug",
+          state === "upcoming" ? "text-muted-foreground" : "text-foreground"
+        )}>
+          {title}
+        </p>
+        <p className={cn(
+          "text-[12px] mt-1 leading-relaxed",
+          state === "upcoming" ? "text-muted-foreground/60" : "text-muted-foreground"
+        )}>
+          {description}
+        </p>
+        {state === "active" && (
+          <span className="inline-flex items-center mt-2 text-[11px] font-semibold text-primary bg-[hsl(var(--brand-soft))] px-2 py-0.5 rounded-full">
+            You are here
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TimelinePage() {
   const { activeProject, loading: projectLoading } = useActiveProject()
-  const [phases, setPhases] = useState<ProjectPhaseWithTemplate[]>([])
-  const [materialStock, setMaterialStock] = useState<MaterialStock[]>([])
-  const [loading, setLoading] = useState(true)
+  const supabase = createSupabaseBrowserClient()
+
+  const [guideSteps, setGuideSteps]   = useState<WorkStep[] | null>(null)
+  const [totalSpent, setTotalSpent]   = useState(0)
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    if (!activeProject) { setLoading(false); return }
-    const supabase = createSupabaseBrowserClient()
-    Promise.all([
-      getProjectPhases(supabase, activeProject.id),
-      getMaterialStock(supabase, activeProject.id),
-    ]).then(([data, stk]) => {
-      setPhases(data)
-      setMaterialStock(stk)
-      setLoading(false)
-    })
-  }, [activeProject])
+    if (!activeProject) { setDataLoading(false); return }
 
-  const lowStockItems = materialStock.filter(
-    s => s.reorder_threshold !== null && s.on_hand_qty < s.reorder_threshold
-  )
+    const load = async () => {
+      // Try guide work sequence
+      const { data: guide } = await supabase
+        .from("renovation_guides")
+        .select("work_sequence")
+        .eq("project_id", activeProject.id)
+        .maybeSingle()
 
-  const isOverdue = activeProject?.end_date
-    ? new Date(activeProject.end_date) < new Date()
-    : false
+      if (guide?.work_sequence && Array.isArray(guide.work_sequence) && guide.work_sequence.length > 0) {
+        setGuideSteps(guide.work_sequence as WorkStep[])
+      }
 
-  if (projectLoading || loading) {
+      // Total expenses for progress estimation
+      const { data: expenses } = await supabase
+        .from("expenses")
+        .select("amount")
+        .eq("project_id", activeProject.id)
+
+      if (expenses) {
+        setTotalSpent(expenses.reduce((s: number, e: { amount: number }) => s + (e.amount ?? 0), 0))
+      }
+
+      setDataLoading(false)
+    }
+
+    load()
+  }, [activeProject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (projectLoading || dataLoading) {
     return (
-      <div className="space-y-5">
-        <div className="flex items-end justify-between">
-          <div className="space-y-1.5">
-            <Skeleton className="h-2.5 w-24 rounded" />
-            <Skeleton className="h-6 w-36 rounded" />
-          </div>
-          <Skeleton className="h-3.5 w-44 rounded" />
-        </div>
-        <div>
-          {[1, 2, 3].map(i => (
-            <div key={i} className="flex">
-              <div className="flex flex-col items-center w-12 flex-shrink-0">
-                <Skeleton className="w-[22px] h-[22px] rounded-full flex-shrink-0" />
-                {i < 3 && <div className="w-0.5 flex-1 bg-border/50 mt-1.5 min-h-[64px]" />}
-              </div>
-              <div className="flex-1 pl-1 pb-8">
-                <Skeleton className="h-5 w-40 rounded mb-2" />
-                <Skeleton className="h-3.5 w-full rounded mb-1.5" />
-                <Skeleton className="h-3.5 w-3/4 rounded" />
-              </div>
+      <div className="max-w-lg space-y-6 animate-pulse">
+        <div className="h-7 w-40 bg-muted rounded-lg" />
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0" />
+            <div className="flex-1 space-y-2 pt-1">
+              <div className="h-4 w-36 bg-muted rounded" />
+              <div className="h-3 w-64 bg-muted rounded" />
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     )
   }
 
-  if (!activeProject) return null
+  if (!activeProject) {
+    return (
+      <div className="flex items-center justify-center py-24 text-center">
+        <p className="text-[13px] text-muted-foreground">No active project.</p>
+      </div>
+    )
+  }
 
-  const selected = phases.filter(p => p.is_selected)
-  const firstUpcomingIndex = selected.findIndex((p, i) => getPhaseStatus(p, i, selected) === "upcoming")
-  const todayMarkerIndex = selected.findIndex((p, i) => getPhaseStatus(p, i, selected) !== "complete")
+  // Build step list — prefer AI guide steps, fall back to defaults
+  const stages: { title: string; description: string }[] = guideSteps
+    ? guideSteps.map(s => ({ title: s.title, description: s.description }))
+    : (DEFAULT_STAGES[activeProject.room_type ?? ""] ?? FALLBACK_STAGES)
 
-  const todayLabel = new Date().toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric"
-  })
+  const currentStep = deriveCurrentStep(
+    activeProject.guide_purchased,
+    activeProject.status ?? "planning",
+    stages.length,
+    totalSpent
+  )
+
+  const completedCount = Math.min(currentStep, stages.length)
+  const progressPct    = stages.length > 0 ? Math.round((completedCount / stages.length) * 100) : 0
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-lg space-y-6">
 
-      {/* Page header */}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[10px] font-mono font-medium uppercase tracking-widest text-primary mb-1.5">
-            Project timeline
-          </p>
-          <h1 className="font-serif text-[22px] font-bold text-foreground leading-tight">
-            Build sequence
-          </h1>
-        </div>
-        <div className="flex items-center gap-5 pb-0.5">
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 block flex-shrink-0" />
-            Done
-          </span>
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold text-primary">
-            <span className="w-2 h-2 rounded-full bg-primary block flex-shrink-0" />
-            Active
-          </span>
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
-            <span className="w-2 h-2 rounded-full border-2 border-muted-foreground/40 block flex-shrink-0" />
-            Upcoming
-          </span>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="font-serif text-[22px] font-semibold text-foreground">Timeline</h1>
+        <p className="text-[13px] text-muted-foreground mt-0.5">
+          {completedCount} of {stages.length} stages complete · {progressPct}% through your renovation
+        </p>
       </div>
 
-      {/* Status banner */}
-      {isOverdue ? (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">
-          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-          <span>Project end date has passed. Update your timeline or mark remaining phases complete.</span>
-        </div>
-      ) : activeProject.end_date ? (
-        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700">
-          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-          <span>Project on schedule. End date: {fmt(activeProject.end_date)}.</span>
-        </div>
-      ) : null}
+      {/* Progress bar */}
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary transition-all duration-700"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
 
-      {/* Empty state */}
-      {selected.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">No phases were selected during project setup.</p>
-          <p className="text-xs text-muted-foreground mt-1">Phases appear here once you select them in the wizard.</p>
-        </div>
-      ) : (
-        <div>
-          {selected.map((phase, i) => {
-            const status = getPhaseStatus(phase, i, selected)
-            const nextStatus = i < selected.length - 1
-              ? getPhaseStatus(selected[i + 1], i + 1, selected)
-              : null
-            const isLast = i === selected.length - 1
-            const isNextUpcoming = i === firstUpcomingIndex
+      {/* Timeline */}
+      <div className="pt-2">
+        {stages.map((stage, idx) => (
+          <TimelineNode
+            key={idx}
+            idx={idx}
+            state={getStepState(idx, currentStep, stages.length)}
+            isLast={idx === stages.length - 1}
+            title={stage.title}
+            description={stage.description}
+          />
+        ))}
+      </div>
 
-            const showLowStockWarning =
-              lowStockItems.length > 0 &&
-              (status === "in_progress" || (status === "upcoming" && isNextUpcoming))
-            const showStockOk =
-              !showLowStockWarning && status === "in_progress" && materialStock.length > 0
-
-            return (
-              <Fragment key={phase.id}>
-                {/* Today marker — injected before the first non-complete phase */}
-                {i === todayMarkerIndex && todayMarkerIndex > 0 && (
-                  <div className="flex items-center pl-12 pb-5 -mt-2">
-                    <div className="flex-1 flex items-center gap-2 pl-1">
-                      <div className="flex-1 h-px bg-primary/25" />
-                      <span className="font-mono text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full whitespace-nowrap">
-                        ● Today — {todayLabel}
-                      </span>
-                      <div className="flex-1 h-px bg-primary/25" />
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex">
-                  {/* ── Spine ── */}
-                  <div className="flex flex-col items-center w-12 flex-shrink-0">
-                    {/* Dot */}
-                    <div className="flex-shrink-0 mt-0.5">
-                      {status === "complete" ? (
-                        <div className="w-[22px] h-[22px] rounded-full bg-emerald-500 flex items-center justify-center shadow-sm"
-                          style={{ boxShadow: "0 0 0 4px rgba(34,197,94,0.12)" }}>
-                          <Check className="w-3 h-3 text-white stroke-[2.5]" />
-                        </div>
-                      ) : status === "in_progress" ? (
-                        <div className="relative">
-                          <div
-                            className="absolute rounded-full bg-primary/20 animate-ping"
-                            style={{ inset: "-5px", animationDuration: "2s" }}
-                          />
-                          <div
-                            className="relative w-[22px] h-[22px] rounded-full bg-primary flex items-center justify-center shadow-sm"
-                            style={{ boxShadow: "0 0 0 4px rgba(var(--primary-rgb, 196 98 45) / 0.18)" }}
-                          >
-                            <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-[22px] h-[22px] rounded-full bg-background border-2 border-muted-foreground/25" />
-                      )}
-                    </div>
-
-                    {/* Connecting line */}
-                    {!isLast && (
-                      <div
-                        className="w-0.5 flex-1 mt-1.5 min-h-[20px]"
-                        style={lineStyle(status, nextStatus)}
-                      />
-                    )}
-                  </div>
-
-                  {/* ── Content ── */}
-                  <div className={`flex-1 pl-3 ${isLast ? "pb-2" : "pb-9"}`}>
-                    {/* Phase name + badge */}
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <h2
-                        className={`font-serif text-[16px] font-bold leading-snug ${
-                          status === "complete" ? "text-foreground/70" : "text-foreground"
-                        }`}
-                      >
-                        {phase.phase_templates.name}
-                      </h2>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[9px] font-mono font-semibold flex-shrink-0 mt-1 ${
-                          status === "complete"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : status === "in_progress"
-                            ? "bg-[hsl(var(--brand-soft))] text-primary"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {status === "complete" ? "Complete" : status === "in_progress" ? "In progress" : "Upcoming"}
-                      </span>
-                    </div>
-
-                    {/* Description */}
-                    {phase.phase_templates.description && (
-                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
-                        {phase.phase_templates.description}
-                      </p>
-                    )}
-
-                    {/* Low stock warning */}
-                    {showLowStockWarning && (
-                      <Link
-                        href="/control-centre/materials"
-                        className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[11px] border hover:opacity-90 transition-opacity ${
-                          status === "in_progress"
-                            ? "bg-red-50 border-red-200/70 text-red-900"
-                            : "bg-amber-50 border-amber-200/70 text-amber-900"
-                        }`}
-                      >
-                        {status === "in_progress"
-                          ? <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                          : <Package className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                        }
-                        <span className="flex-1 leading-relaxed">
-                          <strong className="font-semibold">
-                            {status === "in_progress" ? "Stock running low. " : "Order materials soon. "}
-                          </strong>
-                          {status === "in_progress"
-                            ? `${lowStockItems.map(s => s.material_name).join(", ")} ${lowStockItems.length === 1 ? "is" : "are"} running low — reorder before work stalls.`
-                            : `${lowStockItems.length} item${lowStockItems.length !== 1 ? "s" : ""} below threshold — check stock before this phase starts.`
-                          }
-                        </span>
-                        <span className="font-semibold text-primary flex-shrink-0 mt-0.5 whitespace-nowrap">
-                          Order now →
-                        </span>
-                      </Link>
-                    )}
-
-                    {/* All stocked */}
-                    {showStockOk && (
-                      <Link
-                        href="/control-centre/materials"
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/60 hover:opacity-90 transition-opacity"
-                      >
-                        <Package className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>All tracked materials are stocked</span>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </Fragment>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }
