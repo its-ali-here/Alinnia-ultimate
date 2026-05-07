@@ -1,171 +1,178 @@
 # Alinnia
 
-A **construction project and cashflow management tool** built for contractors, project managers, and owner-reps.
+A **renovation analysis and project guidance tool** built for UK homeowners planning a remodel.
 
 ---
 
-## 🚀 Overview
+## Overview
 
-Alinnia is a mobile-first, web-friendly app designed to give contractors **complete visibility over construction projects**.
+Alinnia helps homeowners understand exactly what they can achieve with their budget — before they spend a penny. Users upload photos of their current space and an inspiration image, share their measurements and budget, and receive an AI-powered feasibility analysis in seconds.
 
-It combines:
-
-- Project phase tracking  
-- Payment and receivable management  
-- Cash forecasting  
-- Digital proof of payments (receiving slips)  
-- Alerts for upcoming expenses, cash shortfalls, and delays  
-
-The goal: **clarity, foresight, and daily usability**, without replacing Excel or accounting software.
+The paid product unlocks a complete, room-specific renovation guide plus a project tracker to manage the work from quote to completion.
 
 ---
 
-## ❗ The Problem
+## The Problem
 
-Contractors and owners often face:
+Homeowners starting a renovation face:
 
-- Multiple sub-contractors and suppliers per project  
-- Cash flow uncertainty, especially with cash or cheque payments  
-- Manual tracking via Excel or paper  
-- Difficulty associating payments with invoices or project phases  
-- Limited visibility into upcoming tasks and phase completion  
+- No idea whether their budget is realistic for the look they want
+- Overwhelming contractor quotes with no benchmark to compare against
+- No clear sequence for what needs to happen and in what order
+- Wasted time getting quotes before understanding scope
+- Expensive surprises once work has started
 
-Existing solutions either:
-
-- Are accounting-focused (QuickBooks, Xero)  
-- Are enterprise project management tools (Procore, Oracle)  
-- Require full adoption of complex software  
-
-They fail to provide **fast, actionable, daily insights** for mid-market projects.
+Existing tools are either aimed at contractors (Buildertrend, Procore) or too generic to be useful (spreadsheets, Pinterest boards).
 
 ---
 
-## 💡 The Solution
+## The Solution
 
-Alinnia is a **holistic project and liquidity tracker**.  
+Alinnia gives homeowners clarity before they commit.
 
-It allows users to:
+**Free tier — the analysis:**
+1. Upload photos of the current space and an inspiration image
+2. Enter room dimensions (length × width × height in metres)
+3. Enter budget and location (city + UK country)
+4. Receive an AI feasibility report: achievable %, what fits in budget, what doesn't
 
-1. Track **project phases** and % completion  
-2. Record **payments and receivables** (cash, bank, cheque)  
-3. Generate **digital receiving slips** for cash payments  
-4. Associate **payments with invoices and accounts**  
-5. Forecast **cash runway per project**  
-6. Receive **alerts for critical financial or project events**  
-7. Monitor **budgets vs actuals** per phase  
-
-All in a **single dashboard**, optimized for **mobile and web**.
-
----
-
-## 🔧 Core MVP Features
-
-### 1️⃣ Project Phases & Timeline
-- Define phases: Excavation, Foundation, Shuttering, Plumbing, Electrical, Finishing, Handover  
-- Track completion %  
-- Visual timeline / Gantt-style view  
-- Alerts for upcoming phases or dependencies  
-
-### 2️⃣ Payments & Receivables
-- Record cash, bank, or cheque payments  
-- Link payments to sub-contractors, suppliers, and invoices  
-- Digital receiving slips for cash payments  
-- Optional upload of signed paper receipts  
-- Partial payment tracking for invoices  
-
-### 3️⃣ Dashboard & Forecast
-- Project overview: cash on hand, upcoming payments, % completion  
-- Multi-project summaries  
-- Cash runway forecasts  
-- Alerts for cash shortfalls, overdue payments, and budget overruns  
-
-### 4️⃣ Notifications & Alerts
-- Upcoming payments  
-- Phase delays  
-- Budget overshoots  
-- Receivable delays  
-
-### 5️⃣ Settings / Admin
-- Add/remove projects, categories, and users  
-- Export snapshots (PDF/CSV)  
-- Role-based permissions  
+**Paid tier — the guide (£79 one-time):**
+- Exact materials list with quantities and UK cost estimates
+- Step-by-step work sequence in the correct trade order
+- Which contractors to hire and when
+- What to ask for quotes — and what a fair price looks like in their area
+- Red flags checklist before signing anything
+- Full project tracker: timeline, budget builder, punch list, files
 
 ---
 
-## 🎯 Who This Is For
+## User Flow
 
-- General contractors and project managers  
-- Owner-reps overseeing construction projects  
-- SMEs managing multiple sub-contractors  
-- Projects $50k–$1M in value  
-- Regions: Global, initially focusing on emerging markets  
-
----
-
-## 🚫 What This Is NOT
-
-- Not accounting software  
-- Not ERP  
-- Not bookkeeping  
-- Not tax management  
-
-It is a **project and cashflow visibility tool**.
-
----
-
-## 🧠 Philosophy
-
-Most construction software focuses on **scheduling or accounting**. Very few focus on:
-
-- Daily cash visibility  
-- Linking **payments, receipts, invoices, and project phases**  
-- Providing **actionable alerts** before problems arise  
-
-Alinnia converts:
-
-> “I hope we have enough cash for next week.”  
-
-Into:
-
-> “We have a cash shortfall in Phase 3 unless Payment X clears by Friday.”
+```
+Landing page
+    ↓
+Wizard (anonymous — no account required)
+  Step 1: Room type + project name
+  Step 2: Upload current photos + inspiration photo
+  Step 3: Room measurements (L × W × H in metres)
+  Step 4: Budget (GBP) + UK country + city
+  Step 5: Review → "Analyse my space"
+    ↓
+AI analysis (Groq LLaMA) runs in ~15 seconds
+    ↓
+Results page (free — no account)
+  - Feasibility % + progress bar
+  - What fits / what won't fit
+  - £79 guide paywall card
+    ↓
+"Start 3-day free trial" → Registration page
+  - Name + email → Supabase magic link sent
+    ↓
+Email → click link → Set password page
+    ↓
+Dashboard (project auto-linked to new account)
+  - Overview: feasibility card, budget remaining, project stage, contractor slots, next steps
+  - Timeline: vertical step-by-step renovation stages
+  - Budget builder: donut ring + variant selection per category
+  - Punch list, Files, Close-out, Settings
+```
 
 ---
 
-## 🛠 Technical Stack (MVP Prototype)
+## Core Features
 
-- Typescript  
-- Supabase  
-- Github  
-- PWA for mobile-first experience  
+### Analysis Engine
+- AI feasibility scoring based on budget, location, room type, and dimensions
+- What fits vs. what doesn't fit the budget
+- Fallback heuristics if AI call fails (no broken experience)
 
-### Future Architecture
-- Multi-project management  
-- Predictive cashflow modeling  
-- Optional accounting integrations  
-- Scenario-based alerts for delays, cost overruns, and cash gaps  
+### Budget Builder
+- Donut ring chart showing budget split across categories (flooring, walls, kitchen, bathrooms, MEP, structural)
+- 7 categories × 3–6 finish tier variants each
+- All priced in £/m² with UK market benchmarks
+- Live total vs. budget health bar (green → amber → red)
+- Pre-filtered by room type (bathroom only shows relevant categories)
+
+### Renovation Timeline
+- Vertical step-by-step stage view — not a Gantt chart
+- Stages sourced from the AI guide if purchased, or from room-type defaults
+- Current stage highlighted with "You are here" badge
+- Progress bar across all stages
+
+### Project Tracker Dashboard
+- Overview card: feasibility summary, budget remaining, project stage (Planning → Getting quotes → Underway → Done), pre-seeded contractor slots, contextual next-steps checklist
+- All data pre-populated from the wizard — never an empty state
+
+### Authentication
+- Anonymous analysis (no account until payment)
+- Magic link sign-up post-analysis
+- Session-based project linking: anonymous project is claimed when the user creates their account
 
 ---
 
-## 🌍 Vision
+## Tech Stack
 
-To become the **default construction project visibility and liquidity tool**, trusted by contractors globally for **daily decision-making** — without forcing them to replace their existing workflows.
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router) + React 19 + TypeScript |
+| Database & Auth | Supabase (PostgreSQL + Supabase Auth) |
+| AI | Groq API (LLaMA 3.3 70B) via Vercel AI SDK |
+| Styling | Tailwind CSS + Radix UI primitives (shadcn/ui) |
+| Charts | Recharts |
+| Animations | Framer Motion |
+| Email | Supabase Auth (magic link) + Zeptomail SMTP |
+| Hosting | Vercel (planned) |
 
 ---
 
-## 📈 Revenue Model
+## Database Schema (key tables)
 
-- $49/month per contractor / project manager  
-- $499/year annual subscription  
-- Optional lifetime license for homeowners or single-project users  
+| Table | Purpose |
+|---|---|
+| `projects` | Core project record — links user, room type, budget, location, guide status |
+| `project_images` | Current + inspiration photos uploaded in wizard |
+| `renovation_analyses` | AI-generated feasibility results per project |
+| `renovation_guides` | Full paid guide content (materials, sequence, contractors, etc.) |
+| `payments` | Payment records (Stripe placeholder — provider TBD) |
+| `expenses` | Logged costs during active renovation |
+| `phases` | Project phases for timeline and punch list |
+| `tasks` | Individual tasks within phases |
+| `price_intelligence` | UK regional material and labour pricing data |
 
 ---
 
-## 🧪 Status
+## Pricing
 
-Early MVP prototype planned. Focus on:
+| Tier | Price |
+|---|---|
+| Analysis | Free — no account required |
+| Complete renovation guide + project tracker | £79 one-time |
 
-- Project phase tracking  
-- Payments & receivables  
-- Dashboard & alerts  
-- Cash forecasting  
-- Daily usability testing with contractors  
+3-day free trial. Cancel before day 3, pay nothing.
+
+---
+
+## Target Market
+
+- UK homeowners planning a renovation with a budget of £8,000+
+- Room types: bathroom, kitchen, bedroom, living room, full-home, extension, outdoor
+- Primary focus: England, Scotland, Wales, Northern Ireland
+- International expansion planned after UK validation
+
+---
+
+## Status
+
+Active development. Core flow complete:
+
+- [x] Anonymous wizard (room type, photos, measurements, budget, location)
+- [x] AI feasibility analysis
+- [x] Results page with paywall
+- [x] Magic link sign-up flow
+- [x] Project auto-linking after auth
+- [x] Dashboard: overview, timeline, budget builder, punch list, files
+- [ ] Payment provider integration (TBD)
+- [ ] Guide generation post-payment
+- [ ] Price intelligence data population (UK)
+- [ ] Landing page refresh
+- [ ] Mobile optimisation pass
