@@ -1,25 +1,25 @@
-import { LandingHeader } from "@/components/landing/landing-header"
-import { HeroSection } from "@/components/landing/hero-section"
-import { HowItWorksSection } from "@/components/landing/hiw-section"
-import { FeaturesGridSection } from "@/components/landing/features-grid"
-import { PricingSection } from "@/components/landing/pricing-section"
-import { FaqSection } from "@/components/landing/faq-section"
-import { CtaSection } from "@/components/landing/cta-section"
-import { LandingFooter } from "@/components/landing/landing-footer"
+import { SiteHeader } from "@/components/site-header"
+import { SiteFooter } from "@/components/site-footer"
+import { Hero } from "@/components/landing/hero"
+import { ShopByCategory } from "@/components/landing/shop-by-category"
+import { HowItWorks } from "@/components/landing/how-it-works"
+import { ProductTeaser } from "@/components/landing/product-teaser"
+import { Mission } from "@/components/landing/mission"
+import { NewsletterSignup } from "@/components/landing/newsletter-signup"
 
-export default function LandingPage() {
+export default function HomePage() {
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      <LandingHeader />
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader />
       <main className="flex-1">
-        <HeroSection />
-        <HowItWorksSection />
-        <FeaturesGridSection />
-        <PricingSection />
-        <FaqSection />
-        <CtaSection />
+        <Hero />
+        <ShopByCategory />
+        <HowItWorks />
+        <ProductTeaser />
+        <Mission />
+        <NewsletterSignup />
       </main>
-      <LandingFooter />
+      <SiteFooter />
     </div>
   )
 }

@@ -4,79 +4,117 @@
 
 @layer base {
   :root {
-    /* Warm white page background */
-    --background: 30 20% 97%;
-    --foreground: 20 6% 10%;
+    /* Clean white page background (Blueland neutral-100) */
+    --background: 0 0% 100%;
+    --foreground: 236 78% 19%;
 
-    /* Warm gray for secondary surfaces / muted areas */
-    --muted: 30 14% 93%;
-    --muted-foreground: 25 6% 47%;
+    /* Pale blue tint for alternating sections (Blueland brand-98 #f4f8fe) */
+    --muted: 216 83% 97%;
+    --muted-foreground: 232 20% 58%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 6% 10%;
+    --popover-foreground: 236 78% 19%;
 
     /* Pure white cards */
     --card: 0 0% 100%;
-    --card-foreground: 20 6% 10%;
+    --card-foreground: 236 78% 19%;
 
-    /* Subtle warm border */
-    --border: 20 8% 88%;
-    --input: 20 8% 88%;
+    /* Soft blue-gray border (Blueland dark-navy-90) */
+    --border: 219 39% 91%;
+    --input: 219 39% 91%;
 
-    /* Terracotta primary */
-    --primary: 22 62% 47%;
+    /* Royal blue primary (Blueland brand-50 #2d56d2) */
+    --primary: 225 65% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Warm blue-gray secondary */
-    --secondary: 30 14% 93%;
-    --secondary-foreground: 20 6% 10%;
+    /* Pale sky blue secondary (Blueland skyblue-93 #d5efff) */
+    --secondary: 203 100% 92%;
+    --secondary-foreground: 236 78% 19%;
 
-    --accent: 30 14% 93%;
-    --accent-foreground: 20 6% 10%;
+    /* Warm yellow accent (Blueland yellow-85 #ffce46) */
+    --accent: 44 100% 64%;
+    --accent-foreground: 236 78% 19%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 1 58% 54%;
     --destructive-foreground: 0 0% 100%;
 
-    --ring: 22 62% 47%;
-    --radius: 0.625rem;
+    --ring: 225 65% 50%;
+    --radius: 1.5rem;
 
     /* Brand tints for active states / highlights */
-    --brand-light: 24 59% 73%;
-    --brand-soft: 28 62% 91%;
+    --brand-light: 201 100% 81%;
+    --brand-soft: 216 83% 97%;
+
+    /* Category accent colors, Blueland-style pastel system */
+    --cat-starter: 216 83% 95%;
+    --cat-starter-foreground: 225 65% 50%;
+
+    --cat-tablet: 349 100% 95%;
+    --cat-tablet-foreground: 349 70% 55%;
+
+    --cat-dish: 44 100% 93%;
+    --cat-dish-foreground: 38 90% 42%;
+
+    --cat-hand: 272 100% 96%;
+    --cat-hand-foreground: 272 55% 56%;
+
+    --cat-laundry: 94 70% 93%;
+    --cat-laundry-foreground: 94 45% 32%;
+
+    --cat-accessory: 219 39% 94%;
+    --cat-accessory-foreground: 225 65% 50%;
   }
 
   .dark {
-    --background: 20 6% 10%;
-    --foreground: 30 20% 91%;
+    --background: 236 40% 8%;
+    --foreground: 216 60% 95%;
 
-    --muted: 20 6% 16%;
-    --muted-foreground: 25 6% 60%;
+    --muted: 236 25% 16%;
+    --muted-foreground: 220 20% 65%;
 
-    --popover: 20 5% 13%;
-    --popover-foreground: 30 20% 91%;
+    --popover: 236 30% 12%;
+    --popover-foreground: 216 60% 95%;
 
-    --card: 20 5% 13%;
-    --card-foreground: 30 20% 91%;
+    --card: 236 30% 12%;
+    --card-foreground: 216 60% 95%;
 
-    --border: 20 6% 18%;
-    --input: 20 6% 18%;
+    --border: 236 20% 22%;
+    --input: 236 20% 22%;
 
-    --primary: 22 62% 47%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 220 85% 65%;
+    --primary-foreground: 236 40% 10%;
 
-    --secondary: 20 6% 18%;
-    --secondary-foreground: 30 20% 91%;
+    --secondary: 236 25% 18%;
+    --secondary-foreground: 216 60% 95%;
 
-    --accent: 20 6% 18%;
-    --accent-foreground: 30 20% 91%;
+    --accent: 44 90% 60%;
+    --accent-foreground: 236 40% 10%;
 
-    --destructive: 0 62.8% 40%;
+    --destructive: 1 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --ring: 22 62% 47%;
+    --ring: 220 85% 65%;
 
-    --brand-light: 24 40% 50%;
-    --brand-soft: 22 30% 20%;
+    --brand-light: 201 90% 60%;
+    --brand-soft: 236 25% 18%;
+
+    --cat-starter: 236 25% 18%;
+    --cat-starter-foreground: 201 100% 75%;
+
+    --cat-tablet: 349 30% 20%;
+    --cat-tablet-foreground: 349 90% 75%;
+
+    --cat-dish: 44 30% 18%;
+    --cat-dish-foreground: 44 90% 65%;
+
+    --cat-hand: 272 30% 20%;
+    --cat-hand-foreground: 272 80% 78%;
+
+    --cat-laundry: 94 25% 16%;
+    --cat-laundry-foreground: 94 60% 65%;
+
+    --cat-accessory: 236 25% 18%;
+    --cat-accessory-foreground: 201 100% 75%;
   }
 
   * {

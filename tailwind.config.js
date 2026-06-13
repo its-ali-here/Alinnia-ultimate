@@ -16,9 +16,7 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"DM Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
-        serif: ['Fraunces', 'Georgia', 'serif'],
-        mono: ['"DM Mono"', '"Roboto Mono"', 'monospace'],
+        sans: ['"Poppins"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
       }, // Close fontFamily
       colors: {
         border: "hsl(var(--border))",
@@ -53,6 +51,24 @@ module.exports = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        brand: {
+          light: "hsl(var(--brand-light))",
+          soft: "hsl(var(--brand-soft))",
+        },
+        category: {
+          starter: "hsl(var(--cat-starter))",
+          "starter-foreground": "hsl(var(--cat-starter-foreground))",
+          tablet: "hsl(var(--cat-tablet))",
+          "tablet-foreground": "hsl(var(--cat-tablet-foreground))",
+          dish: "hsl(var(--cat-dish))",
+          "dish-foreground": "hsl(var(--cat-dish-foreground))",
+          hand: "hsl(var(--cat-hand))",
+          "hand-foreground": "hsl(var(--cat-hand-foreground))",
+          laundry: "hsl(var(--cat-laundry))",
+          "laundry-foreground": "hsl(var(--cat-laundry-foreground))",
+          accessory: "hsl(var(--cat-accessory))",
+          "accessory-foreground": "hsl(var(--cat-accessory-foreground))",
         },
       },
       borderRadius: {

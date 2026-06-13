@@ -1,17 +1,17 @@
 import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
-import { AuthProvider } from "@/contexts/auth-context"
-import { SettingsProvider } from "@/contexts/settings-context"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ThemeProvider } from "@/components/theme-provider"
+import { CartProvider } from "@/contexts/cart-context"
+import { CartSheet } from "@/components/cart-sheet"
+import { Toaster } from "@/components/ui/sonner"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { GlobalDateRangeProvider } from "@/contexts/GlobalDateRangeContext"
 
 export const metadata: Metadata = {
-  title: "Alinnia - Know What Comes Next",
-  description: "The all-in-one app for homeowners to manage their renovation projects",
+  title: "Alinnia - Rituals For Rest",
+  description: "Concentrated cleaning refills and reusable bottles — fewer plastic bottles, less waste, the same spotless clean.",
   generator: 'Next.js',
   icons: {
     icon: '/favicon.svg',
@@ -28,24 +28,22 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <SettingsProvider>
-              <TooltipProvider delayDuration={0}>
-                <GlobalDateRangeProvider>
-                  {children}
-                </GlobalDateRangeProvider>
-              </TooltipProvider>
-            </SettingsProvider>
-          </AuthProvider>
+          <TooltipProvider delayDuration={0}>
+            <CartProvider>
+              {children}
+              <CartSheet />
+              <Toaster position="bottom-right" />
+            </CartProvider>
+          </TooltipProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
