@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "NutriKitchen",
-    "slug": "nutrikitchen",
-    "scheme": "nutrikitchen",
+    "name": "Alinnia",
+    "slug": "alinnia",
+    "scheme": "alinnia",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,7 +27,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-font"
     ]
   }
 }

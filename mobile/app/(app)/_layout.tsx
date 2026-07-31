@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { colors } from "../../lib/theme";
+import { colors, fontFamily, fontSize } from "../../lib/theme";
 
 export default function AppLayout() {
   return (
@@ -7,6 +7,7 @@ export default function AppLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
+        headerTitleStyle: { fontFamily: fontFamily.bodyBold, fontSize: fontSize.lg },
         headerShadowVisible: false,
       }}
     >

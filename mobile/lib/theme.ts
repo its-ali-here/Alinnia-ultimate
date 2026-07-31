@@ -1,13 +1,18 @@
 export const colors = {
-  background: "#FBF8F3",
+  background: "#FBFAF2",
   surface: "#FFFFFF",
-  border: "#E7E0D4",
-  text: "#2A2420",
-  textMuted: "#7A6F62",
-  primary: "#2F7D5E",
-  primaryText: "#FFFFFF",
-  danger: "#B3492F",
-  progressTrack: "#EEE6D8",
+  border: "rgba(4,42,28,0.10)",
+  text: "#042A1C",
+  textMuted: "#67796E",
+  primary: "#14A85C",
+  primaryDark: "#0C8747",
+  primaryTint: "#EAF7EE",
+  sprout: "#8FE64B",
+  accent: "#FFC233",
+  accentTint: "#FFF3D6",
+  danger: "#F0563E",
+  primaryText: "#FBFAF2",
+  progressTrack: "rgba(4,42,28,0.07)",
 };
 
 export const spacing = {
@@ -16,4 +21,40 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 48,
+};
+
+export const radius = {
+  sm: 8,
+  md: 14,
+  lg: 20,
+  pill: 999,
+};
+
+export const fontFamily = {
+  display: "Baloo2_600SemiBold",
+  displayBold: "Baloo2_700Bold",
+  body: "Nunito_400Regular",
+  bodyMedium: "Nunito_600SemiBold",
+  bodyBold: "Nunito_800ExtraBold",
+};
+
+export const fontSize = {
+  xs: 12,
+  sm: 14,
+  md: 16,
+  lg: 18,
+  xl: 22,
+  xxl: 28,
+  display: 34,
+};
+
+export const shadow = {
+  card: {
+    shadowColor: "#042A1C",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
 };

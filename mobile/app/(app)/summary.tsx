@@ -10,8 +10,9 @@ import {
   getCurrentWeekStart,
   type PlannedDish,
 } from "../../lib/suggestions";
+import { Card } from "../../components/Card";
 import { NutrientProgress } from "../../components/NutrientProgress";
-import { colors, spacing } from "../../lib/theme";
+import { colors, fontFamily, fontSize, spacing } from "../../lib/theme";
 import type { Nutrient } from "../../types/database";
 
 export default function Summary() {
@@ -48,7 +49,7 @@ export default function Summary() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -56,7 +57,7 @@ export default function Summary() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionHeading}>This week's dishes</Text>
-      <View style={styles.card}>
+      <Card>
         {plan.length === 0 ? (
           <Text style={styles.muted}>Nothing logged yet this week.</Text>
         ) : (
@@ -67,14 +68,14 @@ export default function Summary() {
             </View>
           ))
         )}
-      </View>
+      </Card>
 
       <Text style={styles.sectionHeading}>Nutrient progress</Text>
-      <View style={styles.card}>
+      <Card>
         {nutrients.map((n) => (
           <NutrientProgress key={n.id} nutrient={n} consumed={consumed[n.id] ?? 0} target={targets[n.id] ?? 0} />
         ))}
-      </View>
+      </Card>
     </ScrollView>
   );
 }
@@ -83,15 +84,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  sectionHeading: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: spacing.sm },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
+  sectionHeading: { fontSize: fontSize.sm, fontFamily: fontFamily.bodyMedium, color: colors.text, marginBottom: spacing.sm },
   planRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -99,6 +92,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  planName: { fontSize: 15, color: colors.text, fontWeight: "600" },
-  muted: { fontSize: 14, color: colors.textMuted },
+  planName: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: colors.text },
+  muted: { fontSize: fontSize.sm, fontFamily: fontFamily.body, color: colors.textMuted },
 });

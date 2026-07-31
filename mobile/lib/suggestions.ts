@@ -19,6 +19,27 @@ export function getCurrentWeekStart(): string {
   return monday.toISOString().slice(0, 10);
 }
 
+/** Local-midnight Monday..Sunday Date objects for the current week — for day-of-week display, never for DB comparisons (see getCurrentWeekStart's UTC-slice caveat). */
+function currentWeekLocalDays(): Date[] {
+  const now = new Date();
+  const diffToMonday = now.getDay() === 0 ? -6 : 1 - now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function dayIndexFor(createdAt: string, weekDays: Date[]): number {
+  const created = new Date(createdAt);
+  return weekDays.findIndex(
+    (d) => d.getFullYear() === created.getFullYear() && d.getMonth() === created.getMonth() && d.getDate() === created.getDate()
+  );
+}
+
 export async function fetchNutrients(): Promise<Nutrient[]> {
   const { data, error } = await supabase
     .from("nutrients")
@@ -51,21 +72,50 @@ export async function fetchWeekConsumed(userId: string, weekStart: string): Prom
   if (!plans || plans.length === 0) return {};
 
   const dishIds = plans.map((p) => p.dish_id);
-  const { data: dishNutrients, error: dnError } = await supabase
-    .from("dish_nutrients_per_serving")
-    .select("dish_id, nutrient_id, amount_per_serving")
-    .in("dish_id", dishIds);
-  if (dnError) throw dnError;
+  const dishNutrients = await fetchDishNutrientsByDish(dishIds);
 
   const servingsByDish: Record<string, number> = {};
   for (const p of plans) servingsByDish[p.dish_id] = p.servings;
 
   const consumed: Record<string, number> = {};
-  for (const row of (dishNutrients ?? []) as DishNutrientPerServing[]) {
-    const servings = servingsByDish[row.dish_id] ?? 1;
-    consumed[row.nutrient_id] = (consumed[row.nutrient_id] ?? 0) + row.amount_per_serving * servings;
+  for (const [dishId, amounts] of Object.entries(dishNutrients)) {
+    const servings = servingsByDish[dishId] ?? 1;
+    for (const [nutrientId, amount] of Object.entries(amounts)) {
+      consumed[nutrientId] = (consumed[nutrientId] ?? 0) + amount * servings;
+    }
   }
   return consumed;
+}
+
+/** Target minus consumed, floored at 0, per nutrient_id. */
+function computeGap(targets: Record<string, number>, consumed: Record<string, number>): Record<string, number> {
+  const gap: Record<string, number> = {};
+  for (const nutrientId of Object.keys(targets)) {
+    gap[nutrientId] = Math.max(0, targets[nutrientId] - (consumed[nutrientId] ?? 0));
+  }
+  return gap;
+}
+
+/** Nutrient amounts per serving for a set of dishes, keyed by dish_id then nutrient_id. */
+async function fetchDishNutrientsByDish(dishIds: string[]): Promise<Record<string, Record<string, number>>> {
+  if (dishIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("dish_nutrients_per_serving")
+    .select("dish_id, nutrient_id, amount_per_serving")
+    .in("dish_id", dishIds);
+  if (error) throw error;
+  const byDish: Record<string, Record<string, number>> = {};
+  for (const row of (data ?? []) as DishNutrientPerServing[]) {
+    byDish[row.dish_id] ??= {};
+    byDish[row.dish_id][row.nutrient_id] = row.amount_per_serving;
+  }
+  return byDish;
+}
+
+/** Overrides for a single suggestion fetch — never persisted to the profile, just a "for now" nudge. */
+export interface SuggestionFilters {
+  avoid_meat?: boolean;
+  avoid_spicy?: boolean;
 }
 
 interface CandidateOptions {
@@ -124,24 +174,40 @@ function scoreDish(
   targets: Record<string, number>,
   dishNutrientsByDish: Record<string, Record<string, number>>
 ): number {
-  const amounts = dishNutrientsByDish[dishId] ?? {};
-  let score = 0;
-  for (const nutrientId of Object.keys(gap)) {
-    const remaining = gap[nutrientId];
-    if (remaining <= 0) continue;
-    const target = targets[nutrientId] || 1;
-    const contribution = Math.min(amounts[nutrientId] ?? 0, remaining);
-    score += contribution / target;
-  }
-  return score;
+  const contributions = nutrientContributions(dishId, gap, targets, dishNutrientsByDish);
+  return Object.values(contributions).reduce((sum, c) => sum + c, 0);
 }
 
 export interface Suggestion {
   dish: Dish;
   nutrientsPerServing: Record<string, number>;
+  /** Nutrient IDs that most drove this dish's ranking, highest contribution first. */
+  topNutrientIds: string[];
 }
 
-export async function getNextSuggestion(userId: string, profile: Profile): Promise<Suggestion | null> {
+/** Per-nutrient contribution to score, before summing — used to explain *why* a dish was picked. */
+function nutrientContributions(
+  dishId: string,
+  gap: Record<string, number>,
+  targets: Record<string, number>,
+  dishNutrientsByDish: Record<string, Record<string, number>>
+): Record<string, number> {
+  const amounts = dishNutrientsByDish[dishId] ?? {};
+  const contributions: Record<string, number> = {};
+  for (const nutrientId of Object.keys(gap)) {
+    const remaining = gap[nutrientId];
+    if (remaining <= 0) continue;
+    const target = targets[nutrientId] || 1;
+    contributions[nutrientId] = Math.min(amounts[nutrientId] ?? 0, remaining) / target;
+  }
+  return contributions;
+}
+
+export async function getNextSuggestion(
+  userId: string,
+  profile: Profile,
+  options?: { filters?: SuggestionFilters; excludeDishIds?: string[] }
+): Promise<Suggestion | null> {
   const weekStart = getCurrentWeekStart();
   const [targets, consumed, seenDishIds] = await Promise.all([
     fetchWeeklyTargets(userId),
@@ -149,32 +215,83 @@ export async function getNextSuggestion(userId: string, profile: Profile): Promi
     fetchThisWeeksSeenDishIds(userId, weekStart),
   ]);
 
-  const gap: Record<string, number> = {};
-  for (const nutrientId of Object.keys(targets)) {
-    gap[nutrientId] = Math.max(0, targets[nutrientId] - (consumed[nutrientId] ?? 0));
-  }
+  const gap = computeGap(targets, consumed);
 
-  const candidates = await fetchCandidateDishes({ profile, excludeDishIds: seenDishIds });
+  const effectiveProfile: Profile = { ...profile, ...options?.filters };
+  const excludeDishIds = [...seenDishIds, ...(options?.excludeDishIds ?? [])];
+  const candidates = await fetchCandidateDishes({ profile: effectiveProfile, excludeDishIds });
   if (candidates.length === 0) return null;
 
-  const { data: dishNutrientRows, error } = await supabase
-    .from("dish_nutrients_per_serving")
-    .select("dish_id, nutrient_id, amount_per_serving")
-    .in("dish_id", candidates.map((d) => d.id));
-  if (error) throw error;
-
-  const dishNutrientsByDish: Record<string, Record<string, number>> = {};
-  for (const row of (dishNutrientRows ?? []) as DishNutrientPerServing[]) {
-    dishNutrientsByDish[row.dish_id] ??= {};
-    dishNutrientsByDish[row.dish_id][row.nutrient_id] = row.amount_per_serving;
-  }
+  const dishNutrientsByDish = await fetchDishNutrientsByDish(candidates.map((d) => d.id));
 
   const ranked = candidates
     .map((dish) => ({ dish, score: scoreDish(dish.id, gap, targets, dishNutrientsByDish) }))
     .sort((a, b) => b.score - a.score);
 
   const top = ranked[0].dish;
-  return { dish: top, nutrientsPerServing: dishNutrientsByDish[top.id] ?? {} };
+  const contributions = nutrientContributions(top.id, gap, targets, dishNutrientsByDish);
+  const topNutrientIds = Object.entries(contributions)
+    .filter(([, contribution]) => contribution > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([nutrientId]) => nutrientId);
+
+  return { dish: top, nutrientsPerServing: dishNutrientsByDish[top.id] ?? {}, topNutrientIds };
+}
+
+/** Nutrient with the lowest consumed/target ratio among nutrients with a positive target. */
+export function findBiggestRelativeGapNutrientId(
+  targets: Record<string, number>,
+  consumed: Record<string, number>
+): string | null {
+  let worstId: string | null = null;
+  let worstRatio = 1;
+  for (const nutrientId of Object.keys(targets)) {
+    if (targets[nutrientId] <= 0) continue;
+    const ratio = (consumed[nutrientId] ?? 0) / targets[nutrientId];
+    if (ratio < worstRatio) {
+      worstRatio = ratio;
+      worstId = nutrientId;
+    }
+  }
+  return worstId;
+}
+
+export interface NudgeSuggestion {
+  nutrientId: string;
+  dish: Dish;
+  amountPerServing: number;
+}
+
+/** The single dish that would help most with the week's biggest nutrient gap, for a home-screen insight card. */
+export async function getNudgeSuggestion(userId: string, profile: Profile): Promise<NudgeSuggestion | null> {
+  const weekStart = getCurrentWeekStart();
+  const [targets, consumed, seenDishIds] = await Promise.all([
+    fetchWeeklyTargets(userId),
+    fetchWeekConsumed(userId, weekStart),
+    fetchThisWeeksSeenDishIds(userId, weekStart),
+  ]);
+
+  const nutrientId = findBiggestRelativeGapNutrientId(targets, consumed);
+  if (!nutrientId) return null;
+
+  const candidates = await fetchCandidateDishes({ profile, excludeDishIds: seenDishIds });
+  if (candidates.length === 0) return null;
+
+  const gap = computeGap(targets, consumed);
+  const dishNutrientsByDish = await fetchDishNutrientsByDish(candidates.map((d) => d.id));
+
+  const ranked = candidates
+    .map((dish) => ({
+      dish,
+      contribution: nutrientContributions(dish.id, gap, targets, dishNutrientsByDish)[nutrientId] ?? 0,
+      amount: dishNutrientsByDish[dish.id]?.[nutrientId] ?? 0,
+    }))
+    .filter((r) => r.contribution > 0)
+    .sort((a, b) => b.contribution - a.contribution || b.amount - a.amount);
+
+  if (ranked.length === 0) return null;
+  return { nutrientId, dish: ranked[0].dish, amountPerServing: ranked[0].amount };
 }
 
 export async function rejectDish(userId: string, dishId: string, reason: RejectionReason): Promise<void> {
@@ -201,21 +318,26 @@ export interface PlannedDish {
   dishId: string;
   name: string;
   servings: number;
+  /** Index (0=Mon..6=Sun) into the current local week, or -1 if it falls outside it (rare week-boundary edge case). */
+  dayIndex: number;
 }
 
 export async function fetchThisWeeksPlan(userId: string): Promise<PlannedDish[]> {
   const weekStart = getCurrentWeekStart();
   const { data, error } = await supabase
     .from("weekly_plans")
-    .select("dish_id, servings, dishes(name)")
+    .select("dish_id, servings, created_at, dishes(name)")
     .eq("user_id", userId)
     .eq("week_start", weekStart)
     .order("created_at", { ascending: true });
   if (error) throw error;
+
+  const weekDays = currentWeekLocalDays();
   return (data ?? []).map((row: any) => ({
     dishId: row.dish_id,
     name: row.dishes?.name ?? "Dish",
     servings: row.servings,
+    dayIndex: dayIndexFor(row.created_at, weekDays),
   }));
 }
 

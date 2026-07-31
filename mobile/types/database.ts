@@ -49,6 +49,7 @@ export interface DishIngredient {
   dish_id: string;
   ingredient_id: string;
   ingredient_name: string;
+  category: string | null;
   quantity_grams_per_serving: number;
 }
 

@@ -1,17 +1,28 @@
+import { useState } from "react";
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
-import { colors, spacing } from "../lib/theme";
+import { colors, fontFamily, fontSize, radius, spacing } from "../lib/theme";
 
 interface FormInputProps extends TextInputProps {
   label: string;
 }
 
-export function FormInput({ label, style, ...rest }: FormInputProps) {
+export function FormInput({ label, style, onFocus, onBlur, ...rest }: FormInputProps) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         placeholderTextColor={colors.textMuted}
-        style={[styles.input, style]}
+        style={[styles.input, focused && styles.inputFocused, style]}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
         {...rest}
       />
     </View>
@@ -20,15 +31,17 @@ export function FormInput({ label, style, ...rest }: FormInputProps) {
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: spacing.md },
-  label: { fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: spacing.xs },
+  label: { fontSize: fontSize.sm, fontFamily: fontFamily.bodyMedium, color: colors.text, marginBottom: spacing.xs },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
-    fontSize: 16,
+    fontSize: fontSize.md,
+    fontFamily: fontFamily.body,
     color: colors.text,
     backgroundColor: colors.surface,
   },
+  inputFocused: { borderColor: colors.primary },
 });

@@ -4,7 +4,7 @@ import { Link } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Button } from "../../components/Button";
 import { FormInput } from "../../components/FormInput";
-import { colors, spacing } from "../../lib/theme";
+import { colors, fontFamily, fontSize, spacing } from "../../lib/theme";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -20,7 +20,7 @@ export default function SignIn() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>NutriKitchen</Text>
+      <Text style={styles.title}>Alinnia</Text>
       <Text style={styles.subtitle}>Sign in to continue</Text>
 
       <FormInput
@@ -39,10 +39,10 @@ export default function SignIn() {
         placeholder="••••••••"
       />
 
-      <Button title="Sign in" onPress={handleSignIn} loading={loading} disabled={!email || !password} />
+      <Button title="Sign in" icon="log-in-outline" onPress={handleSignIn} loading={loading} disabled={!email || !password} />
 
-      <Link href="/(auth)/sign-up" style={styles.link}>
-        Don't have an account? Sign up
+      <Link href="/(setup)/welcome" style={styles.link}>
+        Don't have an account? Get started
       </Link>
     </View>
   );
@@ -50,7 +50,7 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, justifyContent: "center" },
-  title: { fontSize: 28, fontWeight: "700", color: colors.text, textAlign: "center" },
-  subtitle: { fontSize: 16, color: colors.textMuted, textAlign: "center", marginBottom: spacing.xl },
-  link: { marginTop: spacing.lg, textAlign: "center", color: colors.primary, fontSize: 14 },
+  title: { fontSize: fontSize.xxl, fontFamily: fontFamily.displayBold, color: colors.text, textAlign: "center" },
+  subtitle: { fontSize: fontSize.md, fontFamily: fontFamily.body, color: colors.textMuted, textAlign: "center", marginBottom: spacing.xl },
+  link: { marginTop: spacing.lg, textAlign: "center", color: colors.primary, fontFamily: fontFamily.bodyMedium, fontSize: fontSize.sm },
 });
