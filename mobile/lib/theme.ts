@@ -15,6 +15,25 @@ export const colors = {
   progressTrack: "rgba(4,42,28,0.07)",
 };
 
+// Eat-This-Much-style dark onboarding screens (welcome, meal-plan, diet-type).
+// Kept separate from `colors` above, which the rest of the app (light, green) still uses.
+export const darkColors = {
+  background: "#000000",
+  surface: "#141414",
+  surfaceAlt: "#1C1C1C",
+  border: "rgba(255,255,255,0.14)",
+  text: "#FFFFFF",
+  textMuted: "rgba(255,255,255,0.6)",
+  coral: "#E2825D",
+  coralDark: "#C96A46",
+  coralTint: "rgba(226,130,93,0.14)",
+  blue: "#1F4C6B",
+  blueDark: "#183D57",
+  carbs: "#F0A83C",
+  fat: "#2FBFAE",
+  protein: "#8A7FE8",
+};
+
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -37,6 +56,7 @@ export const fontFamily = {
   body: "Nunito_400Regular",
   bodyMedium: "Nunito_600SemiBold",
   bodyBold: "Nunito_800ExtraBold",
+  tagline: "PTSerif_400Regular",
 };
 
 export const fontSize = {

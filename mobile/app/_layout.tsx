@@ -8,6 +8,7 @@ import {
   Nunito_600SemiBold,
   Nunito_800ExtraBold,
 } from "@expo-google-fonts/nunito";
+import { PTSerif_400Regular } from "@expo-google-fonts/pt-serif";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { OnboardingDraftProvider } from "../contexts/OnboardingDraft";
 import { colors } from "../lib/theme";
@@ -53,6 +54,7 @@ export default function RootLayout() {
     Nunito_400Regular,
     Nunito_600SemiBold,
     Nunito_800ExtraBold,
+    PTSerif_400Regular,
   });
 
   if (!fontsLoaded) {

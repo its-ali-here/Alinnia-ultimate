@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
-import { Link } from "expo-router";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Link, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
-import { Button } from "../../components/Button";
-import { FormInput } from "../../components/FormInput";
-import { colors, fontFamily, fontSize, spacing } from "../../lib/theme";
+import { PillButton } from "../../components/PillButton";
+import { ScreenContainer } from "../../components/ScreenContainer";
+import { darkColors, fontFamily, fontSize, spacing } from "../../lib/theme";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -19,38 +20,75 @@ export default function SignIn() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Alinnia</Text>
-      <Text style={styles.subtitle}>Sign in to continue</Text>
+    <ScreenContainer style={styles.container}>
+      {router.canGoBack() ? (
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
+          <Ionicons name="chevron-back" size={26} color={darkColors.text} />
+        </Pressable>
+      ) : null}
 
-      <FormInput
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholder="you@example.com"
-      />
-      <FormInput
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholder="••••••••"
-      />
+      <View style={styles.hero}>
+        <Text style={styles.title}>Mealinnia</Text>
+        <Text style={styles.subtitle}>Sign in to continue</Text>
 
-      <Button title="Sign in" icon="log-in-outline" onPress={handleSignIn} loading={loading} disabled={!email || !password} />
+        <View style={styles.field}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholder="you@example.com"
+            placeholderTextColor={darkColors.textMuted}
+            style={styles.input}
+          />
+        </View>
 
-      <Link href="/(setup)/welcome" style={styles.link}>
-        Don't have an account? Get started
-      </Link>
-    </View>
+        <View style={styles.field}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="••••••••"
+            placeholderTextColor={darkColors.textMuted}
+            style={styles.input}
+          />
+        </View>
+
+        <PillButton
+          title="Sign In"
+          variant="coral"
+          onPress={handleSignIn}
+          loading={loading}
+          disabled={!email || !password}
+          style={styles.signInButton}
+        />
+
+        <Link href="/(setup)/welcome" style={styles.link}>
+          Don't have an account? Get started
+        </Link>
+      </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, justifyContent: "center" },
-  title: { fontSize: fontSize.xxl, fontFamily: fontFamily.displayBold, color: colors.text, textAlign: "center" },
-  subtitle: { fontSize: fontSize.md, fontFamily: fontFamily.body, color: colors.textMuted, textAlign: "center", marginBottom: spacing.xl },
-  link: { marginTop: spacing.lg, textAlign: "center", color: colors.primary, fontFamily: fontFamily.bodyMedium, fontSize: fontSize.sm },
+  container: { padding: spacing.lg },
+  back: { marginBottom: spacing.lg },
+  hero: { flex: 1, justifyContent: "center" },
+  title: { fontSize: fontSize.xxl, fontFamily: fontFamily.displayBold, color: darkColors.coral, textAlign: "center" },
+  subtitle: { fontSize: fontSize.md, fontFamily: fontFamily.body, color: darkColors.textMuted, textAlign: "center", marginBottom: spacing.xl },
+  field: { marginBottom: spacing.xl },
+  label: { fontSize: fontSize.sm, fontFamily: fontFamily.bodyMedium, color: darkColors.text, marginBottom: spacing.xs },
+  input: {
+    fontSize: fontSize.md,
+    fontFamily: fontFamily.body,
+    color: darkColors.text,
+    borderBottomWidth: 1,
+    borderBottomColor: darkColors.border,
+    paddingBottom: spacing.sm,
+  },
+  signInButton: { marginTop: spacing.md },
+  link: { marginTop: spacing.lg, textAlign: "center", color: darkColors.coral, fontFamily: fontFamily.bodyMedium, fontSize: fontSize.sm },
 });
