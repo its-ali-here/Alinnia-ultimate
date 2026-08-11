@@ -24,7 +24,7 @@ export default function WaitlistForm() {
   if (status === "done") {
     return (
       <p className="rounded-full border border-emerald-800/30 bg-emerald-900/10 px-6 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-        You&apos;re on the list — we&apos;ll email you when NutriKitchen is ready.
+        You&apos;re on the list — we&apos;ll email you when Mealinnia is ready.
       </p>
     );
   }

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NutriKitchen — know what your body needs",
+  title: "Mealinnia — Cook What You Crave",
   description:
-    "NutriKitchen sets your family's weekly nutrition targets and suggests familiar dishes from your own cuisine to meet them.",
+    "Alinnia sets your family's weekly nutrition targets and suggests familiar dishes from your own cuisine to meet them.",
 };
 
 export default function RootLayout({

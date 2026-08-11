@@ -19,7 +19,7 @@ export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <span className="text-lg font-semibold tracking-tight">NutriKitchen</span>
+        <span className="text-lg font-semibold tracking-tight">Mealinnia</span>
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center px-6 text-center">
@@ -30,7 +30,7 @@ export default function Home() {
             Cook what you already love.
           </h1>
           <p className="max-w-xl text-base text-black/60 dark:text-white/60 sm:text-lg">
-            NutriKitchen sets your family&apos;s nutrition targets for the week, then suggests familiar dishes from
+            Mealinnia sets your family&apos;s nutrition targets for the week, then suggests familiar dishes from
             your own cuisine to hit them — with a shopping list scaled to your household.
           </p>
           <div className="mt-2 flex flex-col items-center gap-3">
@@ -55,7 +55,7 @@ export default function Home() {
       </main>
 
       <footer className="mx-auto w-full max-w-5xl px-6 py-8 text-center text-xs text-black/40 dark:text-white/40">
-        © {new Date().getFullYear()} NutriKitchen. Not a substitute for professional medical or dietary advice.
+        © {new Date().getFullYear()} Mealinnia. Not a substitute for professional medical or dietary advice.
       </footer>
     </div>
   );
