@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import Image from "next/image";
+
 export const metadata: Metadata = {
   title: "Terms of Service — Alinnia",
   description: "Alinnia's Terms of Service and End User Agreement.",
@@ -8,20 +10,31 @@ export const metadata: Metadata = {
 
 export default function TermsOfServicePage() {
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-4xl items-center justify-between px-6 py-6 border-b border-black/10 dark:border-white/10">
-        <Link
-          href="/"
-          className="text-lg font-semibold tracking-tight hover:opacity-80 transition-opacity"
-        >
-          Alinnia
-        </Link>
-        <Link
-          href="/"
-          className="text-sm font-medium text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white transition-colors"
-        >
-          ← Back to Home
-        </Link>
+    <div className="flex flex-1 flex-col bg-[#FBFAF2] text-[#042A1C] dark:bg-[#0A0F0D] dark:text-[#F4F7F5]">
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-[#FBFAF2]/85 dark:bg-[#0A0F0D]/85 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="h-9 w-9 overflow-hidden rounded-xl border border-black/10 dark:border-white/15 shadow-sm group-hover:scale-105 transition-transform">
+              <Image
+                src="/icon.png"
+                alt="Alinnia App Icon"
+                width={36}
+                height={36}
+                className="h-full w-full object-cover"
+                priority
+              />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-[#042A1C] dark:text-white">
+              Alinnia
+            </span>
+          </Link>
+          <Link
+            href="/"
+            className="text-xs sm:text-sm font-semibold text-[#14A85C] hover:text-[#0C8747] transition-colors"
+          >
+            ← Back to Home
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
