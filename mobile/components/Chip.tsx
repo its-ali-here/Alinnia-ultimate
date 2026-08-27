@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, fontFamily, fontSize, radius, spacing } from "../lib/theme";
+import { useTheme } from "../contexts/ThemeContext";
+import { fontFamily, fontSize, radius, spacing, type ThemeColors } from "../lib/theme";
 
 interface ChipProps {
   label: string;
@@ -14,6 +15,8 @@ interface ChipProps {
 }
 
 export function Chip({ label, icon, tone = "primary", active, onPress, disabled, style }: ChipProps) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const isAccent = tone === "accent";
   const color = active ? (isAccent ? colors.text : colors.primaryText) : isAccent ? colors.accent : colors.primaryDark;
 
@@ -40,19 +43,21 @@ export function Chip({ label, icon, tone = "primary", active, onPress, disabled,
   );
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-  },
-  chipPrimary: { backgroundColor: colors.primaryTint },
-  chipPrimaryActive: { backgroundColor: colors.primary },
-  chipAccent: { backgroundColor: colors.accentTint },
-  chipAccentActive: { backgroundColor: colors.accent },
-  chipDisabled: { opacity: 0.4 },
-  icon: { marginRight: 4 },
-  label: { fontSize: fontSize.xs, fontFamily: fontFamily.bodyBold, textTransform: "capitalize" },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.pill,
+    },
+    chipPrimary: { backgroundColor: colors.primaryTint },
+    chipPrimaryActive: { backgroundColor: colors.primary },
+    chipAccent: { backgroundColor: colors.accentTint },
+    chipAccentActive: { backgroundColor: colors.accent },
+    chipDisabled: { opacity: 0.4 },
+    icon: { marginRight: 4 },
+    label: { fontSize: fontSize.xs, fontFamily: fontFamily.bodyBold, textTransform: "capitalize" },
+  });
+}

@@ -3,7 +3,8 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Chip } from "./Chip";
-import { colors, fontFamily, fontSize, radius as radiusToken, spacing } from "../lib/theme";
+import { useTheme } from "../contexts/ThemeContext";
+import { fontFamily, fontSize, radius as radiusToken, spacing, type ThemeColors } from "../lib/theme";
 
 export interface OrbitChipItem {
   label: string;
@@ -26,6 +27,8 @@ const ORBIT_RADIUS = 122;
 const MEDALLION_SIZE = 140;
 
 export function OrbitDish({ dishName, icon, chips, loading }: OrbitDishProps) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const rotation = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -103,29 +106,31 @@ export function OrbitDish({ dishName, icon, chips, loading }: OrbitDishProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center", alignSelf: "center" },
-  ring: { position: "absolute", borderRadius: radiusToken.pill, borderWidth: 1.5 },
-  ringOuter: { width: SIZE, height: SIZE, borderColor: colors.primaryTint },
-  ringInner: { width: SIZE - 60, height: SIZE - 60, borderColor: colors.border },
-  arm: { position: "absolute", alignItems: "center", justifyContent: "center" },
-  medallion: {
-    width: MEDALLION_SIZE,
-    height: MEDALLION_SIZE,
-    borderRadius: radiusToken.pill,
-    overflow: "hidden",
-  },
-  medallionGradient: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-  },
-  dishName: {
-    fontSize: fontSize.sm,
-    fontFamily: fontFamily.bodyBold,
-    color: colors.primaryText,
-    textAlign: "center",
-  },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center", alignSelf: "center" },
+    ring: { position: "absolute", borderRadius: radiusToken.pill, borderWidth: 1.5 },
+    ringOuter: { width: SIZE, height: SIZE, borderColor: colors.primaryTint },
+    ringInner: { width: SIZE - 60, height: SIZE - 60, borderColor: colors.border },
+    arm: { position: "absolute", alignItems: "center", justifyContent: "center" },
+    medallion: {
+      width: MEDALLION_SIZE,
+      height: MEDALLION_SIZE,
+      borderRadius: radiusToken.pill,
+      overflow: "hidden",
+    },
+    medallionGradient: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.md,
+      gap: spacing.xs,
+    },
+    dishName: {
+      fontSize: fontSize.sm,
+      fontFamily: fontFamily.bodyBold,
+      color: colors.primaryText,
+      textAlign: "center",
+    },
+  });
+}

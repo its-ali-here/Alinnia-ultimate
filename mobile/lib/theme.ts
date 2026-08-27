@@ -1,34 +1,63 @@
-export const colors = {
+export interface ThemeColors {
+  background: string;
+  surface: string;
+  surfaceAlt: string;
+  border: string;
+  text: string;
+  textMuted: string;
+  primary: string;
+  primaryDark: string;
+  primaryTint: string;
+  primaryText: string;
+  sprout: string;
+  accent: string;
+  accentTint: string;
+  danger: string;
+  progressTrack: string;
+  carbs: string;
+  fat: string;
+  protein: string;
+}
+
+// Alinnia's original light/green brand palette — the app-wide light mode.
+export const lightTheme: ThemeColors = {
   background: "#FBFAF2",
   surface: "#FFFFFF",
+  surfaceAlt: "#EFEEE2",
   border: "rgba(4,42,28,0.10)",
   text: "#042A1C",
   textMuted: "#67796E",
   primary: "#14A85C",
   primaryDark: "#0C8747",
   primaryTint: "#EAF7EE",
+  primaryText: "#FBFAF2",
   sprout: "#8FE64B",
   accent: "#FFC233",
   accentTint: "#FFF3D6",
   danger: "#F0563E",
-  primaryText: "#FBFAF2",
   progressTrack: "rgba(4,42,28,0.07)",
+  carbs: "#D98C2B",
+  fat: "#1F9E8E",
+  protein: "#6B5FD1",
 };
 
-// Eat-This-Much-style dark onboarding screens (welcome, meal-plan, diet-type).
-// Kept separate from `colors` above, which the rest of the app (light, green) still uses.
-export const darkColors = {
+// The "Eat-This-Much-style" black/coral palette — the app-wide dark mode.
+export const darkTheme: ThemeColors = {
   background: "#000000",
   surface: "#141414",
   surfaceAlt: "#1C1C1C",
   border: "rgba(255,255,255,0.14)",
   text: "#FFFFFF",
   textMuted: "rgba(255,255,255,0.6)",
-  coral: "#E2825D",
-  coralDark: "#C96A46",
-  coralTint: "rgba(226,130,93,0.14)",
-  blue: "#1F4C6B",
-  blueDark: "#183D57",
+  primary: "#E2825D",
+  primaryDark: "#C96A46",
+  primaryTint: "rgba(226,130,93,0.14)",
+  primaryText: "#FFFFFF",
+  sprout: "#8FE6B0",
+  accent: "#F0C244",
+  accentTint: "rgba(240,194,68,0.16)",
+  danger: "#F0563E",
+  progressTrack: "rgba(255,255,255,0.12)",
   carbs: "#F0A83C",
   fat: "#2FBFAE",
   protein: "#8A7FE8",

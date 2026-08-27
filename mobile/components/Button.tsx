@@ -2,7 +2,8 @@ import { useRef } from "react";
 import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, fontFamily, fontSize, radius, spacing } from "../lib/theme";
+import { useTheme } from "../contexts/ThemeContext";
+import { fontFamily, fontSize, radius, spacing, type ThemeColors } from "../lib/theme";
 
 interface ButtonProps {
   title: string;
@@ -15,6 +16,8 @@ interface ButtonProps {
 }
 
 export function Button({ title, onPress, variant = "primary", icon, loading, disabled, style }: ButtonProps) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const scale = useRef(new Animated.Value(1)).current;
 
   function pressIn() {
@@ -67,20 +70,22 @@ export function Button({ title, onPress, variant = "primary", icon, loading, dis
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    flexDirection: "row",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  secondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border },
-  danger: { backgroundColor: colors.danger },
-  disabled: { opacity: 0.5 },
-  icon: { marginRight: spacing.xs },
-  text: { color: colors.primaryText, fontSize: fontSize.md, fontFamily: fontFamily.bodyBold },
-  textSecondary: { color: colors.text },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    base: {
+      flexDirection: "row",
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      borderRadius: radius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    secondary: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border },
+    danger: { backgroundColor: colors.danger },
+    disabled: { opacity: 0.5 },
+    icon: { marginRight: spacing.xs },
+    text: { color: colors.primaryText, fontSize: fontSize.md, fontFamily: fontFamily.bodyBold },
+    textSecondary: { color: colors.text },
+  });
+}

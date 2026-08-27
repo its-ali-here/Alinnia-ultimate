@@ -5,10 +5,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { PillButton } from "../../components/PillButton";
 import { ScreenContainer } from "../../components/ScreenContainer";
 import { useOnboardingDraft } from "../../contexts/OnboardingDraft";
-import { darkColors, fontFamily, fontSize, radius, spacing } from "../../lib/theme";
+import { useTheme } from "../../contexts/ThemeContext";
+import { fontFamily, fontSize, radius, spacing, type ThemeColors } from "../../lib/theme";
 import { DIET_TYPES, excludesText } from "../../lib/dietTypes";
 
 export default function DietType() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { dietType, setDietType } = useOnboardingDraft();
   const [selected, setSelected] = useState(dietType);
 
@@ -21,7 +24,7 @@ export default function DietType() {
     <ScreenContainer>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={26} color={darkColors.text} />
+          <Ionicons name="chevron-back" size={26} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Primary Diet</Text>
         <Pressable onPress={save} hitSlop={12}>
@@ -46,7 +49,7 @@ export default function DietType() {
               <Ionicons
                 name={isSelected ? "radio-button-on" : "radio-button-off"}
                 size={22}
-                color={isSelected ? darkColors.coral : darkColors.textMuted}
+                color={isSelected ? colors.primary : colors.textMuted}
               />
               <Text style={styles.optionIcon}>{diet.icon}</Text>
               <View style={{ flex: 1 }}>
@@ -59,37 +62,39 @@ export default function DietType() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <PillButton title="Save" variant="coral" onPress={save} />
+        <PillButton title="Save" onPress={save} />
       </View>
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  headerTitle: { fontSize: fontSize.lg, fontFamily: fontFamily.bodyBold, color: darkColors.text },
-  saveLink: { fontSize: fontSize.md, fontFamily: fontFamily.bodyBold, color: darkColors.coral },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
-  description: { fontSize: fontSize.sm, fontFamily: fontFamily.body, color: darkColors.textMuted, lineHeight: 20, marginBottom: spacing.lg },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    borderWidth: 1.5,
-    borderColor: darkColors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  optionSelected: { borderColor: darkColors.coral },
-  optionIcon: { fontSize: 28 },
-  optionLabel: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: darkColors.text },
-  optionExcludes: { fontSize: fontSize.xs, fontFamily: fontFamily.body, color: darkColors.textMuted, marginTop: 2 },
-  footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.lg,
+      marginBottom: spacing.lg,
+    },
+    headerTitle: { fontSize: fontSize.lg, fontFamily: fontFamily.bodyBold, color: colors.text },
+    saveLink: { fontSize: fontSize.md, fontFamily: fontFamily.bodyBold, color: colors.primary },
+    content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+    description: { fontSize: fontSize.sm, fontFamily: fontFamily.body, color: colors.textMuted, lineHeight: 20, marginBottom: spacing.lg },
+    option: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    optionSelected: { borderColor: colors.primary },
+    optionIcon: { fontSize: 28 },
+    optionLabel: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: colors.text },
+    optionExcludes: { fontSize: fontSize.xs, fontFamily: fontFamily.body, color: colors.textMuted, marginTop: 2 },
+    footer: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  });
+}

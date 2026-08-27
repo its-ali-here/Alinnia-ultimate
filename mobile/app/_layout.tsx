@@ -1,3 +1,4 @@
+import type { PropsWithChildren } from "react";
 import { Stack } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -11,10 +12,11 @@ import {
 import { PTSerif_400Regular } from "@expo-google-fonts/pt-serif";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { OnboardingDraftProvider } from "../contexts/OnboardingDraft";
-import { colors } from "../lib/theme";
+import { ThemeProvider, useTheme } from "../contexts/ThemeContext";
 
 function RootNavigator() {
   const { session, profile, loading } = useAuth();
+  const { colors } = useTheme();
 
   if (loading) {
     return (
@@ -28,7 +30,15 @@ function RootNavigator() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!session}>
+      {/* Guarded on !isOnboarded (not !session): the new flow creates a session
+          partway through (setup) — at Save — but Reminder and Trial still come
+          after it, still inside (setup). onboarded only flips true once Trial's
+          complete_onboarding_v3 call finishes, so (setup) stays mounted for the
+          whole session-creation → Reminder → Trial sequence. This also doubles
+          as the resume path for a signed-in-but-incomplete user (e.g. force-quit
+          between Save and Trial) — they land back in (setup) on relaunch instead
+          of a missing route. */}
+      <Stack.Protected guard={!isOnboarded}>
         <Stack.Screen name="(setup)" />
       </Stack.Protected>
 
@@ -36,18 +46,19 @@ function RootNavigator() {
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
 
-      <Stack.Protected guard={!!session && !isOnboarded}>
-        <Stack.Screen name="onboarding" />
-      </Stack.Protected>
-
       <Stack.Protected guard={!!session && isOnboarded}>
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="recipe/[id]" />
+        <Stack.Screen name="food/[id]" />
+        <Stack.Screen name="household-preferences" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="premium" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+        <Stack.Screen name="search" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       </Stack.Protected>
     </Stack>
   );
 }
 
-export default function RootLayout() {
+function FontGate({ children }: PropsWithChildren) {
   const [fontsLoaded] = useFonts({
     Baloo2_600SemiBold,
     Baloo2_700Bold,
@@ -56,6 +67,7 @@ export default function RootLayout() {
     Nunito_800ExtraBold,
     PTSerif_400Regular,
   });
+  const { colors } = useTheme();
 
   if (!fontsLoaded) {
     return (
@@ -65,13 +77,21 @@ export default function RootLayout() {
     );
   }
 
+  return <>{children}</>;
+}
+
+export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <OnboardingDraftProvider>
-          <RootNavigator />
-        </OnboardingDraftProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <FontGate>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <OnboardingDraftProvider>
+              <RootNavigator />
+            </OnboardingDraftProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </FontGate>
+    </ThemeProvider>
   );
 }

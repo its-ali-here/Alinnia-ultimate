@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { darkColors, fontFamily, fontSize, radius, spacing } from "../lib/theme";
+import { Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
+import { useTheme } from "../contexts/ThemeContext";
+import { fontFamily, fontSize, radius, spacing, type ThemeColors } from "../lib/theme";
 
 interface SelectableBoxProps {
   label: string;
@@ -10,6 +11,8 @@ interface SelectableBoxProps {
 }
 
 export function SelectableBox({ label, description, selected, onPress, style }: SelectableBoxProps) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   return (
     <Pressable style={[styles.box, selected && styles.boxSelected, style]} onPress={onPress}>
       <Text style={styles.label}>{label}</Text>
@@ -18,15 +21,18 @@ export function SelectableBox({ label, description, selected, onPress, style }: 
   );
 }
 
-const styles = StyleSheet.create({
-  box: {
-    borderWidth: 1.5,
-    borderColor: darkColors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  boxSelected: { borderColor: darkColors.coral },
-  label: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: darkColors.text },
-  description: { fontSize: fontSize.xs, fontFamily: fontFamily.body, color: darkColors.textMuted, marginTop: 2 },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    box: {
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      backgroundColor: colors.surface,
+    },
+    boxSelected: { borderColor: colors.primary, backgroundColor: colors.primaryTint },
+    label: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: colors.text },
+    description: { fontSize: fontSize.xs, fontFamily: fontFamily.body, color: colors.textMuted, marginTop: 2 },
+  });
+}

@@ -34,4 +34,3 @@ export const TODAYS_PLAN: PlanMealSection[] = [
   },
 ];
 
-export const TODAYS_TOTALS = { calories: 1185, carbsG: 96, fatG: 58, proteinG: 71 };

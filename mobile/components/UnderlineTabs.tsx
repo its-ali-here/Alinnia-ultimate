@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { darkColors, fontFamily, fontSize, spacing } from "../lib/theme";
+import { useTheme } from "../contexts/ThemeContext";
+import { fontFamily, fontSize, spacing, type ThemeColors } from "../lib/theme";
 
 interface Tab {
   key: string;
@@ -13,6 +14,8 @@ interface UnderlineTabsProps {
 }
 
 export function UnderlineTabs({ tabs, activeKey, onChange }: UnderlineTabsProps) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   return (
     <View style={styles.row}>
       {tabs.map((tab) => {
@@ -28,10 +31,12 @@ export function UnderlineTabs({ tabs, activeKey, onChange }: UnderlineTabsProps)
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: spacing.lg, borderBottomWidth: 1, borderBottomColor: darkColors.border },
-  tab: { paddingBottom: spacing.sm },
-  label: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: darkColors.textMuted },
-  labelActive: { color: darkColors.coral },
-  underline: { height: 2, backgroundColor: darkColors.coral, marginTop: spacing.xs, borderRadius: 1 },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: { flexDirection: "row", gap: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
+    tab: { paddingBottom: spacing.sm },
+    label: { fontSize: fontSize.md, fontFamily: fontFamily.bodyMedium, color: colors.textMuted },
+    labelActive: { color: colors.primary },
+    underline: { height: 2, backgroundColor: colors.primary, marginTop: spacing.xs, borderRadius: 1 },
+  });
+}

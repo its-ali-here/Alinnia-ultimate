@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
-import { colors, radius, spacing } from "../lib/theme";
+import { useTheme } from "../contexts/ThemeContext";
+import { radius, spacing, type ThemeColors } from "../lib/theme";
 
 interface StepProgressProps {
   step: number;
@@ -7,6 +8,8 @@ interface StepProgressProps {
 }
 
 export function StepProgress({ step, total }: StepProgressProps) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   return (
     <View style={styles.row}>
       {Array.from({ length: total }).map((_, i) => (
@@ -16,9 +19,11 @@ export function StepProgress({ step, total }: StepProgressProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.xl },
-  dot: { height: 6, flex: 1, borderRadius: radius.pill },
-  dotActive: { backgroundColor: colors.primary },
-  dotInactive: { backgroundColor: colors.border },
-});
+function getStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    row: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.xl },
+    dot: { height: 6, flex: 1, borderRadius: radius.pill },
+    dotActive: { backgroundColor: colors.primary },
+    dotInactive: { backgroundColor: colors.border },
+  });
+}
