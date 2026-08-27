@@ -1,0 +1,14 @@
+{
+  "name": "alinnia-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "upload-images": "node upload-images.mjs",
+    "generate-seed": "node generate-seed.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "sharp": "^0.35.0"
+  }
+}

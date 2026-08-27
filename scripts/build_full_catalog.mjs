@@ -1,0 +1,2788 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SEED_DATA_DIR = join(__dirname, "seed-data");
+
+// 1. Load existing foods and add any missing cultural ingredients
+const existingFoods = JSON.parse(readFileSync(join(SEED_DATA_DIR, "foods.json"), "utf8"));
+const foodKeySet = new Set(existingFoods.map((f) => f.key));
+
+const extraFoods = [
+  { key: "tahini", name: "Tahini (sesame paste)", source: "usda", category: "Fats & Oils", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 595, protein: 17, carbs: 21, fat: 54, saturated_fat: 7.5, fiber: 9.3, sugar: 0.5, sodium: 115, cholesterol: 0, iron: 8.9, calcium: 426 } },
+  { key: "sumac", name: "Sumac, ground", source: "usda", category: "Spices", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 240, protein: 9, carbs: 45, fat: 8, saturated_fat: 1.5, fiber: 15, sugar: 3, sodium: 20, cholesterol: 0, vitamin_c: 35, iron: 12 } },
+  { key: "zaatar", name: "Za'atar spice blend", source: "usda", category: "Spices", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 310, protein: 10, carbs: 40, fat: 12, saturated_fat: 2, fiber: 18, sugar: 2, sodium: 350, cholesterol: 0, calcium: 650, iron: 25 } },
+  { key: "halloumi", name: "Halloumi cheese", source: "usda", category: "Dairy", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 321, protein: 21, carbs: 2, fat: 26, saturated_fat: 16, fiber: 0, sugar: 1.5, sodium: 1100, cholesterol: 75, calcium: 700 } },
+  { key: "pita_bread", name: "Pita bread, whole wheat", source: "usda", category: "Grains", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 250, protein: 9.5, carbs: 48, fat: 2, saturated_fat: 0.3, fiber: 6.5, sugar: 2, sodium: 420, cholesterol: 0, iron: 2.7 } },
+  { key: "bulgur", name: "Bulgur wheat, cooked", source: "usda", category: "Grains", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 83, protein: 3.1, carbs: 18.6, fat: 0.2, saturated_fat: 0.05, fiber: 4.5, sugar: 0.1, sodium: 5, cholesterol: 0, iron: 1, magnesium: 32 } },
+  { key: "noodles_egg", name: "Egg noodles, cooked", source: "usda", category: "Grains", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 138, protein: 4.5, carbs: 25, fat: 2.1, saturated_fat: 0.5, fiber: 1.2, sugar: 0.4, sodium: 5, cholesterol: 29, iron: 1.5 } },
+  { key: "soy_sauce", name: "Soy sauce, light", source: "usda", category: "Pantry", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 53, protein: 8, carbs: 4.9, fat: 0.6, saturated_fat: 0.1, fiber: 0.8, sugar: 0.4, sodium: 5493, cholesterol: 0 } },
+  { key: "broccoli", name: "Broccoli, fresh raw", source: "usda", category: "Produce", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 34, protein: 2.8, carbs: 6.6, fat: 0.4, saturated_fat: 0.1, fiber: 2.6, sugar: 1.7, sodium: 33, cholesterol: 0, vitamin_c: 89, vitamin_k: 101, folate: 63 } },
+  { key: "mushrooms", name: "Mushrooms, white button", source: "usda", category: "Produce", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 22, protein: 3.1, carbs: 3.3, fat: 0.3, saturated_fat: 0.05, fiber: 1, sugar: 2, sodium: 5, cholesterol: 0, potassium: 318, selenium: 9.3 } },
+  { key: "fava_beans", name: "Fava beans (foul), cooked", source: "usda", category: "Protein", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 110, protein: 7.6, carbs: 19.7, fat: 0.4, saturated_fat: 0.1, fiber: 5.4, sugar: 1.8, sodium: 5, cholesterol: 0, folate: 148, iron: 1.5 } },
+  { key: "white_beans", name: "White cannellini beans, cooked", source: "usda", category: "Protein", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 139, protein: 9.7, carbs: 25, fat: 0.5, saturated_fat: 0.1, fiber: 6.3, sugar: 0.3, sodium: 4, cholesterol: 0, iron: 3.7, potassium: 390 } },
+  { key: "lemon_juice", name: "Lemon juice, fresh", source: "usda", category: "Produce", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 22, protein: 0.4, carbs: 6.9, fat: 0.2, saturated_fat: 0, fiber: 0.3, sugar: 2.5, sodium: 1, cholesterol: 0, vitamin_c: 38.7, potassium: 103 } },
+  { key: "mint_leaves", name: "Mint leaves, fresh", source: "usda", category: "Produce", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 44, protein: 3.3, carbs: 8.4, fat: 0.7, saturated_fat: 0.2, fiber: 6.8, sugar: 0, sodium: 31, cholesterol: 0, vitamin_a: 212, vitamin_c: 13.3, iron: 5 } },
+  { key: "pomegranate_molasses", name: "Pomegranate molasses", source: "usda", category: "Pantry", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 240, protein: 1, carbs: 58, fat: 0.1, saturated_fat: 0, fiber: 0.5, sugar: 52, sodium: 15, cholesterol: 0, potassium: 220 } },
+  { key: "parsley_fresh", name: "Parsley, fresh flat leaf", source: "usda", category: "Produce", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 36, protein: 3, carbs: 6.3, fat: 0.8, saturated_fat: 0.1, fiber: 3.3, sugar: 0.8, sodium: 56, cholesterol: 0, vitamin_k: 1640, vitamin_c: 133, vitamin_a: 421, iron: 6.2 } },
+  { key: "dried_lime", name: "Dried black lime (loomi), crushed", source: "usda", category: "Spices", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 150, protein: 3, carbs: 32, fat: 1, saturated_fat: 0.1, fiber: 12, sugar: 5, sodium: 10, cholesterol: 0, vitamin_c: 45, iron: 4 } },
+  { key: "parmesan_cheese", name: "Parmesan cheese, grated", source: "usda", category: "Dairy", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 431, protein: 38, carbs: 4.1, fat: 29, saturated_fat: 17, fiber: 0, sugar: 0.9, sodium: 1529, cholesterol: 88, calcium: 1184 } },
+  { key: "pesto_sauce", name: "Basil pesto sauce", source: "usda", category: "Fats & Oils", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 450, protein: 5, carbs: 6, fat: 45, saturated_fat: 7, fiber: 2, sugar: 2, sodium: 700, cholesterol: 10, calcium: 150 } },
+  { key: "eggplant_raw", name: "Eggplant (baingan), raw", source: "usda", category: "Produce", serving_size: 100, serving_unit: "g",
+    nutrients_per_100g: { calories: 25, protein: 1, carbs: 5.9, fat: 0.2, saturated_fat: 0.03, fiber: 3, sugar: 3.5, sodium: 2, cholesterol: 0, potassium: 229 } },
+];
+
+for (const ef of extraFoods) {
+  if (!foodKeySet.has(ef.key)) {
+    existingFoods.push(ef);
+    foodKeySet.add(ef.key);
+  }
+}
+
+writeFileSync(join(SEED_DATA_DIR, "foods.json"), JSON.stringify(existingFoods, null, 2) + "\n");
+console.log(`Updated foods.json (${existingFoods.length} foods).`);
+
+// 2. Generate 100 Comprehensive Recipes (50 Pakistani & 50 Arab)
+const allRecipes = [];
+
+// Helper function to build recipes
+function addRecipe(data) {
+  allRecipes.push(data);
+}
+
+// ============================================================================
+// 🇵🇰 50 PAKISTANI DISHES
+// ============================================================================
+
+// 1. Café & Continental
+addRecipe({
+  key: "moroccan_chicken_steak",
+  name: "Moroccan Chicken Steak",
+  cuisine: "Continental",
+  description: "Flame-grilled chicken breast drizzled with spicy sambal sauce, served with roasted veggies or rice.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=moroccan+chicken+steak+recipe",
+  directions: [
+    "Marinate chicken breast with lemon juice, black pepper, paprika, and garlic for 15 mins.",
+    "Grill chicken breast on high heat with 1 tsp olive oil for 4–5 mins each side until charred and cooked through.",
+    "In a small pan, simmer chili paste, lemon juice, cream, and herbs to create the signature spicy Moroccan sauce.",
+    "Pour warm sauce over the grilled steaks and serve with roasted veggies or rice."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "black_pepper_chicken_steak",
+  name: "Black Pepper Chicken Steak",
+  cuisine: "Continental",
+  description: "Pan-seared lean chicken breast with crushed black pepper-garlic reduction and roasted baby potatoes.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=black+pepper+chicken+steak+recipe",
+  directions: [
+    "Pound chicken breast lightly and season with soy sauce, coarse black pepper, and garlic.",
+    "Sear in a hot skillet with olive oil for 5 minutes per side until golden brown.",
+    "Deglaze the skillet with broth, crushed peppercorns, and Worcestershire sauce for the pepper gravy.",
+    "Serve hot with roasted potatoes."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "potato_boiled", quantity: 200, unit: "g" },
+    { food_key: "black_pepper", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "parmesan_spinach_stuffed_chicken",
+  name: "Parmesan Spinach Stuffed Chicken",
+  cuisine: "Continental",
+  description: "Baked chicken breast stuffed with blanched spinach, garlic, and parmesan cheese.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=spinach+stuffed+chicken+breast+recipe",
+  directions: [
+    "Cut a deep pocket lengthwise into each chicken breast.",
+    "Sauté spinach with minced garlic until wilted, then fold with grated parmesan cheese.",
+    "Stuff spinach mixture into chicken breasts and seal with toothpicks.",
+    "Bake at 200°C (400°F) for 22–25 minutes until golden and juicy."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "spinach_raw", quantity: 150, unit: "g" },
+    { food_key: "parmesan_cheese", quantity: 40, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "penne_chicken_alfredo",
+  name: "Penne Chicken Alfredo (Light)",
+  cuisine: "Continental",
+  description: "Whole-wheat penne with grilled chicken breast and garlic in a light parmesan sauce.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=healthy+chicken+alfredo+penne+recipe",
+  directions: [
+    "Boil penne pasta in salted water until al dente.",
+    "Pan-sear seasoned chicken breast strips with garlic in olive oil until cooked through.",
+    "In the same pan, whisk milk, a touch of butter, garlic, and grated parmesan into a smooth sauce.",
+    "Toss cooked penne and chicken into the sauce, garnish with parsley, and serve immediately."
+  ],
+  ingredients: [
+    { food_key: "pasta_cooked", quantity: 350, unit: "g" },
+    { food_key: "chicken_breast", quantity: 300, unit: "g" },
+    { food_key: "milk_whole", quantity: 150, unit: "ml" },
+    { food_key: "parmesan_cheese", quantity: 40, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "spicy_arrabbiata_chicken_pasta",
+  name: "Spicy Arrabbiata with Grilled Chicken",
+  cuisine: "Continental",
+  description: "Penne tossed in a zesty roasted tomato, chili, and basil sauce topped with grilled chicken skewers.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=spicy+arrabbiata+chicken+pasta+recipe",
+  directions: [
+    "Boil pasta until al dente.",
+    "Sauté garlic and red chili flakes in olive oil until fragrant, then add crushed tomatoes and simmer for 10 mins.",
+    "Grill seasoned chicken breast slices until charred.",
+    "Toss pasta in the arrabbiata sauce, top with grilled chicken and fresh herbs."
+  ],
+  ingredients: [
+    { food_key: "pasta_cooked", quantity: 350, unit: "g" },
+    { food_key: "chicken_breast", quantity: 300, unit: "g" },
+    { food_key: "tomato_raw", quantity: 250, unit: "g" },
+    { food_key: "garlic_raw", quantity: 12, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "baked_lemon_butter_fish",
+  name: "Baked White Fish with Lemon & Olive Oil",
+  cuisine: "Continental",
+  description: "Tender fish fillet baked in parchment with lemon slices, crushed garlic, and fresh herbs.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=baked+lemon+herb+fish+recipe",
+  directions: [
+    "Place fish fillets on baking sheet lined with parchment paper.",
+    "Drizzle with olive oil, fresh lemon juice, crushed garlic, black pepper, and sea salt.",
+    "Top with thin lemon slices and fresh parsley.",
+    "Bake at 190°C (375°F) for 12–15 minutes until fish flakes easily with a fork."
+  ],
+  ingredients: [
+    { food_key: "salmon", quantity: 300, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "grilled_peri_peri_chicken_burger",
+  name: "Grilled Peri-Peri Chicken Fillet Burger",
+  cuisine: "Continental",
+  description: "Flame-grilled chicken breast marinated in fiery peri-peri herbs with lettuce and yogurt-mayo.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 12,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=peri+peri+chicken+burger+healthy+recipe",
+  directions: [
+    "Marinate chicken fillets in lemon, paprika, garlic, and crushed red chili for 15 mins.",
+    "Grill on high heat with light olive oil for 4 mins on each side.",
+    "Lightly toast whole wheat burger buns.",
+    "Assemble with crisp lettuce, tomato slices, grilled chicken, and light yogurt sauce."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 300, unit: "g" },
+    { food_key: "white_bread", quantity: 120, unit: "g" },
+    { food_key: "tomato_raw", quantity: 60, unit: "g" },
+    { food_key: "lemon_juice", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "pakistani_russian_salad_tikka",
+  name: "Russian Salad Bowl with Tikka Skewers",
+  cuisine: "Continental",
+  description: "Diced apples, peas, and pineapple tossed in Greek yogurt paired with skewered chicken breast.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=russian+salad+recipe+pakistani",
+  directions: [
+    "Mix diced apples, boiled peas, and potatoes with Greek yogurt, black pepper, and a touch of honey.",
+    "Grill spiced chicken tikka cubes on skewers until charred and cooked through.",
+    "Serve chilled salad bowl topped with warm, juicy tikka skewers."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 250, unit: "g" },
+    { food_key: "apple", quantity: 120, unit: "g" },
+    { food_key: "green_peas_cooked", quantity: 80, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 100, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+// 2. Desi-Chinese & Pan-Asian
+addRecipe({
+  key: "karachi_singaporean_rice",
+  name: "Karachi Singaporean Rice",
+  cuisine: "Karachi",
+  description: "Layered aromatic rice, stir-fried noodles, spicy chicken gravy, and a light garlic-mayo drizzle.",
+  servings: 4,
+  prep_minutes: 20,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=singaporean+rice+recipe+food+fusion",
+  directions: [
+    "Cook basmati rice with garlic and cumin. Sauté egg noodles with julienned veggies and soy sauce.",
+    "Cook diced chicken breast in garlic, ketchup, soy sauce, and red chili flakes to make the spicy chicken gravy.",
+    "Layer steamed rice on a platter, top with noodles, spoon hot chicken gravy over top.",
+    "Tempered green chilies and garlic in 1 tsp oil, pour on top with a light yogurt-garlic drizzle."
+  ],
+  ingredients: [
+    { food_key: "white_rice_cooked", quantity: 400, unit: "g" },
+    { food_key: "noodles_egg", quantity: 200, unit: "g" },
+    { food_key: "chicken_breast", quantity: 400, unit: "g" },
+    { food_key: "bell_pepper", quantity: 100, unit: "g" },
+    { food_key: "cabbage", quantity: 80, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "soy_sauce", quantity: 25, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "green_chili", quantity: 10, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_shashlik_rice",
+  name: "Chicken Shashlik with Egg Fried Rice",
+  cuisine: "Continental",
+  description: "Skewered chicken, bell peppers, and onions in a tangy sweet-sour tomato glaze over egg rice.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+shashlik+with+egg+fried+rice+recipe",
+  directions: [
+    "Sauté cubed chicken breast with minced garlic until white.",
+    "Add diced bell peppers and onions, tossing over high heat.",
+    "Pour tomato puree, vinegar, light soy sauce, and black pepper; simmer until glossy.",
+    "Stir-fry cold cooked rice with scrambled eggs and spring onions. Serve hot together."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 400, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 350, unit: "g" },
+    { food_key: "bell_pepper", quantity: 120, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "egg", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "soy_sauce", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_manchurian_rice",
+  name: "Chicken Manchurian with Fried Rice",
+  cuisine: "Karachi",
+  description: "Tender chicken breast cubes tossed in a fragrant ginger-garlic and chili-tomato sauce.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+manchurian+recipe+ruby+ka+kitchen",
+  directions: [
+    "Season bite-sized chicken breast and lightly pan-fry with 1 tsp oil until golden.",
+    "In a wok, sauté minced ginger, garlic, and green chilies.",
+    "Add tomato paste, soy sauce, black pepper, and chicken broth; thicken slightly.",
+    "Toss chicken in sauce and serve alongside fluffy egg fried rice."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 400, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 350, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "ginger_raw", quantity: 10, unit: "g" },
+    { food_key: "soy_sauce", quantity: 20, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "thai_red_curry_chicken",
+  name: "Thai Red Chicken Curry with Steamed Rice",
+  cuisine: "Continental",
+  description: "Sliced chicken breast, bamboo shoots, and basil simmered in a fragrant coconut milk curry.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=thai+red+curry+chicken+recipe+easy",
+  directions: [
+    "Sauté red curry paste in 1 tsp oil until fragrant.",
+    "Add sliced chicken breast and stir-fry for 3 minutes.",
+    "Pour light coconut milk and simmer with sliced bell peppers and green chilies for 10 minutes.",
+    "Finish with fresh basil leaves and serve over steamed basmati rice."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 400, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 350, unit: "g" },
+    { food_key: "bell_pepper", quantity: 100, unit: "g" },
+    { food_key: "milk_whole", quantity: 150, unit: "ml" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_chili_dry",
+  name: "Chicken Chili Dry with Garlic Rice",
+  cuisine: "Karachi",
+  description: "Wok-seared chicken strips glazed with green chilies, ginger, and light soy sauce.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+chilli+dry+recipe+chinese",
+  directions: [
+    "Marinate chicken strips with soy sauce, black pepper, and garlic.",
+    "Sear chicken in a smoking hot wok with 1 tbsp oil until crisp on the edges.",
+    "Toss in sliced green chilies, ginger juliennes, and spring onions for 1 minute.",
+    "Serve immediately over garlic basmati rice."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 250, unit: "g" },
+    { food_key: "green_chili", quantity: 15, unit: "g" },
+    { food_key: "ginger_raw", quantity: 12, unit: "g" },
+    { food_key: "soy_sauce", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "pakistani_chicken_chow_mein",
+  name: "Pakistani Chicken Chow Mein (Noodles)",
+  cuisine: "Continental",
+  description: "Wok-tossed noodles loaded with shredded chicken, crunchy cabbage, carrots, and spring onions.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+chowmein+recipe+pakistani+style",
+  directions: [
+    "Boil noodles al dente and drain.",
+    "Sauté shredded chicken breast with garlic in olive oil until golden.",
+    "Add julienned carrots, cabbage, and bell peppers; toss over high flame for 2 mins.",
+    "Add noodles, soy sauce, black pepper, and chili sauce. Toss vigorously and serve."
+  ],
+  ingredients: [
+    { food_key: "noodles_egg", quantity: 300, unit: "g" },
+    { food_key: "chicken_breast", quantity: 300, unit: "g" },
+    { food_key: "cabbage", quantity: 100, unit: "g" },
+    { food_key: "carrot_raw", quantity: 80, unit: "g" },
+    { food_key: "bell_pepper", quantity: 80, unit: "g" },
+    { food_key: "soy_sauce", quantity: 25, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "hot_and_sour_soup_lahori",
+  name: "Hot & Sour Soup (Lahori Style)",
+  cuisine: "Punjabi",
+  description: "Thick chicken broth with shredded chicken breast, mushrooms, egg ribbons, and black vinegar.",
+  servings: 4,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=hot+and+sour+soup+recipe+lahori",
+  directions: [
+    "Simmer chicken breast in water with ginger and salt to make fresh clear broth, then shred chicken.",
+    "Add julienned carrots, cabbage, and mushrooms to the boiling broth.",
+    "Season with soy sauce, black vinegar, white pepper, and chili sauce.",
+    "Stir in light cornstarch slurry, slowly drizzle beaten egg while stirring for silky egg ribbons."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 300, unit: "g" },
+    { food_key: "egg", quantity: 100, unit: "g" },
+    { food_key: "carrot_raw", quantity: 80, unit: "g" },
+    { food_key: "cabbage", quantity: 80, unit: "g" },
+    { food_key: "mushrooms", quantity: 60, unit: "g" },
+    { food_key: "soy_sauce", quantity: 25, unit: "g" },
+    { food_key: "black_pepper", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "crispy_honey_sesame_chicken",
+  name: "Honey-Sesame Chicken (Air-Fried)",
+  cuisine: "Continental",
+  description: "Lightly crusted chicken tenders tossed in a honey-soy reduction and toasted sesame seeds.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=honey+sesame+chicken+air+fryer+recipe",
+  directions: [
+    "Cut chicken breast into bite-sized nuggets and season with garlic, soy sauce, and white pepper.",
+    "Air-fry at 200°C (400°F) for 10–12 minutes until crispy and golden.",
+    "In a pan, warm honey, soy sauce, and a squeeze of lemon.",
+    "Toss crispy chicken in the glaze and sprinkle generously with toasted sesame seeds."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "soy_sauce", quantity: 20, unit: "g" },
+    { food_key: "lemon_juice", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "garlic_raw", quantity: 6, unit: "g" }
+  ]
+});
+
+// 3. Signature Grills & BBQ
+addRecipe({
+  key: "peshawari_reshmi_kebab",
+  name: "Peshawari Reshmi Kebab",
+  cuisine: "Pashtun",
+  description: "Ultra-juicy minced chicken skewers marinated in ginger, coriander, and light hung curd.",
+  servings: 3,
+  prep_minutes: 20,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+reshmi+kabab+recipe+food+fusion",
+  directions: [
+    "Mince chicken breast finely with ginger, garlic, green chilies, and fresh coriander.",
+    "Mix with Greek yogurt, roasted gram flour, garam masala, and black pepper.",
+    "Shape onto flat metal skewers and grill over hot coals or bake on high heat for 12–14 minutes.",
+    "Brush lightly with olive oil and serve with mint raita."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 60, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 20, unit: "g" },
+    { food_key: "green_chili", quantity: 10, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "garam_masala", quantity: 5, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_tikka_boti",
+  name: "Chicken Tikka Boti (Air-Fried / Grilled)",
+  cuisine: "Punjabi",
+  description: "Spiced yogurt-marinated chicken breast chunks charred with lemon and ajwain.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+tikka+boti+recipe+air+fryer",
+  directions: [
+    "Marinate chicken breast cubes in yogurt, red chili powder, turmeric, cumin, lemon juice, and ginger-garlic.",
+    "Skewer chicken cubes.",
+    "Air-fry at 200°C for 14 minutes or grill on high heat until edges are charred.",
+    "Serve hot with lemon wedges and sliced onion rings."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 80, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "ginger_raw", quantity: 8, unit: "g" },
+    { food_key: "red_chili_powder", quantity: 5, unit: "g" },
+    { food_key: "cumin_seed", quantity: 4, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_malai_boti",
+  name: "Chicken Malai Boti Skewers",
+  cuisine: "Karachi",
+  description: "Tender chicken cubes marinated in green cardamom, white pepper, and light yogurt.",
+  servings: 3,
+  prep_minutes: 20,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+malai+boti+recipe+kolachi",
+  directions: [
+    "Marinate boneless chicken with Greek yogurt, lemon juice, green chili paste, and ground cardamom.",
+    "Rest for 30 minutes in the fridge.",
+    "Grill or pan-sear on high heat with minimal olive oil until charred and succulent.",
+    "Infuse with a piece of glowing charcoal for that authentic restaurant smoky aroma."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 100, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "cardamom_green", quantity: 3, unit: "g" },
+    { food_key: "black_pepper", quantity: 4, unit: "g" },
+    { food_key: "green_chili", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "peshawari_chapli_kebab",
+  name: "Peshawari Chapli Kebab (Pan-Grilled)",
+  cuisine: "Pashtun",
+  description: "Lean minced beef or chicken patties mixed with crushed coriander, pomegranate seeds, and tomatoes.",
+  servings: 4,
+  prep_minutes: 20,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chapli+kabab+recipe+peshawari",
+  directions: [
+    "Combine lean minced meat with crushed coriander seeds, pomegranate powder, red chili flakes, onions, and egg.",
+    "Shape into wide, thin flat patties and press a tomato slice into the center.",
+    "Shallow-fry on a hot tawa with a light brush of olive oil for 3–4 minutes per side until crispy.",
+    "Serve immediately with fresh naan or salad."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 500, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "egg", quantity: 50, unit: "g" },
+    { food_key: "coriander_powder", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "balochi_sajji_roasted",
+  name: "Balochi Sajji (Roasted / Air-Fried)",
+  cuisine: "Balochi",
+  description: "Whole roasted bone-in chicken with rock salt, lemon juice, and roasted cumin-chaat masala.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=balochi+sajji+recipe+authentic",
+  directions: [
+    "Make deep slits across whole chicken and rub vigorously with rock salt, garlic paste, and lemon juice.",
+    "Roast in oven at 200°C (400°F) for 40 minutes until skin is crispy and meat is tender.",
+    "Sprinkle generously with freshly roasted cumin and chaat masala.",
+    "Serve with spiced rice or whole wheat roti."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 700, unit: "g" },
+    { food_key: "lemon_juice", quantity: 25, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "cumin_seed", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 8, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "karachi_tawa_fish_tikka",
+  name: "Karachi Tawa Fish Tikka",
+  cuisine: "Karachi",
+  description: "Firm fish fillets seared on a cast-iron skillet with carom seeds (ajwain), red chili, and lemon.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 12,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=tawa+fish+fry+recipe+karachi",
+  directions: [
+    "Marinate fish steaks with lemon juice, crushed garlic, carom seeds, red chili powder, and turmeric.",
+    "Heat cast iron tawa with 1 tbsp olive oil.",
+    "Sear fish for 4–5 minutes per side without moving until a golden spiced crust forms.",
+    "Squeeze fresh lemon on top and serve hot."
+  ],
+  ingredients: [
+    { food_key: "salmon", quantity: 350, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "red_chili_powder", quantity: 4, unit: "g" },
+    { food_key: "turmeric", quantity: 2, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "afghani_chicken_boti",
+  name: "Afghani Chicken Boti",
+  cuisine: "Pashtun",
+  description: "Mild yogurt, garlic, and coarse black pepper-marinated chicken cubes grilled on skewers.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=afghani+chicken+boti+recipe",
+  directions: [
+    "Blend yogurt, garlic, ginger, and green chilies with black pepper into a smooth marinade.",
+    "Coat boneless chicken cubes and marinate for 30 mins.",
+    "Skewer and grill over high heat for 12–14 minutes, turning occasionally.",
+    "Serve with onion rings and coriander-mint chutney."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 450, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 80, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "black_pepper", quantity: 5, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "bihari_chicken_boti",
+  name: "Bihari Chicken Boti",
+  cuisine: "Karachi",
+  description: "Thinly sliced chicken breast marinated in raw papaya, mustard notes, and toasted whole spices.",
+  servings: 3,
+  prep_minutes: 20,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=bihari+kabab+boti+recipe+food+fusion",
+  directions: [
+    "Slice chicken into thin strips.",
+    "Marinate with roasted cumin, coriander, garam masala, yogurt, and lemon juice.",
+    "Thread onto skewers in a ribbon pattern.",
+    "Grill or pan-sear on high heat for 10–12 minutes until charred and deeply aromatic."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 450, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 80, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "garam_masala", quantity: 6, unit: "g" },
+    { food_key: "coriander_powder", quantity: 5, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+// 4. Street Food & Rolls
+addRecipe({
+  key: "karachi_bun_kebab",
+  name: "Karachi Bun Kebab (Daal Anda)",
+  cuisine: "Karachi",
+  description: "Pan-toasted lentil-shami patty with whipped egg froth, imli chutney, and sliced onions.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=karachi+bun+kabab+burns+road+recipe",
+  directions: [
+    "Whip egg white until light and frothy.",
+    "Dip prepared shami patty in egg froth and pan-sear on tawa until golden.",
+    "Toast burger buns on tawa with a light brush of oil.",
+    "Spread tamarind-mint chutney, place hot shami patty, sliced onion rings, and cabbage; close burger and serve."
+  ],
+  ingredients: [
+    { food_key: "dal_channa", quantity: 150, unit: "g" },
+    { food_key: "white_bread", quantity: 120, unit: "g" },
+    { food_key: "egg", quantity: 50, unit: "g" },
+    { food_key: "onion_raw", quantity: 50, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_malai_paratha_roll",
+  name: "Chicken Malai Boti Paratha Roll",
+  cuisine: "Karachi",
+  description: "Charred chicken malai boti wrapped in whole-wheat flatbread with mint yogurt raita.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=malai+boti+paratha+roll+recipe",
+  directions: [
+    "Grill or pan-sear marinated malai chicken cubes until charred.",
+    "Cook whole wheat flatbread on tawa until golden and flaky.",
+    "Line flatbread with chicken boti, sliced onions, and a spoonful of mint raita.",
+    "Roll tightly in parchment paper and serve hot."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 250, unit: "g" },
+    { food_key: "roti_whole_wheat", quantity: 120, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 60, unit: "g" },
+    { food_key: "onion_raw", quantity: 40, unit: "g" },
+    { food_key: "mint_leaves", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "smoked_seekh_kebab_wrap",
+  name: "Smoked Seekh Kebab Wrap",
+  cuisine: "Punjabi",
+  description: "Lean beef seekh kebab with sliced red onions and tamarind sauce in a thin flatbread.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=seekh+kabab+roll+recipe",
+  directions: [
+    "Grill spiced lean beef seekh kebabs until smoky and fully cooked.",
+    "Warm whole wheat flatbread.",
+    "Place seekh kebabs in center, add sliced crunchy red onions and mint sauce.",
+    "Wrap and slice diagonally."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 250, unit: "g" },
+    { food_key: "roti_whole_wheat", quantity: 120, unit: "g" },
+    { food_key: "onion_raw", quantity: 50, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "crispy_zinger_wrap",
+  name: "Crispy Zinger Chicken Wrap",
+  cuisine: "Continental",
+  description: "Crunchy baked chicken tenders with crisp lettuce and spicy garlic sauce in a whole-wheat wrap.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=zinger+twister+wrap+recipe+healthy",
+  directions: [
+    "Coat seasoned chicken strips in cornflakes/breadcrumbs and air-fry at 200°C for 12 mins.",
+    "Warm whole wheat tortilla.",
+    "Layer crunchy chicken, shredded iceberg lettuce, and light garlic mayo sauce.",
+    "Fold into a wrap and toast lightly on a dry pan."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 250, unit: "g" },
+    { food_key: "roti_whole_wheat", quantity: 120, unit: "g" },
+    { food_key: "cabbage", quantity: 60, unit: "g" },
+    { food_key: "garlic_raw", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 6, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "club_sandwich_bakery",
+  name: "Club Sandwich (Pakistani Bakery Style)",
+  cuisine: "Continental",
+  description: "Triple-decker toasted sandwich with shredded boiled chicken spread, egg, and cucumber slices.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=pakistani+bakery+style+club+sandwich+recipe",
+  directions: [
+    "Shred boiled chicken breast and mix with black pepper, salt, and light mayo/yogurt.",
+    "Fry a thin egg omelet.",
+    "Toast 3 slices of bread. Layer chicken spread on first slice, egg, and cucumber on second.",
+    "Stack, cut into triangles, and serve."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 200, unit: "g" },
+    { food_key: "white_bread", quantity: 150, unit: "g" },
+    { food_key: "egg", quantity: 50, unit: "g" },
+    { food_key: "cucumber", quantity: 50, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+// 5. 20-min Weeknight Comfort
+addRecipe({
+  key: "egg_khagina_desi",
+  name: "Desi Egg Khagina (Spiced Bhurji)",
+  cuisine: "Punjabi",
+  description: "Farm eggs scrambled with sautéed onions, ripe tomatoes, green chilies, and fresh cilantro.",
+  servings: 2,
+  prep_minutes: 5,
+  cook_minutes: 10,
+  meal_types: ["dinner", "breakfast"],
+  youtube_url: "https://www.youtube.com/results?search_query=egg+khagina+recipe+pakistani",
+  directions: [
+    "Sauté sliced onions in 1 tsp olive oil until translucent.",
+    "Add chopped tomatoes, green chilies, turmeric, and red chili powder; cook until soft.",
+    "Whisk eggs with salt and pour into the pan.",
+    "Scramble gently on low flame until fluffy and soft, garnish with chopped coriander."
+  ],
+  ingredients: [
+    { food_key: "egg", quantity: 200, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "tomato_raw", quantity: 80, unit: "g" },
+    { food_key: "green_chili", quantity: 8, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 10, unit: "g" },
+    { food_key: "turmeric", quantity: 2, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "bhindi_masala_crisp",
+  name: "Bhindi Masala (Crisp Pan-Roasted Okra)",
+  cuisine: "Punjabi",
+  description: "Okra stir-fried in olive oil with cumin seeds, onions, and sliced tomatoes.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=bhindi+masala+recipe+pakistani",
+  directions: [
+    "Wash and dry okra completely, then slice into rounds.",
+    "Pan-fry okra in 1 tbsp olive oil on medium-high heat until edges crisp and zero sliminess remains.",
+    "In another pan, sauté onions, tomatoes, turmeric, and cumin seeds.",
+    "Toss crispy okra into the onion-tomato masala, cover on low heat for 3 mins, and serve with roti."
+  ],
+  ingredients: [
+    { food_key: "okra_raw", quantity: 400, unit: "g" },
+    { food_key: "onion_raw", quantity: 150, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "cumin_seed", quantity: 5, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "qeema_matar_homestyle",
+  name: "Qeema Matar (Lean Minced Chicken & Peas)",
+  cuisine: "Punjabi",
+  description: "Quick-simmered minced chicken with green peas, ginger juliennes, and warm whole spices.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=qeema+matar+recipe+pakistani",
+  directions: [
+    "Sauté onions, ginger, and garlic in olive oil until golden.",
+    "Add lean minced chicken, cumin, coriander powder, and turmeric; bhunai for 5 minutes.",
+    "Add chopped tomatoes and green peas with 1/4 cup water.",
+    "Cover and simmer on low flame for 10 minutes until peas are tender and oil separates."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 400, unit: "g" },
+    { food_key: "green_peas_cooked", quantity: 150, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "ginger_raw", quantity: 10, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "aloo_methi_bhujia",
+  name: "Aloo Methi Bhujia",
+  cuisine: "Punjabi",
+  description: "Golden baby potatoes tossed with fresh, fragrant fenugreek leaves and cumin seeds.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=aloo+methi+recipe+pakistani",
+  directions: [
+    "Wash and finely chop fresh fenugreek leaves.",
+    "Sauté cumin seeds, garlic, and diced baby potatoes in olive oil until potatoes start to brown.",
+    "Add chopped methi leaves, red chili flakes, turmeric, and salt.",
+    "Cover and cook on low heat for 8–10 minutes until potatoes are fork-tender and fragrant."
+  ],
+  ingredients: [
+    { food_key: "potato_boiled", quantity: 350, unit: "g" },
+    { food_key: "spinach_raw", quantity: 150, unit: "g" },
+    { food_key: "cumin_seed", quantity: 5, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "anda_aloo_curry",
+  name: "Anda Aloo Salan",
+  cuisine: "Punjabi",
+  description: "Soft-boiled eggs simmered in a light, fragrant tomato-onion broth.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=anda+aloo+curry+recipe+pakistani",
+  directions: [
+    "Boil eggs and potatoes, peel eggs.",
+    "Sauté onions, ginger, and garlic, then blend with tomatoes for a smooth shorba base.",
+    "Cook masala until oil rises, add boiled potatoes and 1 cup water, simmer for 5 mins.",
+    "Drop in halved boiled eggs, sprinkle garam masala, and garnish with fresh coriander."
+  ],
+  ingredients: [
+    { food_key: "egg", quantity: 200, unit: "g" },
+    { food_key: "potato_boiled", quantity: 250, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "ginger_raw", quantity: 8, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "paneer_tikka_jalfrezi",
+  name: "Paneer / Tofu Jalfrezi",
+  cuisine: "Continental",
+  description: "High-protein paneer or tofu tossed with sliced crunchy peppers and onions in a tangy tomato glaze.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=paneer+jalfrezi+recipe+healthy",
+  directions: [
+    "Pan-sear paneer/tofu cubes in olive oil until golden.",
+    "In the same wok, toss sliced bell peppers and onions over high flame for 2 mins.",
+    "Add tomato puree, cumin, garam masala, vinegar, and green chilies.",
+    "Fold paneer into the crunchy spiced sauce and serve with roti."
+  ],
+  ingredients: [
+    { food_key: "paneer", quantity: 250, unit: "g" },
+    { food_key: "bell_pepper", quantity: 120, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "cumin_seed", quantity: 4, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+// 6. Clean & Low-Oil Guardrails
+addRecipe({
+  key: "grilled_chicken_veggies",
+  name: "Herbed Grilled Chicken & Sautéed Garden Veggies",
+  cuisine: "Continental",
+  description: "Garlic-lemon chicken breast paired with broccoli, green beans, and carrots.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=grilled+chicken+breast+with+sauteed+vegetables",
+  directions: [
+    "Season chicken breast with olive oil, lemon juice, garlic, black pepper, and rosemary.",
+    "Grill on high heat for 5 minutes per side until juicy and charred.",
+    "In another pan, sauté broccoli and carrots in 1 tsp olive oil with salt and pepper for 4 mins.",
+    "Slice chicken breast and serve beside the vibrant veggies."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "broccoli", quantity: 150, unit: "g" },
+    { food_key: "carrot_raw", quantity: 100, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "desi_chicken_yakhni",
+  name: "Desi Chicken Yakhni (Bone Broth)",
+  cuisine: "Punjabi",
+  description: "Clear, immunity-boosting slow-simmered bone broth with black peppercorns, cloves, and ginger.",
+  servings: 3,
+  prep_minutes: 5,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+yakhni+soup+recipe+desi",
+  directions: [
+    "Place bone-in chicken in a pot with water, whole peppercorns, cloves, crushed ginger, garlic, and fennel.",
+    "Bring to a boil and skim any foam from the surface.",
+    "Cover and simmer on low heat for 35 minutes until broth is rich and fragrant.",
+    "Strain clear broth into bowls, shred chicken into it, and finish with a pinch of fresh black pepper."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 450, unit: "g" },
+    { food_key: "ginger_raw", quantity: 15, unit: "g" },
+    { food_key: "garlic_raw", quantity: 12, unit: "g" },
+    { food_key: "black_pepper", quantity: 5, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "moong_daal_khichdi",
+  name: "Moong Daal Khichdi with Mint Raita",
+  cuisine: "Punjabi",
+  description: "Soothing split yellow lentils and basmati rice with a light cumin seed tadka.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=moong+dal+khichdi+recipe+healthy",
+  directions: [
+    "Rinse equal parts yellow split moong daal and basmati rice.",
+    "Pressure cook or simmer in 4 cups water with turmeric, ginger, and salt until soft and porridge-like.",
+    "Prepare a quick tadka with 1 tsp olive oil and roasted cumin seeds, pour over hot khichdi.",
+    "Serve with fresh mint-cucumber yogurt raita."
+  ],
+  ingredients: [
+    { food_key: "dal_moong", quantity: 150, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 200, unit: "g" },
+    { food_key: "ginger_raw", quantity: 8, unit: "g" },
+    { food_key: "cumin_seed", quantity: 4, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 100, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "lauki_salan_light",
+  name: "Lauki (Bottle Gourd) Salan",
+  cuisine: "Punjabi",
+  description: "Hydrating bottle gourd stewed with turmeric, ripe tomatoes, and cumin seeds.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=lauki+ka+salan+recipe+healthy",
+  directions: [
+    "Peel and cut bottle gourd into bite-sized cubes.",
+    "Sauté cumin seeds, onions, ginger, and garlic in 1 tbsp olive oil.",
+    "Add tomatoes, turmeric, coriander powder, and lauki cubes.",
+    "Cover and cook on low heat for 18 minutes in its own moisture until tender and juicy."
+  ],
+  ingredients: [
+    { food_key: "okra_raw", quantity: 400, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "cumin_seed", quantity: 5, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "air_fried_shami_kebab_salad",
+  name: "Air-Fried Shami Kebab Salad Bowl",
+  cuisine: "Karachi",
+  description: "Lean beef & chana daal shami kebabs over crunchy salad greens, cucumbers, and mint yogurt.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 12,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=shami+kabab+air+fryer+recipe",
+  directions: [
+    "Brush shami kebabs lightly with olive oil spray.",
+    "Air-fry at 190°C for 10–12 minutes until crispy on the outside and hot inside.",
+    "Toss diced cucumber, tomatoes, and shredded romaine with lemon juice.",
+    "Top salad with warm shami kebabs and a dollop of mint yogurt raita."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 250, unit: "g" },
+    { food_key: "dal_channa", quantity: 100, unit: "g" },
+    { food_key: "cucumber", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 80, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 80, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "torai_bhujia_homestyle",
+  name: "Torai (Ridge Gourd) Bhujia",
+  cuisine: "Sindhi",
+  description: "Naturally sweet ridge gourd cooked in its own natural juices with kalonji and green chilies.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=turai+ki+bhujia+recipe+pakistani",
+  directions: [
+    "Peel and slice ridge gourd thinly.",
+    "Sauté cumin seeds and black seeds (kalonji) in 1 tsp olive oil with green chilies.",
+    "Add torai slices and turmeric, cover and simmer without adding water for 12 minutes.",
+    "Uncover and cook off excess moisture until glistening and tender."
+  ],
+  ingredients: [
+    { food_key: "okra_raw", quantity: 350, unit: "g" },
+    { food_key: "green_chili", quantity: 10, unit: "g" },
+    { food_key: "cumin_seed", quantity: 4, unit: "g" },
+    { food_key: "turmeric", quantity: 2, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+// 7. Lentils & Sabzi
+addRecipe({
+  key: "yellow_daal_tadka",
+  name: "Yellow Daal Tadka (Moong & Masoor)",
+  cuisine: "Punjabi",
+  description: "Creamy yellow lentils tempered with olive oil, browned garlic, whole red chilies, and zeera.",
+  servings: 4,
+  prep_minutes: 10,
+  cook_minutes: 25,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=daal+tadka+recipe+food+fusion",
+  directions: [
+    "Boil yellow moong and red masoor daal with water, turmeric, ginger, and salt until creamy.",
+    "In a small frying pan, heat olive oil, add sliced garlic, cumin seeds, and dry whole red chilies.",
+    "Fry until garlic is golden and aromatic.",
+    "Pour sizzling tadka directly over the daal, cover immediately for 1 minute, and serve with rice or roti."
+  ],
+  ingredients: [
+    { food_key: "red_lentils_cooked", quantity: 250, unit: "g" },
+    { food_key: "dal_moong", quantity: 150, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "cumin_seed", quantity: 6, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chana_daal_lauki",
+  name: "Chana Daal with Lauki",
+  cuisine: "Punjabi",
+  description: "Protein-rich split chickpeas stewed with tender bottle gourd chunks.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 30,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chana+dal+lauki+recipe+pakistani",
+  directions: [
+    "Boil soaked chana daal until 80% tender.",
+    "Sauté onions, ginger, garlic, tomatoes, and spices in olive oil.",
+    "Add bottle gourd chunks and boiled daal with 1 cup broth.",
+    "Simmer for 15 mins until lauki is melt-in-mouth tender and flavors marry."
+  ],
+  ingredients: [
+    { food_key: "dal_channa", quantity: 250, unit: "g" },
+    { food_key: "okra_raw", quantity: 250, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "ginger_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "baingan_ka_bharta_smoky",
+  name: "Baingan Ka Bharta (Smoky Mashed Eggplant)",
+  cuisine: "Punjabi",
+  description: "Flame-charred smoky eggplant mashed with roasted onions, tomatoes, and green chilies.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=baingan+bharta+recipe+pakistani+smoky",
+  directions: [
+    "Roast whole eggplant directly over open flame until skin is completely blackened and flesh is soft.",
+    "Peel away charred skin and mash the smoky pulp.",
+    "In a pan, sauté cumin, onions, tomatoes, ginger, and green chilies in olive oil.",
+    "Fold in mashed eggplant, bhunai for 5 minutes, and garnish with fresh coriander."
+  ],
+  ingredients: [
+    { food_key: "eggplant_raw", quantity: 450, unit: "g" },
+    { food_key: "onion_raw", quantity: 120, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "green_chili", quantity: 10, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "sarson_ka_saag_classic",
+  name: "Sarson Ka Saag (Slow-Cooked Greens)",
+  cuisine: "Punjabi",
+  description: "Slow-simmered fresh mustard greens and spinach with garlic and green chilies.",
+  servings: 4,
+  prep_minutes: 20,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=sarson+ka+saag+recipe+authentic+punjabi",
+  directions: [
+    "Wash and chop mustard greens, spinach, and bathua.",
+    "Boil greens with garlic, ginger, and green chilies until soft, then blend roughly.",
+    "Simmer with a spoonful of cornmeal to thicken.",
+    "Temper with garlic slices in 1 tbsp olive oil/ghee and serve hot with makki roti."
+  ],
+  ingredients: [
+    { food_key: "spinach_raw", quantity: 500, unit: "g" },
+    { food_key: "garlic_raw", quantity: 20, unit: "g" },
+    { food_key: "ginger_raw", quantity: 15, unit: "g" },
+    { food_key: "green_chili", quantity: 12, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "kaala_chana_masala",
+  name: "Kaala Chana Masala (Brown Chickpeas)",
+  cuisine: "Punjabi",
+  description: "Spiced brown chickpeas in an iron-rich dark gravy.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 30,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=kala+chana+curry+recipe+pakistani",
+  directions: [
+    "Boil soaked brown chickpeas until tender, reserving the nutrient-rich dark broth.",
+    "Sauté onions, ginger, and garlic in olive oil, add tomatoes and roasted cumin-coriander spices.",
+    "Add boiled chana and broth, simmer for 15 minutes to develop rich gravy.",
+    "Garnish with julienned ginger and lemon."
+  ],
+  ingredients: [
+    { food_key: "chickpeas_cooked", quantity: 400, unit: "g" },
+    { food_key: "onion_raw", quantity: 120, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "ginger_raw", quantity: 12, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+// 8. Heritage Karahis & Feasts
+addRecipe({
+  key: "kolachi_chicken_karahi",
+  name: "Kolachi-Style Chicken Karahi",
+  cuisine: "Karachi",
+  description: "High-heat wok chicken with fresh tomatoes, ginger juliennes, and coarse black pepper in light oil.",
+  servings: 4,
+  prep_minutes: 10,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=kolachi+chicken+karahi+recipe",
+  directions: [
+    "Heat olive oil in an iron karahi over high flame, fry chicken and ginger-garlic paste for 4 mins.",
+    "Add halved tomatoes, cover with lid for 5 mins, peel off skins.",
+    "Bhunai vigorously on high flame with crushed black pepper, red chili flakes, and cumin.",
+    "Garnish with julienned ginger and sliced green chilies; serve sizzling hot."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 600, unit: "g" },
+    { food_key: "tomato_raw", quantity: 350, unit: "g" },
+    { food_key: "ginger_raw", quantity: 15, unit: "g" },
+    { food_key: "garlic_raw", quantity: 12, unit: "g" },
+    { food_key: "green_chili", quantity: 12, unit: "g" },
+    { food_key: "black_pepper", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_makhni_handi",
+  name: "Chicken Makhni Handi (Boneless)",
+  cuisine: "Punjabi",
+  description: "Boneless chicken cubes simmered in a velvety tomato-fenugreek sauce with light yogurt.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+makhni+handi+restaurant+style",
+  directions: [
+    "Sauté boneless chicken breast with ginger-garlic paste in olive oil.",
+    "Add tomato puree, cumin, white pepper, and Greek yogurt; cook until gravy thickens.",
+    "Crush dried fenugreek leaves (kasuri methi) between palms and sprinkle on top with a dollop of milk.",
+    "Simmer for 3 mins and serve in a clay handi with tandoori roti."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 450, unit: "g" },
+    { food_key: "tomato_raw", quantity: 200, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 100, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "ginger_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "sindhi_biryani_healthy",
+  name: "Sindhi Chicken Biryani (Light-Oil Style)",
+  cuisine: "Sindhi",
+  description: "Layered fragrant basmati rice with marinated chicken, potatoes, dried plums, and fresh mint.",
+  servings: 4,
+  prep_minutes: 20,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=sindhi+biryani+recipe+food+fusion",
+  directions: [
+    "Parboil basmati rice with whole spices (star anise, cloves, cardamom) until 70% done.",
+    "Cook chicken with yogurt, tomatoes, potatoes, dried plums, mint, and biryani spices.",
+    "Layer rice over the spicy chicken gravy, sprinkle mint and saffron water.",
+    "Dum-cook on tight seal over low heat for 15 minutes; fluff and serve with kachumber."
+  ],
+  ingredients: [
+    { food_key: "white_rice_cooked", quantity: 500, unit: "g" },
+    { food_key: "chicken_thigh", quantity: 500, unit: "g" },
+    { food_key: "potato_boiled", quantity: 200, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 100, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "mint_leaves", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_haleem_power_bowl",
+  name: "Chicken Haleem (High-Protein Power Bowl)",
+  cuisine: "Karachi",
+  description: "Slow-cooked blend of 7 whole grains, lentils, and lean shredded meat garnished with lemon & mint.",
+  servings: 4,
+  prep_minutes: 20,
+  cook_minutes: 45,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+haleem+recipe+quick+easy",
+  directions: [
+    "Boil mixed lentils (chana, moong, masoor, urad) and cracked wheat until completely soft.",
+    "Cook shredded chicken breast with ginger, garlic, and haleem spices.",
+    "Combine grains and chicken, blending and whisking vigorously to create silky shredded texture.",
+    "Serve hot topped with lemon juice, julienned ginger, mint, and a touch of caramelized onions."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 450, unit: "g" },
+    { food_key: "dal_channa", quantity: 100, unit: "g" },
+    { food_key: "red_lentils_cooked", quantity: 100, unit: "g" },
+    { food_key: "oats_rolled_dry", quantity: 80, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "ginger_raw", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+// ============================================================================
+// 🇸🇦 / 🇦🇪 50 ARAB & KHALEEJI DISHES
+// ============================================================================
+
+// 1. Heritage Rice Pots
+addRecipe({
+  key: "saudi_chicken_kabsa",
+  name: "Saudi Chicken Kabsa",
+  cuisine: "Saudi",
+  description: "Fragrant basmati rice infused with black dried lime (loomi), cardamom, cloves, and tender chicken.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=saudi+chicken+kabsa+recipe+authentic",
+  directions: [
+    "Sauté onions, garlic, and loomi (dried lime) in olive oil until golden.",
+    "Add chicken, tomatoes, tomato paste, cardamom, and Kabsa spices; sear for 5 mins.",
+    "Add water and simmer until chicken is tender. Remove chicken and broil in oven until crispy.",
+    "Cook soaked basmati rice in the fragrant chicken broth until fluffy. Serve chicken over rice with daqqoos salsa."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 600, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 500, unit: "g" },
+    { food_key: "tomato_raw", quantity: 200, unit: "g" },
+    { food_key: "onion_raw", quantity: 120, unit: "g" },
+    { food_key: "dried_lime", quantity: 10, unit: "g" },
+    { food_key: "cardamom_green", quantity: 4, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "emirati_chicken_machboos",
+  name: "Emirati Chicken Machboos",
+  cuisine: "Emirati & Omani",
+  description: "UAE-style spiced rice cooked with Bezar spice blend, fresh coriander, and golden seared chicken.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=emirati+chicken+machboos+recipe",
+  directions: [
+    "Sauté onions, ginger-garlic paste, and whole bezar spices in olive oil.",
+    "Add chicken pieces, dried lime, chopped tomatoes, and fresh coriander; brown well.",
+    "Simmer in water until chicken is fully cooked, then roast chicken in oven.",
+    "Cook basmati rice directly in the spiced broth, garnish with toasted nuts and fresh coriander."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 600, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 500, unit: "g" },
+    { food_key: "onion_raw", quantity: 120, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 20, unit: "g" },
+    { food_key: "dried_lime", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "smoked_chicken_mandi",
+  name: "Smoked Chicken Mandi",
+  cuisine: "Saudi",
+  description: "Slow-roasted spiced chicken over saffron-tinted basmati rice with a natural charcoal smoke aroma.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+mandi+recipe+easy+home",
+  directions: [
+    "Rub chicken halves with turmeric, saffron water, cardamom, and salt.",
+    "Roast chicken in oven at 200°C for 35 minutes until skin is crispy and meat is tender.",
+    "Cook basmati rice with cloves, cardamom, and chicken stock.",
+    "Place roasted chicken over rice, place a small foil cup with hot coal & drop of oil, cover tightly for 5 mins to smoke."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 650, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 500, unit: "g" },
+    { food_key: "cardamom_green", quantity: 5, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "hejazi_saleeg_chicken",
+  name: "Hejazi Saleeg (Creamy Arabic Risotto)",
+  cuisine: "Saudi",
+  description: "Silky short-grain rice cooked in chicken broth and warm milk with mastic and cardamom, topped with roasted chicken.",
+  servings: 4,
+  prep_minutes: 10,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=saleeg+recipe+hejazi+saudi",
+  directions: [
+    "Boil chicken with cardamom, mastic, onions, and salt until tender; strain broth and roast chicken in oven.",
+    "Cook short-grain Egyptian/calrose rice in the rich chicken broth until soft and porridge-like.",
+    "Pour warm milk over the rice and stir continuously until creamy and velvety.",
+    "Spread creamy saleeg on a wide platter, top with golden roasted chicken and a drizzle of melted ghee."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 450, unit: "g" },
+    { food_key: "milk_whole", quantity: 250, unit: "ml" },
+    { food_key: "cardamom_green", quantity: 4, unit: "g" },
+    { food_key: "ghee", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "roz_bukhari_chicken",
+  name: "Roz Bukhari with Chicken (Jeddah Classic)",
+  cuisine: "Saudi",
+  description: "Aromatic basmati rice cooked with grated carrots, chickpeas, cumin, and juicy roasted chicken.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=bukhari+rice+chicken+recipe",
+  directions: [
+    "Sauté shredded carrots in olive oil until sweet and tender, remove half for garnish.",
+    "Brown chicken with onions, tomato paste, cumin seeds, and whole chickpeas.",
+    "Add water and simmer until chicken is done; roast chicken under broiler.",
+    "Cook rice in the carrot-tomato broth, top with chicken and reserved caramelized carrots."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 600, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 500, unit: "g" },
+    { food_key: "carrot_raw", quantity: 150, unit: "g" },
+    { food_key: "chickpeas_cooked", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "cumin_seed", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "sayadiya_fish_rice",
+  name: "Sayadiya Fish & Spiced Caramelized Rice",
+  cuisine: "Saudi",
+  description: "Fresh fish fillet served over deep golden-brown spiced cumin rice with fried almonds and tahini sauce.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 30,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=sayadiya+fish+rice+recipe",
+  directions: [
+    "Caramelize sliced onions in olive oil until deep dark brown (not burnt), blend with water to create dark broth.",
+    "Cook basmati rice in the caramelized onion broth with cumin, cinnamon, and 7-spice.",
+    "Pan-sear fish fillets with lemon and cumin until golden.",
+    "Serve fish on a bed of dark aromatic rice topped with toasted pine nuts and tahini sauce."
+  ],
+  ingredients: [
+    { food_key: "salmon", quantity: 450, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 400, unit: "g" },
+    { food_key: "onion_raw", quantity: 200, unit: "g" },
+    { food_key: "cumin_seed", quantity: 6, unit: "g" },
+    { food_key: "tahini", quantity: 30, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+// 2. Mashawi & Grills
+addRecipe({
+  key: "shish_tawook_skewer",
+  name: "Shish Tawook (Garlic-Lemon Chicken Skewers)",
+  cuisine: "Levant",
+  description: "Tender chicken breast cubes marinated in Greek yogurt, lemon juice, garlic, and sumac.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=shish+tawook+recipe+authentic+lebanese",
+  directions: [
+    "Marinate chicken breast cubes in Greek yogurt, garlic toum, lemon juice, tomato paste, and sumac.",
+    "Thread onto skewers with bell pepper and onion chunks.",
+    "Grill on high heat for 12–14 minutes until charred on the outside and juicy inside.",
+    "Serve on warm pita with garlic dip and pickles."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 100, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "sumac", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "lamb_kofta_meshwi",
+  name: "Lamb & Beef Kofta Meshwi",
+  cuisine: "Levant",
+  description: "Lean minced meat blended with finely chopped parsley, onions, and 7-spice, char-grilled on skewers.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 12,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=lamb+kofta+mashwi+recipe",
+  directions: [
+    "Mix lean minced meat with finely minced onions, fresh flat-leaf parsley, 7-spice, and sea salt.",
+    "Mould onto wide skewers with wet hands.",
+    "Grill over hot coals or high oven broiler for 10–12 minutes, turning once.",
+    "Serve hot over pita with sumac onions and grilled tomatoes."
+  ],
+  ingredients: [
+    { food_key: "mutton_raw", quantity: 300, unit: "g" },
+    { food_key: "beef_boneless_raw", quantity: 300, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 40, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "sumac", quantity: 5, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "farrouj_meshwi_grilled",
+  name: "Farrouj Meshwi (Lebanese Spatchcock Chicken)",
+  cuisine: "Levant",
+  description: "Spatchcock chicken charred with garlic paste, lemon, oregano, and extra virgin olive oil.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=farrouj+meshwi+recipe+lebanese",
+  directions: [
+    "Flatten chicken and marinate with garlic paste, olive oil, lemon juice, oregano, and coriander.",
+    "Roast in oven at 200°C for 35 minutes or grill on barbecue with a weight pressing on top.",
+    "Baste with lemon-garlic oil during the last 5 minutes for crisp skin.",
+    "Serve with warm Arabic flatbread and batata harra."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 700, unit: "g" },
+    { food_key: "garlic_raw", quantity: 20, unit: "g" },
+    { food_key: "lemon_juice", quantity: 25, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "coriander_powder", quantity: 5, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "arayes_meat_pita",
+  name: "Arayes (Spiced Meat Pita Pockets)",
+  cuisine: "Levant",
+  description: "Whole-wheat pita filled with seasoned minced meat and parsley, pan-crisped or air-fried until crunchy.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 12,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=arayes+meat+recipe+crispy+pita",
+  directions: [
+    "Mix minced meat with grated onions, parsley, tomato paste, 7-spice, and olive oil.",
+    "Cut pita pockets in half and spread a thin layer of meat filling inside.",
+    "Brush outside of pita with olive oil.",
+    "Grill in a panini press or air-fry at 190°C for 10 minutes until crispy and meat is cooked through."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 350, unit: "g" },
+    { food_key: "pita_bread", quantity: 150, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 25, unit: "g" },
+    { food_key: "onion_raw", quantity: 60, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "kofta_bil_tahini",
+  name: "Kofta bil Tahini (Meatballs in Sesame Sauce)",
+  cuisine: "Levant",
+  description: "Lean beef kofta patties baked in a warm, zesty lemon-tahini and garlic sauce.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=kofta+bil+tahini+recipe",
+  directions: [
+    "Shape seasoned minced beef into small flat oval patties and arrange in a baking dish.",
+    "Whisk tahini paste with water, lemon juice, minced garlic, and salt until smooth and creamy.",
+    "Pour tahini sauce over the kofta patties.",
+    "Bake at 190°C for 22 minutes until sauce is bubbling and top is golden; sprinkle with toasted pine nuts."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 400, unit: "g" },
+    { food_key: "tahini", quantity: 80, unit: "g" },
+    { food_key: "lemon_juice", quantity: 25, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+// 3. Street Food & Bowls
+addRecipe({
+  key: "chicken_shawarma_bowl",
+  name: "Chicken Shawarma Protein Bowl",
+  cuisine: "Levant",
+  description: "Thinly sliced spiced chicken breast over mixed greens, pickles, garlic toum, and tahini.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+shawarma+bowl+recipe+healthy",
+  directions: [
+    "Marinate chicken breast with cumin, coriander, garlic powder, cinnamon, paprika, and lemon juice.",
+    "Pan-sear in hot skillet with olive oil until charred, then slice into thin ribbons.",
+    "Assemble bowls with chopped romaine, cucumber, tomatoes, and pickled turnip.",
+    "Top with hot chicken shawarma and drizzle with garlic yogurt-tahini dressing."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "cucumber", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 100, unit: "g" },
+    { food_key: "tahini", quantity: 30, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 50, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "air_fried_falafel_bowl",
+  name: "Air-Fried Falafel Mezze Bowl",
+  cuisine: "Levant",
+  description: "Crisp herb-packed chickpea patties over diced cucumber, tomato salad, and creamy hummus.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=air+fryer+falafel+recipe+authentic",
+  directions: [
+    "Blend soaked chickpeas with fresh parsley, cilantro, garlic, cumin, and coriander into a coarse paste.",
+    "Shape into small falafel patties and brush with olive oil.",
+    "Air-fry at 190°C for 14 minutes until crisp and golden brown.",
+    "Serve in bowls with fresh hummus, tabbouleh salad, and tahini drizzle."
+  ],
+  ingredients: [
+    { food_key: "chickpeas_cooked", quantity: 300, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 30, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "cumin_seed", quantity: 5, unit: "g" },
+    { food_key: "tahini", quantity: 30, unit: "g" },
+    { food_key: "cucumber", quantity: 100, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "grilled_halloumi_zaatar_salad",
+  name: "Grilled Halloumi & Za'atar Salad",
+  cuisine: "Levant",
+  description: "Seared squeaky halloumi cheese over baby greens, pomegranate seeds, and za'atar-infused olive oil.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 6,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=grilled+halloumi+salad+recipe+zaatar",
+  directions: [
+    "Slice halloumi cheese into 1/2-inch thick slabs.",
+    "Sear in a hot dry skillet for 2 mins per side until deep golden and crispy.",
+    "Toss mixed greens, cucumber, and mint with extra virgin olive oil and lemon juice.",
+    "Place warm halloumi on top and dust with za'atar and pomegranate seeds."
+  ],
+  ingredients: [
+    { food_key: "halloumi", quantity: 200, unit: "g" },
+    { food_key: "cucumber", quantity: 100, unit: "g" },
+    { food_key: "tomato_raw", quantity: 100, unit: "g" },
+    { food_key: "zaatar", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "lemon_juice", quantity: 10, unit: "g" }
+  ]
+});
+
+// 4. Mezze & Clean Staples
+addRecipe({
+  key: "hummus_spiced_lamb",
+  name: "Hummus with Warm Spiced Lamb",
+  cuisine: "Levant",
+  description: "Velvety blended chickpeas, tahini, and lemon topped with warm pine nuts and lean sautéed minced lamb.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=hummus+with+meat+shawarma+recipe",
+  directions: [
+    "Blend cooked chickpeas, tahini, lemon juice, garlic, and ice water into an ultra-smooth hummus.",
+    "Sauté lean minced lamb in olive oil with 7-spice, cinnamon, and pine nuts until browned and fragrant.",
+    "Spread creamy hummus in a shallow bowl with a hollow center.",
+    "Spoon warm spiced lamb into center, drizzle extra virgin olive oil and dust with sumac."
+  ],
+  ingredients: [
+    { food_key: "chickpeas_cooked", quantity: 300, unit: "g" },
+    { food_key: "mutton_raw", quantity: 200, unit: "g" },
+    { food_key: "tahini", quantity: 60, unit: "g" },
+    { food_key: "lemon_juice", quantity: 25, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "sumac", quantity: 4, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "shakshuka_poached_eggs",
+  name: "Shakshuka with Poached Eggs",
+  cuisine: "Levant",
+  description: "Farm eggs gently poached in a bubbling sauce of ripe tomatoes, bell peppers, onions, and cumin.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "breakfast"],
+  youtube_url: "https://www.youtube.com/results?search_query=shakshuka+recipe+traditional",
+  directions: [
+    "Sauté diced onions, bell peppers, and garlic in olive oil until soft.",
+    "Add chopped ripe tomatoes, cumin, paprika, and chili flakes; simmer until thick and bubbling.",
+    "Create small wells in the sauce and crack fresh eggs into each well.",
+    "Cover with lid on low heat for 5–7 minutes until egg whites are set and yolks remain runny."
+  ],
+  ingredients: [
+    { food_key: "egg", quantity: 200, unit: "g" },
+    { food_key: "tomato_raw", quantity: 250, unit: "g" },
+    { food_key: "bell_pepper", quantity: 100, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "cumin_seed", quantity: 4, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "foul_medames_olive_oil",
+  name: "Foul Medames with Extra Virgin Olive Oil",
+  cuisine: "Egypt & Sudan",
+  description: "Slow-cooked fava beans mashed with cumin, lemon juice, extra virgin olive oil, and diced tomatoes.",
+  servings: 2,
+  prep_minutes: 5,
+  cook_minutes: 10,
+  meal_types: ["dinner", "breakfast"],
+  youtube_url: "https://www.youtube.com/results?search_query=foul+mudammas+recipe+authentic",
+  directions: [
+    "Warm fava beans in a pan with cumin, crushed garlic, and a splash of water.",
+    "Lightly mash beans with a fork, leaving some texture.",
+    "Stir in fresh lemon juice and sea salt.",
+    "Top with diced tomatoes, parsley, and a generous pour of extra virgin olive oil."
+  ],
+  ingredients: [
+    { food_key: "fava_beans", quantity: 300, unit: "g" },
+    { food_key: "tomato_raw", quantity: 80, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "garlic_raw", quantity: 6, unit: "g" },
+    { food_key: "cumin_seed", quantity: 5, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "batata_harra_spicy_potatoes",
+  name: "Batata Harra (Spicy Lebanese Herbed Potatoes)",
+  cuisine: "Levant",
+  description: "Roasted cubed potatoes tossed in olive oil, crushed garlic, red pepper flakes, and fresh cilantro.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=batata+harra+recipe+lebanese",
+  directions: [
+    "Boil cubed potatoes until just tender, then roast or air-fry at 200°C for 12 mins until crispy.",
+    "In a skillet, warm olive oil, minced garlic, red chili flakes, and coriander powder.",
+    "Toss crispy potatoes in the garlic-chili oil for 2 mins.",
+    "Finish with lemon juice and a handful of chopped fresh cilantro."
+  ],
+  ingredients: [
+    { food_key: "potato_boiled", quantity: 400, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 25, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "red_chili_powder", quantity: 4, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "shorbat_adas_lentil_soup",
+  name: "Shorbat Adas (Middle Eastern Red Lentil Soup)",
+  cuisine: "Levant",
+  description: "Creamy, golden pureed red lentils with cumin, carrots, and crispy baked pita croutons.",
+  servings: 4,
+  prep_minutes: 10,
+  cook_minutes: 25,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=shorbat+adas+arabic+lentil+soup+recipe",
+  directions: [
+    "Sauté onions, carrots, and cumin in olive oil until soft.",
+    "Add red lentils and vegetable broth; simmer for 20 minutes until lentils are fully soft.",
+    "Blend with an immersion blender until silky and velvety smooth.",
+    "Serve hot with lemon wedges and crispy baked pita chips."
+  ],
+  ingredients: [
+    { food_key: "red_lentils_cooked", quantity: 350, unit: "g" },
+    { food_key: "carrot_raw", quantity: 120, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "cumin_seed", quantity: 6, unit: "g" },
+    { food_key: "turmeric", quantity: 3, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "fasolia_bil_lahme",
+  name: "Fasolia bil Lahme (White Bean & Beef Stew)",
+  cuisine: "Levant",
+  description: "High-fiber white cannellini beans simmered with tender beef cubes in rich tomato-garlic broth.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=fasolia+bil+lahme+recipe",
+  directions: [
+    "Brown lean beef cubes with onions and garlic in olive oil.",
+    "Add tomato paste, crushed tomatoes, coriander powder, and 2 cups broth; simmer until meat is tender.",
+    "Add cooked white cannellini beans and simmer for 15 minutes.",
+    "Finish with fresh cilantro and serve with vermicelli rice."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 400, unit: "g" },
+    { food_key: "white_beans", quantity: 300, unit: "g" },
+    { food_key: "tomato_raw", quantity: 200, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "emirati_chicken_saloona",
+  name: "Emirati Chicken Saloona",
+  cuisine: "Emirati & Omani",
+  description: "Light, aromatic chicken and vegetable stew (zucchini, carrots, potatoes) in spiced tomato broth.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 30,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+saloona+recipe+emirati",
+  directions: [
+    "Sauté onions, ginger, garlic, and bezar spices in olive oil.",
+    "Add chicken pieces and brown for 5 minutes.",
+    "Add chopped carrots, zucchini, potatoes, tomatoes, and dried lime.",
+    "Cover with water and simmer for 25 minutes until chicken and vegetables are melt-in-mouth tender."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 500, unit: "g" },
+    { food_key: "potato_boiled", quantity: 200, unit: "g" },
+    { food_key: "carrot_raw", quantity: 150, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "dried_lime", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "creamy_chicken_pesto_penne",
+  name: "Creamy Chicken Pesto Penne",
+  cuisine: "Continental",
+  description: "Grilled chicken breast tossed with whole-wheat penne in vibrant basil-pine nut pesto.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+pesto+penne+pasta+recipe",
+  directions: [
+    "Boil penne pasta in salted water until al dente.",
+    "Pan-sear seasoned chicken breast slices in olive oil until golden.",
+    "Toss warm pasta with basil pesto sauce, grilled chicken, and a splash of pasta cooking water.",
+    "Top with shaved parmesan cheese and cherry tomatoes."
+  ],
+  ingredients: [
+    { food_key: "pasta_cooked", quantity: 350, unit: "g" },
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "pesto_sauce", quantity: 60, unit: "g" },
+    { food_key: "parmesan_cheese", quantity: 30, unit: "g" },
+    { food_key: "tomato_raw", quantity: 80, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "pan_seared_salmon_asparagus",
+  name: "Pan-Seared Salmon with Asparagus & Lemon",
+  cuisine: "Continental",
+  description: "Wild-caught salmon fillet seared crisp with garlic asparagus and lemon-herb olive oil.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 12,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=pan+seared+salmon+with+asparagus+recipe",
+  directions: [
+    "Season salmon fillets with sea salt, black pepper, and garlic powder.",
+    "Sear skin-side down in hot olive oil for 4 mins until crispy, flip and cook for 3 mins.",
+    "In the same skillet, toss asparagus spears with garlic and lemon juice for 4 mins.",
+    "Serve hot salmon over asparagus with lemon wedges."
+  ],
+  ingredients: [
+    { food_key: "salmon", quantity: 350, unit: "g" },
+    { food_key: "broccoli", quantity: 150, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "yemeni_chicken_zurbian",
+  name: "Yemeni Chicken Zurbian",
+  cuisine: "Yemen",
+  description: "Layered aromatic rice pot with caramelized onions, saffron, and tender yogurt-marinated chicken.",
+  servings: 4,
+  prep_minutes: 20,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+zurbian+recipe+yemeni",
+  directions: [
+    "Marinate chicken in Greek yogurt, garlic, ginger, and ground cloves, cardamom, and cinnamon.",
+    "Caramelize onions deeply in olive oil, blend half into a smooth paste.",
+    "Cook chicken and baby potatoes with onion paste until tender.",
+    "Layer parboiled basmati rice over chicken, sprinkle saffron water, and dum-steam for 15 minutes."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 600, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 500, unit: "g" },
+    { food_key: "potato_boiled", quantity: 200, unit: "g" },
+    { food_key: "onion_raw", quantity: 150, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 100, unit: "g" },
+    { food_key: "cardamom_green", quantity: 4, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "emirati_chicken_harees",
+  name: "Emirati Chicken Harees",
+  cuisine: "Emirati & Omani",
+  description: "Traditional slow-cooked coarse whole wheat and shredded chicken beaten into a savory, protein-dense porridge.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 45,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=emirati+chicken+harees+recipe",
+  directions: [
+    "Soak whole harees wheat berries overnight.",
+    "Boil wheat and chicken with cinnamon sticks, cardamom, and salt until very soft.",
+    "Remove bones, beat chicken and wheat vigorously with a wooden paddle (mizrab) until silky smooth.",
+    "Serve hot in shallow bowls with a light drizzle of clarified butter."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "oats_rolled_dry", quantity: 300, unit: "g" },
+    { food_key: "cardamom_green", quantity: 4, unit: "g" },
+    { food_key: "ghee", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "saudi_jareesh_buttermilk",
+  name: "Saudi Jareesh (Cracked Wheat Comfort)",
+  cuisine: "Saudi",
+  description: "Creamy crushed wheat cooked in buttermilk topped with caramelized onion and dried lime reduction.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=saudi+jareesh+recipe",
+  directions: [
+    "Boil crushed wheat and rice with chicken broth and cumin until soft.",
+    "Whisk in buttermilk/yogurt and simmer on low heat, beating continuously until thick and velvety.",
+    "Sauté onions with ghee, dried black lime, and cumin to create the golden kishna topping.",
+    "Spread warm jareesh on a platter, crown with hot kishna, and serve."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 400, unit: "g" },
+    { food_key: "oats_rolled_dry", quantity: 250, unit: "g" },
+    { food_key: "yogurt_plain", quantity: 150, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "dried_lime", quantity: 6, unit: "g" },
+    { food_key: "cumin_seed", quantity: 5, unit: "g" },
+    { food_key: "ghee", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "qatari_madrouba_chicken",
+  name: "Qatari / Khaleeji Madrouba",
+  cuisine: "Qatar",
+  description: "Beaten spiced rice and shredded chicken simmered with tomatoes, ginger, and dried lime until porridge-soft.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=madrouba+chicken+recipe+qatari",
+  directions: [
+    "Sauté onions, ginger, garlic, tomatoes, and dried lime in olive oil.",
+    "Add chicken breast and simmer in water until tender.",
+    "Add short-grain rice and simmer on low flame, stirring and beating often with a wooden spoon.",
+    "Serve hot and comforting with a drizzle of olive oil."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 400, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "ginger_raw", quantity: 12, unit: "g" },
+    { food_key: "dried_lime", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "kabab_khashkhash_aleppo",
+  name: "Kabab Khashkhash",
+  cuisine: "Levant",
+  description: "Grilled meat skewers served over a bed of crushed roasted spicy tomato and garlic puree.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=kabab+khashkhash+recipe",
+  directions: [
+    "Char ripe tomatoes, garlic, and hot green peppers directly over open flame, then crush into a coarse spicy sauce.",
+    "Grill lean minced beef & lamb kofta skewers until charred and juicy.",
+    "Spread warm roasted tomato-garlic puree on serving platter.",
+    "Place hot grilled kebabs on top, drizzle olive oil, and dust with fresh parsley."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 400, unit: "g" },
+    { food_key: "tomato_raw", quantity: 250, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "green_chili", quantity: 12, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "joojeh_kebab_saffron",
+  name: "Grilled Joojeh Kebab",
+  cuisine: "GCC & Khaleej",
+  description: "Saffron, lemon, and onion-marinated chicken breast chunks grilled over high heat.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=joojeh+kabab+recipe+saffron",
+  directions: [
+    "Marinate chicken breast cubes in grated onion juice, brewed saffron, lemon juice, Greek yogurt, and olive oil.",
+    "Rest for 1 hour.",
+    "Skewer and grill over high coals or oven broiler for 12–14 minutes, turning and basting with saffron butter.",
+    "Serve hot over basmati rice."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 500, unit: "g" },
+    { food_key: "lemon_juice", quantity: 25, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 60, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "emirati_grilled_hammour",
+  name: "Emirati Grilled Hammour / Sea Bass",
+  cuisine: "Emirati & Omani",
+  description: "Fresh Gulf fish fillet rubbed with turmeric, cumin, and lemon, grilled with minimal olive oil.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 12,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=grilled+hammour+fish+recipe+emirati",
+  directions: [
+    "Rub fish fillets with cumin, coriander, turmeric, minced garlic, lemon juice, and olive oil.",
+    "Grill on high heat for 5 minutes per side until charred on exterior and tender inside.",
+    "Garnish with chopped fresh parsley and lemon slices."
+  ],
+  ingredients: [
+    { food_key: "salmon", quantity: 350, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "cumin_seed", quantity: 4, unit: "g" },
+    { food_key: "turmeric", quantity: 2, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "beef_shawarma_wrap",
+  name: "Beef Shawarma Wrap",
+  cuisine: "Levant",
+  description: "Sliced marinated flank steak tossed with sumac onions, fresh parsley, tomatoes, and tahini in whole-wheat flatbread.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=beef+shawarma+recipe+authentic+lebanese",
+  directions: [
+    "Thinly slice beef against the grain and marinate in vinegar, garlic, 7-spice, cumin, and olive oil.",
+    "Pan-sear on smoking hot skillet for 4–5 minutes until browned and juicy.",
+    "Toss sliced red onions with sumac and chopped parsley.",
+    "Layer beef, sumac onions, tomato slices, and tahini sauce in warm pita; wrap tightly and toast."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 300, unit: "g" },
+    { food_key: "pita_bread", quantity: 120, unit: "g" },
+    { food_key: "tomato_raw", quantity: 80, unit: "g" },
+    { food_key: "onion_raw", quantity: 60, unit: "g" },
+    { food_key: "tahini", quantity: 30, unit: "g" },
+    { food_key: "sumac", quantity: 5, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "dynamite_shrimp_bowl",
+  name: "Dynamite Shrimp Bowl",
+  cuisine: "Continental",
+  description: "Pan-seared Gulf prawns tossed in a sweet-and-spicy sriracha mayo glaze over garlic rice.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=dynamite+shrimp+recipe+easy",
+  directions: [
+    "Season peeled prawns with paprika, garlic, and sea salt.",
+    "Pan-sear in 1 tsp olive oil for 2–3 minutes until pink and plump.",
+    "Whisk light mayo, sriracha, sweet chili, and honey into the dynamite sauce.",
+    "Toss warm prawns in sauce, serve over warm garlic basmati rice and garnish with spring onions."
+  ],
+  ingredients: [
+    { food_key: "shrimp_raw", quantity: 300, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 250, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" },
+    { food_key: "green_chili", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 3, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "crispy_chicken_mosahab",
+  name: "Crispy Chicken Mosahab (Albaik Style)",
+  cuisine: "Saudi",
+  description: "Boneless crunchy spiced chicken fillets served with garlic dip and whole-wheat pita.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 15,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+musahab+albaik+recipe",
+  directions: [
+    "Marinate chicken breast tenders in garlic powder, paprika, ginger, and lemon.",
+    "Dredge in seasoned cornmeal/breadcrumbs.",
+    "Air-fry at 200°C for 12–14 minutes until extra crispy and golden.",
+    "Serve hot with authentic garlic toum and warm pita."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 450, unit: "g" },
+    { food_key: "pita_bread", quantity: 120, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "tawook_flatbread_manakish",
+  name: "Tawook Flatbread Pizza (Manakish Style)",
+  cuisine: "Levant",
+  description: "Whole-wheat flatbread topped with diced garlic tawook chicken, mozzarella, and wild thyme.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 12,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=tawook+pizza+flatbread+recipe",
+  directions: [
+    "Sauté diced chicken breast with garlic, lemon, and sumac until cooked.",
+    "Spread light garlic sauce over whole wheat flatbread.",
+    "Top with cooked chicken tawook, diced tomatoes, and shredded mozzarella.",
+    "Bake at 220°C (425°F) for 8–10 minutes until cheese is bubbly and crust is crisp."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 250, unit: "g" },
+    { food_key: "pita_bread", quantity: 120, unit: "g" },
+    { food_key: "cheddar_cheese", quantity: 80, unit: "g" },
+    { food_key: "tomato_raw", quantity: 60, unit: "g" },
+    { food_key: "zaatar", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "smoky_mutabbal_eggplant",
+  name: "Smoky Mutabbal (Roasted Eggplant Dip)",
+  cuisine: "Levant",
+  description: "Flame-roasted eggplant mashed with tahini, garlic, and pomegranate jewels.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=mutabal+recipe+authentic+lebanese",
+  directions: [
+    "Roast whole eggplant over open flame until skin is charred and flesh is smoky and soft.",
+    "Scoop out flesh and drain excess liquid.",
+    "Mash with tahini, crushed garlic, lemon juice, Greek yogurt, and salt.",
+    "Garnish with pomegranate seeds, fresh parsley, and extra virgin olive oil."
+  ],
+  ingredients: [
+    { food_key: "eggplant_raw", quantity: 450, unit: "g" },
+    { food_key: "tahini", quantity: 50, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 50, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "garlic_raw", quantity: 8, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "fattoush_salad_sumac",
+  name: "Fattoush Salad with Sumac Dressing",
+  cuisine: "Levant",
+  description: "Crisp romaine, cucumbers, radish, and tomatoes tossed in pomegranate molasses and baked pita chips.",
+  servings: 3,
+  prep_minutes: 15,
+  cook_minutes: 5,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=authentic+lebanese+fattoush+salad+recipe",
+  directions: [
+    "Bake pita squares with olive oil and sumac until crispy.",
+    "Chop romaine lettuce, cucumbers, tomatoes, radish, mint, and parsley.",
+    "Whisk extra virgin olive oil, pomegranate molasses, lemon juice, sumac, and garlic for dressing.",
+    "Toss greens with dressing, top with crunchy pita chips, and serve immediately."
+  ],
+  ingredients: [
+    { food_key: "cucumber", quantity: 150, unit: "g" },
+    { food_key: "tomato_raw", quantity: 150, unit: "g" },
+    { food_key: "pita_bread", quantity: 80, unit: "g" },
+    { food_key: "pomegranate_molasses", quantity: 20, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "sumac", quantity: 8, unit: "g" },
+    { food_key: "mint_leaves", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "authentic_tabbouleh_salad",
+  name: "Authentic Lebanese Tabbouleh",
+  cuisine: "Levant",
+  description: "Fresh flat-leaf parsley, mint, diced tomatoes, and fine bulgur tossed with extra virgin olive oil and lemon.",
+  servings: 3,
+  prep_minutes: 20,
+  cook_minutes: 0,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=authentic+tabbouleh+salad+recipe",
+  directions: [
+    "Finely mince washed and thoroughly dried flat-leaf parsley and fresh mint.",
+    "Soak fine bulgur wheat in fresh lemon juice for 10 minutes.",
+    "Finely dice firm red tomatoes and sweet onions.",
+    "Gently toss all ingredients with high-quality extra virgin olive oil and sea salt; serve chilled."
+  ],
+  ingredients: [
+    { food_key: "parsley_fresh", quantity: 150, unit: "g" },
+    { food_key: "tomato_raw", quantity: 120, unit: "g" },
+    { food_key: "bulgur", quantity: 40, unit: "g" },
+    { food_key: "mint_leaves", quantity: 20, unit: "g" },
+    { food_key: "lemon_juice", quantity: 30, unit: "g" },
+    { food_key: "onion_raw", quantity: 40, unit: "g" },
+    { food_key: "olive_oil", quantity: 25, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "loubieh_bil_zeit_beans",
+  name: "Loubieh bil Zeit (Green Beans in Olive Oil)",
+  cuisine: "Levant",
+  description: "Tender whole green beans braised with sweet onions, garlic, and crushed ripe tomatoes.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 25,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=loubieh+bil+zeit+green+beans+recipe",
+  directions: [
+    "Sauté sliced onions and garlic cloves in generous olive oil until sweet and tender.",
+    "Add trimmed fresh green beans, tossing to coat in oil.",
+    "Add diced ripe tomatoes, salt, and black pepper.",
+    "Cover and braise on low flame for 20 minutes until beans are tender; serve warm or room temperature with pita."
+  ],
+  ingredients: [
+    { food_key: "okra_raw", quantity: 350, unit: "g" },
+    { food_key: "tomato_raw", quantity: 200, unit: "g" },
+    { food_key: "onion_raw", quantity: 100, unit: "g" },
+    { food_key: "garlic_raw", quantity: 12, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "dajaj_bil_batata_baked",
+  name: "Dajaj bil Batata (Lemon-Garlic Chicken & Potatoes)",
+  cuisine: "Levant",
+  description: "Chicken and baby potato wedges roasted together with dried oregano, garlic, and fresh lemon.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 40,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=dajaj+bil+batata+recipe+lebanese",
+  directions: [
+    "Toss chicken pieces and potato wedges in a baking pan with garlic paste, lemon juice, olive oil, and oregano.",
+    "Season with salt and black pepper.",
+    "Roast in oven at 200°C (400°F) for 40 minutes until chicken is golden brown and potatoes are soft and crispy-edged.",
+    "Pour pan juices over the meat and serve."
+  ],
+  ingredients: [
+    { food_key: "chicken_thigh", quantity: 600, unit: "g" },
+    { food_key: "potato_boiled", quantity: 350, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "lemon_juice", quantity: 30, unit: "g" },
+    { food_key: "olive_oil", quantity: 20, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "galayet_bandora_beef",
+  name: "Galayet Bandora (Spiced Skillet Tomato Stew)",
+  cuisine: "Levant",
+  description: "Pan-simmered ripe tomatoes, serrano peppers, and garlic with seared lean beef chunks.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=galayet+bandora+recipe+jordanian",
+  directions: [
+    "Sear beef cubes in olive oil with garlic until browned.",
+    "Add chopped fresh tomatoes and sliced green chilies.",
+    "Simmer vigorously over medium-high heat until tomatoes break down into a thick, rustic sauce.",
+    "Season with salt and black pepper; scoop directly from skillet with warm pita."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 350, unit: "g" },
+    { food_key: "tomato_raw", quantity: 350, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "green_chili", quantity: 12, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "kofta_bil_sanieh_potatoes",
+  name: "Kofta bil Sanieh (Baked Kofta & Potato Tray)",
+  cuisine: "Levant",
+  description: "Seasoned minced beef patties and potato rounds baked in a light tomato reduction.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 30,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=kofta+bil+sanieh+recipe",
+  directions: [
+    "Layer spiced minced beef patties, sliced potatoes, and sliced tomatoes in a round baking tray.",
+    "Whisk tomato paste with 1 cup water, 7-spice, and salt, pour over the tray.",
+    "Bake at 200°C for 30 minutes until potatoes are cooked through and top is golden.",
+    "Serve hot with vermicelli basmati rice."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 450, unit: "g" },
+    { food_key: "potato_boiled", quantity: 250, unit: "g" },
+    { food_key: "tomato_raw", quantity: 200, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "garlic_lemon_shrimps_rice",
+  name: "Garlic Lemon Butter Shrimps with Herb Rice",
+  cuisine: "GCC & Khaleej",
+  description: "Pan-seared Gulf prawns tossed in crushed garlic, fresh parsley, and lemon juice.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=garlic+lemon+butter+shrimp+recipe",
+  directions: [
+    "Sauté minced garlic in olive oil and a dab of butter until fragrant.",
+    "Add peeled prawns and cook for 2–3 minutes on high heat until pink.",
+    "Deglaze pan with fresh lemon juice and toss with fresh chopped parsley and black pepper.",
+    "Serve immediately over fluffy herb basmati rice."
+  ],
+  ingredients: [
+    { food_key: "shrimp_raw", quantity: 350, unit: "g" },
+    { food_key: "white_rice_cooked", quantity: 250, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "parsley_fresh", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "egg_cheese_khobz_roll",
+  name: "Egg & Cheese Khobz Roll",
+  cuisine: "GCC & Khaleej",
+  description: "Spiced scrambled eggs with melted mild akawi/mozzarella wrapped in toasted Arabic pita.",
+  servings: 2,
+  prep_minutes: 5,
+  cook_minutes: 8,
+  meal_types: ["dinner", "breakfast"],
+  youtube_url: "https://www.youtube.com/results?search_query=arabic+egg+cheese+sandwich+recipe",
+  directions: [
+    "Scramble eggs with cumin, black pepper, and chopped tomatoes.",
+    "Place hot scrambled eggs inside Arabic khobz flatbread.",
+    "Sprinkle shredded mozzarella/cheddar cheese and za'atar.",
+    "Toast on a dry skillet until cheese melts and bread is crisp."
+  ],
+  ingredients: [
+    { food_key: "egg", quantity: 150, unit: "g" },
+    { food_key: "pita_bread", quantity: 100, unit: "g" },
+    { food_key: "cheddar_cheese", quantity: 50, unit: "g" },
+    { food_key: "tomato_raw", quantity: 40, unit: "g" },
+    { food_key: "zaatar", quantity: 5, unit: "g" },
+    { food_key: "olive_oil", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "freekeh_chicken_soup",
+  name: "Freekeh & Chicken Soup",
+  cuisine: "Levant",
+  description: "Smoky green roasted wheat grain simmered with shredded chicken breast and warm spices.",
+  servings: 4,
+  prep_minutes: 10,
+  cook_minutes: 30,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=freekeh+soup+recipe+chicken",
+  directions: [
+    "Sauté onions and rinsed cracked green freekeh in olive oil.",
+    "Pour clear chicken broth, add shredded chicken, cumin, and cinnamon.",
+    "Simmer on medium-low heat for 25 minutes until freekeh is tender.",
+    "Finish with fresh lemon juice and chopped parsley."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 350, unit: "g" },
+    { food_key: "bulgur", quantity: 150, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "lemon_juice", quantity: 15, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "mulukhiyah_chicken_rice",
+  name: "Mulukhiyah with Shredded Chicken",
+  cuisine: "Egypt & Sudan",
+  description: "Minced jute leaf greens stewed with aromatic coriander-garlic ta'sha and chicken over rice.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=molokhia+with+chicken+recipe+egyptian",
+  directions: [
+    "Simmer bone-in chicken in water with cardamom and onions to make fragrant broth; shred chicken.",
+    "Bring broth to a gentle simmer, whisk in finely minced mulukhiyah greens until smooth (do not boil hard).",
+    "Prepare the 'ta'sha': fry minced garlic and ground coriander in olive oil until golden, then pour sizzling into the soup.",
+    "Serve immediately over basmati rice and lemon juice."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 450, unit: "g" },
+    { food_key: "spinach_raw", quantity: 400, unit: "g" },
+    { food_key: "garlic_raw", quantity: 20, unit: "g" },
+    { food_key: "coriander_powder", quantity: 8, unit: "g" },
+    { food_key: "lemon_juice", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 5, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "bamia_bil_lahm_okra",
+  name: "Bamia bil Lahm (Arabic Okra & Beef Stew)",
+  cuisine: "Levant",
+  description: "Tender baby okra braised in garlic-cilantro tomato sauce with lean beef cubes.",
+  servings: 4,
+  prep_minutes: 15,
+  cook_minutes: 35,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=bamia+bil+lahme+recipe+arabic+okra",
+  directions: [
+    "Brown lean beef cubes with garlic and onions in olive oil.",
+    "Add tomato puree, water, and pomegranate molasses; simmer until meat is tender.",
+    "Add whole baby okra and simmer gently for 15 minutes without stirring harshly.",
+    "Temper garlic and fresh cilantro in 1 tsp olive oil, pour over the stew, and serve with rice."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 400, unit: "g" },
+    { food_key: "okra_raw", quantity: 350, unit: "g" },
+    { food_key: "tomato_raw", quantity: 200, unit: "g" },
+    { food_key: "garlic_raw", quantity: 15, unit: "g" },
+    { food_key: "pomegranate_molasses", quantity: 15, unit: "g" },
+    { food_key: "coriander_leaves", quantity: 20, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "salt", quantity: 6, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "mushroom_truffle_risotto",
+  name: "Wild Mushroom Risotto",
+  cuisine: "Continental",
+  description: "Creamy arborio rice infused with sautéed wild mushrooms, garlic, and aged parmesan.",
+  servings: 3,
+  prep_minutes: 10,
+  cook_minutes: 25,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=mushroom+risotto+recipe+easy",
+  directions: [
+    "Sauté sliced mushrooms and garlic in olive oil until golden and caramelized, set half aside for topping.",
+    "Add rice to the pan, toasting for 1 minute.",
+    "Gradually add warm vegetable broth one ladle at a time, stirring until creamy.",
+    "Finish with grated parmesan and black pepper; top with sautéed mushrooms."
+  ],
+  ingredients: [
+    { food_key: "white_rice_cooked", quantity: 350, unit: "g" },
+    { food_key: "mushrooms", quantity: 250, unit: "g" },
+    { food_key: "parmesan_cheese", quantity: 40, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 15, unit: "g" },
+    { food_key: "black_pepper", quantity: 3, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "grilled_angus_beef_sliders",
+  name: "Grilled Angus Beef Sliders",
+  cuisine: "Continental",
+  description: "Lean grass-fed beef patties with caramelized balsamic onions and cheddar on toasted brioche.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=gourmet+beef+sliders+recipe",
+  directions: [
+    "Shape lean minced beef into small slider patties and season with salt and black pepper.",
+    "Grill patties on high heat for 3 mins per side, top with cheddar cheese to melt.",
+    "Caramelize sliced onions in a pan with a drop of balsamic vinegar.",
+    "Assemble on toasted slider buns with rocket leaves and caramelized onions."
+  ],
+  ingredients: [
+    { food_key: "beef_boneless_raw", quantity: 300, unit: "g" },
+    { food_key: "white_bread", quantity: 100, unit: "g" },
+    { food_key: "cheddar_cheese", quantity: 50, unit: "g" },
+    { food_key: "onion_raw", quantity: 80, unit: "g" },
+    { food_key: "olive_oil", quantity: 8, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "herb_crusted_lamb_chops",
+  name: "Herb-Crusted Baked Lamb Chops",
+  cuisine: "Continental",
+  description: "Trimmed lean lamb cutlets roasted with rosemary, garlic, and olive oil with roasted sweet potatoes.",
+  servings: 2,
+  prep_minutes: 10,
+  cook_minutes: 20,
+  meal_types: ["dinner"],
+  youtube_url: "https://www.youtube.com/results?search_query=herb+crusted+lamb+chops+recipe",
+  directions: [
+    "Rub lamb chops with minced garlic, fresh rosemary, black pepper, and olive oil.",
+    "Sear in hot skillet for 2 mins per side to develop a crust.",
+    "Transfer to oven at 200°C for 8–10 minutes with diced sweet potatoes until tender and juicy.",
+    "Rest for 5 minutes before serving."
+  ],
+  ingredients: [
+    { food_key: "mutton_raw", quantity: 350, unit: "g" },
+    { food_key: "sweet_potato_baked", quantity: 200, unit: "g" },
+    { food_key: "garlic_raw", quantity: 10, unit: "g" },
+    { food_key: "olive_oil", quantity: 12, unit: "g" },
+    { food_key: "black_pepper", quantity: 4, unit: "g" },
+    { food_key: "salt", quantity: 4, unit: "g" }
+  ]
+});
+
+addRecipe({
+  key: "chicken_caesar_zaatar_salad",
+  name: "Chicken Caesar with Za'atar Croutons",
+  cuisine: "Continental",
+  description: "Crisp romaine lettuce, grilled chicken breast, parmesan shavings, and yogurt-caesar dressing.",
+  servings: 2,
+  prep_minutes: 15,
+  cook_minutes: 10,
+  meal_types: ["dinner", "lunch"],
+  youtube_url: "https://www.youtube.com/results?search_query=chicken+caesar+salad+healthy+recipe",
+  directions: [
+    "Grill seasoned chicken breast until charred, slice into strips.",
+    "Bake pita croutons tossed in olive oil and za'atar.",
+    "Chop crisp romaine lettuce, toss with light Greek yogurt-parmesan dressing.",
+    "Top with warm chicken strips, parmesan shavings, and za'atar croutons."
+  ],
+  ingredients: [
+    { food_key: "chicken_breast", quantity: 300, unit: "g" },
+    { food_key: "cabbage", quantity: 150, unit: "g" },
+    { food_key: "pita_bread", quantity: 60, unit: "g" },
+    { food_key: "parmesan_cheese", quantity: 30, unit: "g" },
+    { food_key: "greek_yogurt", quantity: 60, unit: "g" },
+    { food_key: "zaatar", quantity: 6, unit: "g" },
+    { food_key: "olive_oil", quantity: 10, unit: "g" }
+  ]
+});
+
+// Write recipes.json
+writeFileSync(join(SEED_DATA_DIR, "recipes.json"), JSON.stringify(allRecipes, null, 2) + "\n");
+console.log(`Successfully generated ${allRecipes.length} recipes in recipes.json!`);
+

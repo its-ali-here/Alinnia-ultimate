@@ -1,4 +1,4 @@
-# NutriKitchen
+# Mealinnia
 
 A weekly nutrient-target tracker that suggests familiar dishes (starting with Pakistani cuisine) to fill the gaps, then hands you a shopping list scaled to your household. See [PLAN.md](PLAN.md) for the full product context — this README is just setup/run instructions.
 

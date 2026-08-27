@@ -1,0 +1,33 @@
+[
+  { "key": "calories", "label": "Calories", "unit": "kcal", "category": "macro", "sort_order": 0 },
+  { "key": "protein", "label": "Protein", "unit": "g", "category": "macro", "sort_order": 1 },
+  { "key": "carbs", "label": "Carbohydrates", "unit": "g", "category": "macro", "sort_order": 2 },
+  { "key": "fat", "label": "Fat", "unit": "g", "category": "macro", "sort_order": 3 },
+  { "key": "saturated_fat", "label": "Saturated Fat", "unit": "g", "category": "macro", "sort_order": 4 },
+  { "key": "fiber", "label": "Fiber", "unit": "g", "category": "macro", "sort_order": 5 },
+  { "key": "sugar", "label": "Sugar", "unit": "g", "category": "macro", "sort_order": 6 },
+  { "key": "sodium", "label": "Sodium", "unit": "mg", "category": "macro", "sort_order": 7 },
+  { "key": "cholesterol", "label": "Cholesterol", "unit": "mg", "category": "macro", "sort_order": 8 },
+
+  { "key": "vitamin_a", "label": "Vitamin A", "unit": "mcg", "category": "vitamin", "sort_order": 10 },
+  { "key": "vitamin_c", "label": "Vitamin C", "unit": "mg", "category": "vitamin", "sort_order": 11 },
+  { "key": "vitamin_d", "label": "Vitamin D", "unit": "mcg", "category": "vitamin", "sort_order": 12 },
+  { "key": "vitamin_e", "label": "Vitamin E", "unit": "mg", "category": "vitamin", "sort_order": 13 },
+  { "key": "vitamin_k", "label": "Vitamin K", "unit": "mcg", "category": "vitamin", "sort_order": 14 },
+  { "key": "thiamin", "label": "Thiamin (B1)", "unit": "mg", "category": "vitamin", "sort_order": 15 },
+  { "key": "riboflavin", "label": "Riboflavin (B2)", "unit": "mg", "category": "vitamin", "sort_order": 16 },
+  { "key": "niacin", "label": "Niacin (B3)", "unit": "mg", "category": "vitamin", "sort_order": 17 },
+  { "key": "vitamin_b6", "label": "Vitamin B6", "unit": "mg", "category": "vitamin", "sort_order": 18 },
+  { "key": "folate", "label": "Folate", "unit": "mcg", "category": "vitamin", "sort_order": 19 },
+  { "key": "vitamin_b12", "label": "Vitamin B12", "unit": "mcg", "category": "vitamin", "sort_order": 20 },
+
+  { "key": "calcium", "label": "Calcium", "unit": "mg", "category": "mineral", "sort_order": 30 },
+  { "key": "iron", "label": "Iron", "unit": "mg", "category": "mineral", "sort_order": 31 },
+  { "key": "magnesium", "label": "Magnesium", "unit": "mg", "category": "mineral", "sort_order": 32 },
+  { "key": "phosphorus", "label": "Phosphorus", "unit": "mg", "category": "mineral", "sort_order": 33 },
+  { "key": "potassium", "label": "Potassium", "unit": "mg", "category": "mineral", "sort_order": 34 },
+  { "key": "zinc", "label": "Zinc", "unit": "mg", "category": "mineral", "sort_order": 35 },
+  { "key": "copper", "label": "Copper", "unit": "mg", "category": "mineral", "sort_order": 36 },
+  { "key": "manganese", "label": "Manganese", "unit": "mg", "category": "mineral", "sort_order": 37 },
+  { "key": "selenium", "label": "Selenium", "unit": "mcg", "category": "mineral", "sort_order": 38 }
+]
