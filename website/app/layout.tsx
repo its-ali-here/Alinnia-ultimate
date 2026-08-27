@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mealinnia — Cook What You Crave",
+  title: "Alinnia — Cook What Your Body Craves",
   description:
     "Alinnia sets your family's weekly nutrition targets and suggests familiar dishes from your own cuisine to meet them.",
 };
